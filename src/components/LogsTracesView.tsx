@@ -1,0 +1,474 @@
+import React, { useState } from 'react';
+import {
+  Terminal,
+  Activity,
+  Layers,
+  Search,
+  Filter,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+  Cpu,
+  Shield,
+  Zap,
+  RefreshCw,
+  TrendingUp,
+  BarChart2,
+} from 'lucide-react';
+import { SystemLogEntry } from '../types';
+
+interface LogsTracesViewProps {
+  theme?: 'dark' | 'light';
+}
+
+const INITIAL_LOGS: SystemLogEntry[] = [
+  {
+    id: 'log-101',
+    timestamp: '2026-08-01T17:04:10.120Z',
+    level: 'SUCCESS',
+    channel: 'TELEGRAM',
+    message: '[Telegram Bot] Inbound update received from chat_id 99182371. Text: "Срочно! ХУ-17 уходит в аварию"',
+    duration_ms: 12,
+  },
+  {
+    id: 'log-102',
+    timestamp: '2026-08-01T17:04:10.145Z',
+    level: 'INFO',
+    channel: 'SYSTEM',
+    message: '[PII Guardrails] Masked phone numbers and INN string in raw input context.',
+    duration_ms: 4,
+  },
+  {
+    id: 'log-103',
+    timestamp: '2026-08-01T17:04:10.580Z',
+    level: 'SUCCESS',
+    channel: 'SYSTEM',
+    message: '[Gemini 3.6 Flash] Extracted facts: customer_name="СеверФуд", site_info="S-MSK-01", asset_code="ХУ-17"',
+    duration_ms: 435,
+  },
+  {
+    id: 'log-104',
+    timestamp: '2026-08-01T17:04:10.605Z',
+    level: 'SUCCESS',
+    channel: '1C',
+    message: '[1C:ERP OData Engine] Registered ticket T-10294. Priority: HIGH. SLA Deadline: +2h.',
+    duration_ms: 22,
+  },
+  {
+    id: 'log-105',
+    timestamp: '2026-08-01T17:03:50.800Z',
+    level: 'WARN',
+    channel: 'EMAIL',
+    message: '[IMAP Service] Inbound email without local asset code. Flagged for Operator HITL clarification.',
+    duration_ms: 18,
+  },
+  {
+    id: 'log-106',
+    timestamp: '2026-08-01T17:02:12.300Z',
+    level: 'SUCCESS',
+    channel: 'VOICE',
+    message: '[Yandex SpeechKit v3] Converted 14s voice transcript to text. Caller identified: +7 999 111-2233.',
+    duration_ms: 610,
+  },
+  {
+    id: 'log-107',
+    timestamp: '2026-08-01T17:00:00.000Z',
+    level: 'INFO',
+    channel: 'REST',
+    message: '[Swagger REST API] Health check endpoint /api/health called from internal monitor.',
+    duration_ms: 2,
+  },
+];
+
+export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark' }) => {
+  const isDark = theme === 'dark';
+  const [logFilter, setLogFilter] = useState<'ALL' | 'TELEGRAM' | 'EMAIL' | 'VOICE' | 'SYSTEM' | '1C'>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [logs, setLogs] = useState<SystemLogEntry[]>(INITIAL_LOGS);
+  const [activeTab, setActiveTab] = useState<'logs' | 'traces' | 'analytics'>('logs');
+
+  const filteredLogs = logs.filter((l) => {
+    const matchesChannel = logFilter === 'ALL' || l.channel === logFilter;
+    const matchesSearch =
+      l.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      l.channel.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesChannel && matchesSearch;
+  });
+
+  const handleAddSimulatedLog = () => {
+    const newLog: SystemLogEntry = {
+      id: `log-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      level: 'SUCCESS',
+      channel: 'TELEGRAM',
+      message: `[Live Polling] Periodic update sync complete. Clean status.`,
+      duration_ms: Math.floor(Math.random() * 20 + 5),
+    };
+    setLogs((prev) => [newLog, ...prev]);
+  };
+
+  return (
+    <div id="logs-traces-page" className="space-y-6">
+      {/* Top Banner */}
+      <div
+        className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+          isDark
+            ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
+            : 'bg-white border-slate-300 text-slate-950 shadow-md'
+        }`}
+      >
+        <div>
+          <div className="flex items-center space-x-2">
+            <Activity className={`h-5 w-5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`} />
+            <h2 className={`text-sm font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950 font-extrabold'}`}>
+              Мониторинг, Логи и Трейсы Выполнения
+            </h2>
+          </div>
+          <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'}`}>
+            Сквозное логирование входящих запросов, трассировка OpenTelemetry / Arize AI и дашборды метрик работы AI-Диспетчера.
+          </p>
+        </div>
+
+        {/* View Switcher Tabs */}
+        <div className="flex items-center space-x-2 font-mono text-xs">
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
+              activeTab === 'logs'
+                ? isDark
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
+                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
+                : isDark
+                ? 'text-slate-400 hover:text-white'
+                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
+            }`}
+          >
+            <Terminal className="h-4 w-4" />
+            <span>Логи Системы</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('traces')}
+            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
+              activeTab === 'traces'
+                ? isDark
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
+                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
+                : isDark
+                ? 'text-slate-400 hover:text-white'
+                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
+            }`}
+          >
+            <Layers className="h-4 w-4" />
+            <span>OpenTelemetry Трейсы</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
+              activeTab === 'analytics'
+                ? isDark
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
+                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
+                : isDark
+                ? 'text-slate-400 hover:text-white'
+                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
+            }`}
+          >
+            <BarChart2 className="h-4 w-4" />
+            <span>Дашборды Метрик</span>
+          </button>
+        </div>
+      </div>
+
+      {/* METRICS SUMMARY CARDS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
+        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
+          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Всего Обращений</div>
+          <div className={`text-xl font-black ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>1,284</div>
+          <div className="text-[10px] text-emerald-600 font-extrabold mt-1 flex items-center space-x-1">
+            <TrendingUp className="h-3 w-3" />
+            <span>+14.2% за неделю</span>
+          </div>
+        </div>
+
+        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
+          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>SLA Соблюдение</div>
+          <div className={`text-xl font-black ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>99.4%</div>
+          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>Средний дедлайн 1.8h</div>
+        </div>
+
+        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
+          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Доля Эскалаций HITL</div>
+          <div className={`text-xl font-black ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>1.8%</div>
+          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>98.2% Авто-создание</div>
+        </div>
+
+        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
+          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Средний Latency AI</div>
+          <div className={`text-xl font-black ${isDark ? 'text-purple-400' : 'text-purple-900'}`}>482 ms</div>
+          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>Gemini 3.6 Flash Engine</div>
+        </div>
+      </div>
+
+      {/* TAB 1: REALTIME SYSTEM LOGS */}
+      {activeTab === 'logs' && (
+        <div
+          className={`rounded-2xl p-5 border transition-all ${
+            isDark
+              ? 'bg-[#030712] border-cyan-500/30 text-slate-200'
+              : 'bg-slate-900 border-slate-800 text-slate-200'
+          }`}
+        >
+          {/* Controls */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800 font-mono text-xs">
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
+              <span className="text-slate-400 font-bold">Канал:</span>
+              <select
+                value={logFilter}
+                onChange={(e: any) => setLogFilter(e.target.value)}
+                className="bg-black/80 border border-slate-700 text-cyan-400 rounded-lg p-1.5 text-xs focus:outline-none"
+              >
+                <option value="ALL">Все Каналы</option>
+                <option value="TELEGRAM">Telegram</option>
+                <option value="EMAIL">Email</option>
+                <option value="VOICE">Телефония</option>
+                <option value="SYSTEM">Система / AI</option>
+                <option value="1C">1C:ERP</option>
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
+                <input
+                  type="text"
+                  placeholder="Поиск по логам..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-black/80 border border-slate-700 text-white rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none"
+                />
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+              </div>
+
+              <button
+                onClick={handleAddSimulatedLog}
+                className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold whitespace-nowrap flex items-center space-x-1"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span>Обновить</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Terminal Console Stream */}
+          <div className="font-mono text-xs space-y-2 max-h-96 overflow-y-auto pr-2">
+            {filteredLogs.map((log) => (
+              <div
+                key={log.id}
+                className="p-2.5 rounded-xl bg-black/50 border border-slate-800/80 hover:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition"
+              >
+                <div className="flex items-center space-x-2.5">
+                  <span
+                    className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
+                      log.level === 'SUCCESS'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                        : log.level === 'WARN'
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                        : 'bg-sky-500/20 text-sky-400 border border-sky-500/40'
+                    }`}
+                  >
+                    {log.channel}
+                  </span>
+                  <span className="text-slate-400 text-[11px]">{new Date(log.timestamp).toLocaleTimeString('ru-RU')}</span>
+                  <span className="text-slate-200">{log.message}</span>
+                </div>
+                {log.duration_ms && (
+                  <span className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 whitespace-nowrap self-end sm:self-auto">
+                    {log.duration_ms} ms
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: OPENTELEMETRY TRACES */}
+      {activeTab === 'traces' && (
+        <div
+          className={`rounded-2xl p-5 border transition-all ${
+            isDark
+              ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-md'
+              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4 border-b pb-3 border-slate-700/30 font-mono">
+            <div className="flex items-center space-x-2">
+              <Layers className="h-5 w-5 text-cyan-400" />
+              <h3 className="text-sm font-bold uppercase text-cyan-400">
+                Trace ID: trace_ot_891823719_tg
+              </h3>
+            </div>
+            <span className="text-xs text-slate-400">Суммарно: 482 ms • 6 Spans</span>
+          </div>
+
+          <div className="space-y-3 font-mono text-xs">
+            {/* Span 1 */}
+            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sky-400">1. Inbound Webhook Ingress (Telegram)</span>
+                <span className="text-slate-400">12 ms</span>
+              </div>
+              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-sky-400 h-full w-[5%]" />
+              </div>
+            </div>
+
+            {/* Span 2 */}
+            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-amber-400">2. PII Sanitizer & Masking Guardrails</span>
+                <span className="text-slate-400">4 ms</span>
+              </div>
+              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-amber-400 h-full w-[2%]" />
+              </div>
+            </div>
+
+            {/* Span 3 */}
+            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-cyan-400">3. Gemini 3.6 Flash Structured Perception</span>
+                <span className="text-slate-400">435 ms</span>
+              </div>
+              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-cyan-400 h-full w-[85%]" />
+              </div>
+            </div>
+
+            {/* Span 4 */}
+            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-emerald-400">4. Deterministic Rule Match & SLA Evaluation</span>
+                <span className="text-slate-400">9 ms</span>
+              </div>
+              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-emerald-400 h-full w-[4%]" />
+              </div>
+            </div>
+
+            {/* Span 5 */}
+            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-purple-400">5. 1C:ERP Document Commit via OData REST</span>
+                <span className="text-slate-400">22 ms</span>
+              </div>
+              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-purple-400 h-full w-[4%]" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: ANALYTICS DASHBOARDS */}
+      {activeTab === 'analytics' && (
+        <div
+          className={`rounded-2xl p-5 border transition-all ${
+            isDark
+              ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-md'
+              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
+          }`}
+        >
+          <h3 className="text-sm font-mono font-bold uppercase text-cyan-400 mb-4">
+            Распределение Обращений по Каналам и Аналитика AI
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-mono text-xs">
+            <div className="p-4 rounded-xl bg-black/40 border border-slate-800 space-y-3">
+              <div className="font-bold text-slate-300">Распределение по Каналам</div>
+
+              <div className="space-y-2">
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span>Telegram Bot</span>
+                    <span className="text-sky-400 font-bold">48% (616 заявок)</span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-sky-400 h-full w-[48%]" />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span>Email IMAP / MCP</span>
+                    <span className="text-amber-400 font-bold">32% (410 заявок)</span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-amber-400 h-full w-[32%]" />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span>Голосовая Телефония</span>
+                    <span className="text-purple-400 font-bold">14% (180 заявок)</span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-purple-400 h-full w-[14%]" />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span>REST Swagger API</span>
+                    <span className="text-emerald-400 font-bold">6% (78 заявок)</span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-emerald-400 h-full w-[6%]" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-black/40 border border-slate-800 space-y-3">
+              <div className="font-bold text-slate-300">Точность Идентификации Фактов</div>
+
+              <div className="space-y-2">
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span>Код Оборудования (RAG BM25)</span>
+                    <span className="text-emerald-400 font-bold">98.4%</span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-emerald-400 h-full w-[98%]" />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span>Объект / Контрагент</span>
+                    <span className="text-emerald-400 font-bold">99.1%</span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-emerald-400 h-full w-[99%]" />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span>Оценка SLA Дедлайна</span>
+                    <span className="text-cyan-400 font-bold">100.0%</span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-cyan-400 h-full w-[100%]" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

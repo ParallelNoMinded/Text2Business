@@ -2,25 +2,23 @@ import React from 'react';
 import {
   Cpu,
   Database,
-  ShieldCheck,
   Zap,
   Activity,
   User,
   Home,
   Sun,
   Moon,
+  Send,
+  AlertTriangle,
 } from 'lucide-react';
 
 export type TabType =
   | 'home'
+  | 'channels'
   | 'console'
-  | 'customer'
-  | 'ai_engine'
   | 'operator'
-  | 'tech_lead'
-  | 'matrix'
   | 'database'
-  | 'suite';
+  | 'logs_traces';
 
 interface HeaderProps {
   activeTab: TabType;
@@ -32,22 +30,22 @@ interface HeaderProps {
   setIsDryRun: (val: boolean) => void;
   selectedModel?: string;
   setSelectedModel?: (model: string) => void;
+  pendingOperatorCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
-  geminiActive,
   theme,
   setTheme,
   isDryRun,
   setIsDryRun,
   selectedModel = 'gemini 3.6',
   setSelectedModel,
+  pendingOperatorCount = 1,
 }) => {
   const isDark = theme === 'dark';
 
-  // Header on landing page (home) is replaced by only the theme toggle button
   if (activeTab === 'home') {
     return (
       <header className="sticky top-0 z-50 p-4 pointer-events-none">
@@ -79,7 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
-          {/* Logo & Brand -> Navigates to Landing 'home' */}
+          {/* Logo & Brand */}
           <div
             onClick={() => setActiveTab('home')}
             className="flex items-center space-x-2.5 cursor-pointer group flex-shrink-0"
@@ -110,8 +108,11 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Top 5 Navigation Tabs */}
-          <nav className="hidden md:flex items-center space-x-1 p-1 rounded-xl border font-mono text-xs overflow-x-auto no-scrollbar max-w-xl">
+          {/* Top 5 Clean Navigation Tabs */}
+          <nav className={`hidden md:flex items-center space-x-1 p-1 rounded-xl border font-mono text-xs overflow-x-auto no-scrollbar max-w-2xl ${
+            isDark ? 'border-cyan-500/30 bg-[#020204]/60' : 'border-slate-300 bg-slate-100/90 shadow-inner'
+          }`}>
+            {/* 1. Главная */}
             <button
               id="header-tab-home"
               onClick={() => setActiveTab('home')}
@@ -119,50 +120,60 @@ export const Header: React.FC<HeaderProps> = ({
                 activeTab === 'home'
                   ? isDark
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                    : 'bg-blue-900 text-white font-extrabold shadow-sm'
+                    : 'bg-blue-950 text-white font-extrabold shadow-sm'
                   : isDark
                   ? 'text-slate-400 hover:text-white hover:bg-white/5'
-                  : 'text-slate-700 hover:text-blue-950 hover:bg-slate-100 font-semibold'
+                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
               }`}
             >
               <Home className="h-3.5 w-3.5" />
               <span>Главная</span>
             </button>
 
+            {/* 2. Каналы */}
             <button
-              id="header-tab-console"
-              onClick={() => setActiveTab('console')}
+              id="header-tab-channels"
+              onClick={() => setActiveTab('channels')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-                activeTab === 'console'
+                activeTab === 'channels' || activeTab === 'console'
                   ? isDark
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                    : 'bg-blue-900 text-white font-extrabold shadow-sm'
+                    : 'bg-blue-950 text-white font-extrabold shadow-sm'
                   : isDark
                   ? 'text-slate-400 hover:text-white hover:bg-white/5'
-                  : 'text-slate-700 hover:text-blue-950 hover:bg-slate-100 font-semibold'
+                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
               }`}
             >
-              <Activity className="h-3.5 w-3.5" />
-              <span>Процесс</span>
+              <Send className="h-3.5 w-3.5" />
+              <span>Каналы</span>
             </button>
 
+            {/* 3. Диспетчер (Pulsing Red Attention Badge if pending tickets exist) */}
             <button
               id="header-tab-operator"
               onClick={() => setActiveTab('operator')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+              className={`relative px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
                 activeTab === 'operator'
                   ? isDark
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                    : 'bg-blue-900 text-white font-extrabold shadow-sm'
+                    ? 'bg-red-500/20 text-red-300 border border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
+                    : 'bg-red-950 text-white font-extrabold shadow-sm'
                   : isDark
-                  ? 'text-slate-400 hover:text-white hover:bg-white/5'
-                  : 'text-slate-700 hover:text-blue-950 hover:bg-slate-100 font-semibold'
+                  ? pendingOperatorCount > 0
+                    ? 'text-red-400 hover:bg-red-500/10 border border-red-500/30'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : pendingOperatorCount > 0
+                  ? 'text-red-800 bg-red-100/90 border border-red-300 font-extrabold'
+                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
               }`}
             >
               <User className="h-3.5 w-3.5" />
               <span>Диспетчер</span>
+              {pendingOperatorCount > 0 && (
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-ping absolute -top-0.5 -right-0.5"></span>
+              )}
             </button>
 
+            {/* 4. Реестр */}
             <button
               id="header-tab-database"
               onClick={() => setActiveTab('database')}
@@ -170,37 +181,37 @@ export const Header: React.FC<HeaderProps> = ({
                 activeTab === 'database'
                   ? isDark
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                    : 'bg-blue-900 text-white font-extrabold shadow-sm'
+                    : 'bg-blue-950 text-white font-extrabold shadow-sm'
                   : isDark
                   ? 'text-slate-400 hover:text-white hover:bg-white/5'
-                  : 'text-slate-700 hover:text-blue-950 hover:bg-slate-100 font-semibold'
+                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
               }`}
             >
               <Database className="h-3.5 w-3.5" />
               <span>Реестр</span>
             </button>
 
+            {/* 5. Логи & Трейсы */}
             <button
-              id="header-tab-suite"
-              onClick={() => setActiveTab('suite')}
+              id="header-tab-logs-traces"
+              onClick={() => setActiveTab('logs_traces')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-                activeTab === 'suite' || activeTab === 'matrix'
+                activeTab === 'logs_traces'
                   ? isDark
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                    : 'bg-blue-900 text-white font-extrabold shadow-sm'
+                    : 'bg-blue-950 text-white font-extrabold shadow-sm'
                   : isDark
                   ? 'text-slate-400 hover:text-white hover:bg-white/5'
-                  : 'text-slate-700 hover:text-blue-950 hover:bg-slate-100 font-semibold'
+                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
               }`}
             >
-              <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Тесты</span>
+              <Activity className="h-3.5 w-3.5" />
+              <span>Логи & Трейсы</span>
             </button>
           </nav>
 
-          {/* Controls: Mode Badges & Theme Toggle */}
+          {/* Controls: Model Selector & Theme Toggle */}
           <div className="flex items-center space-x-2 text-xs font-mono">
-            {/* Model Selector Dropdown (5 Models) */}
             <div
               className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-semibold ${
                 isDark
@@ -227,7 +238,6 @@ export const Header: React.FC<HeaderProps> = ({
               </select>
             </div>
 
-            {/* Dry Run Toggle Pill */}
             <button
               id="header-dryrun-toggle"
               type="button"
@@ -241,103 +251,23 @@ export const Header: React.FC<HeaderProps> = ({
                   ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                   : 'bg-emerald-100 text-emerald-950 border-emerald-400 font-extrabold'
               }`}
-              title="Переключить режим записи в БД"
             >
-              {isDryRun ? '🔴 ТЕСТОВЫЙ РЕЖИМ' : '🟢 ЖИВАЯ ЗАПИСЬ'}
+              {isDryRun ? 'ТЕСТОВЫЙ РЕЖИМ' : 'ПРОМ 1С'}
             </button>
 
-            {/* Light / Dark Mode Switch */}
             <button
-              id="theme-toggle-btn"
+              id="header-theme-btn"
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className={`p-1.5 rounded-lg border transition-all ${
+              className={`p-2 rounded-lg border transition-all ${
                 isDark
-                  ? 'bg-[#0a0a14] hover:bg-white/10 border-cyan-500/30 text-amber-400'
-                  : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-blue-900 shadow-sm'
+                  ? 'bg-white/5 hover:bg-white/10 border-white/10 text-amber-400'
+                  : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-blue-950'
               }`}
-              title="Переключить тему оформления"
+              title="Переключить тему"
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
           </div>
-        </div>
-
-        {/* Mobile Sub-Navigation Horizontal Bar */}
-        <div
-          className={`flex md:hidden items-center space-x-1 py-2 border-t overflow-x-auto no-scrollbar font-mono text-xs ${
-            isDark ? 'border-white/10' : 'border-slate-300'
-          }`}
-        >
-          <button
-            onClick={() => setActiveTab('home')}
-            className={`px-3 py-1 rounded-lg whitespace-nowrap font-bold ${
-              activeTab === 'home'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                  : 'bg-blue-900 text-white'
-                : isDark
-                ? 'text-slate-400'
-                : 'text-slate-700 font-semibold'
-            }`}
-          >
-            Главная
-          </button>
-          <button
-            onClick={() => setActiveTab('console')}
-            className={`px-3 py-1 rounded-lg whitespace-nowrap font-bold ${
-              activeTab === 'console'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                  : 'bg-blue-900 text-white'
-                : isDark
-                ? 'text-slate-400'
-                : 'text-slate-700 font-semibold'
-            }`}
-          >
-            Процесс
-          </button>
-          <button
-            onClick={() => setActiveTab('operator')}
-            className={`px-3 py-1 rounded-lg whitespace-nowrap font-bold ${
-              activeTab === 'operator'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                  : 'bg-blue-900 text-white'
-                : isDark
-                ? 'text-slate-400'
-                : 'text-slate-700 font-semibold'
-            }`}
-          >
-            Диспетчер
-          </button>
-          <button
-            onClick={() => setActiveTab('database')}
-            className={`px-3 py-1 rounded-lg whitespace-nowrap font-bold ${
-              activeTab === 'database'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                  : 'bg-blue-900 text-white'
-                : isDark
-                ? 'text-slate-400'
-                : 'text-slate-700 font-semibold'
-            }`}
-          >
-            Реестр
-          </button>
-          <button
-            onClick={() => setActiveTab('suite')}
-            className={`px-3 py-1 rounded-lg whitespace-nowrap font-bold ${
-              activeTab === 'suite'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                  : 'bg-blue-900 text-white'
-                : isDark
-                ? 'text-slate-400'
-                : 'text-slate-700 font-semibold'
-            }`}
-          >
-            Тесты
-          </button>
         </div>
       </div>
     </header>

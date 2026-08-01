@@ -1,13 +1,44 @@
-import { Site, Asset, Contract, Ticket } from './types';
+import { Site, Asset, Contract, Ticket, Contractor } from './types';
 
 export interface DatabaseSchema {
+  contractors: Contractor[];
   sites: Site[];
   assets: Asset[];
   contracts: Contract[];
   open_tickets: Ticket[];
+  closed_tickets: Ticket[];
 }
 
 export const INITIAL_DATABASE: DatabaseSchema = {
+  contractors: [
+    {
+      customer_id: 'C-101',
+      name: 'ООО "СеверФуд"',
+      inn: '7701234567',
+      contact_phone: '+7 999 111-2233',
+      contact_email: 'dispatch@severfood.ru',
+      contract_number: 'ДОГ-SF-2025/11',
+      status: 'ACTIVE',
+    },
+    {
+      customer_id: 'C-202',
+      name: 'ООО "АгроЛогистика"',
+      inn: '7809876543',
+      contact_phone: '+7 981 333-4455',
+      contact_email: 'info@agrolog.spb.ru',
+      contract_number: 'ДОГ-AL-2024/04',
+      status: 'ACTIVE',
+    },
+    {
+      customer_id: 'C-303',
+      name: 'ПАО "Северсталь"',
+      inn: '3528000597',
+      contact_phone: '+7 820 253-5353',
+      contact_email: 'service@severstal.ru',
+      contract_number: 'ДОГ-SS-2026/01',
+      status: 'ACTIVE',
+    },
+  ],
   sites: [
     {
       site_id: 'S-MSK-01',
@@ -122,6 +153,89 @@ export const INITIAL_DATABASE: DatabaseSchema = {
         {
           timestamp: '2026-08-13T15:55:00+03:00',
           note: 'Заявка T-884 автоматически создана из входящего письма.',
+          author: 'AI Dispatcher System',
+        },
+      ],
+    },
+    {
+      ticket_id: 'T-880',
+      customer_id: 'C-202',
+      site_id: 'S-SPB-03',
+      asset_id: 'A-3001',
+      priority: 'medium',
+      summary: 'Необходимо плановое ТО чиллера ЧИЛ-01',
+      description: 'Поступил запрос от клиента по каналу Telegram.',
+      sla_deadline: '2026-08-14T12:00:00+03:00',
+      assigned_group: 'Группа №1 (СПб Сервис)',
+      status: 'WAITING_DISPATCHER',
+      created_at: '2026-08-13T14:00:00+03:00',
+      missing_fields: ['asset_code', 'preferred_time'],
+      messages: [
+        {
+          id: 'm-1',
+          sender: 'client',
+          author_name: 'Михаил (СПб)',
+          text: 'Добрый день! Нужно плановое ТО чиллера на Пулковском шоссе.',
+          timestamp: '2026-08-13T14:00:00+03:00',
+          channel: 'telegram',
+        },
+        {
+          id: 'm-2',
+          sender: 'bot',
+          author_name: 'AI-Диспетчер',
+          text: '🤖 Обращение получено. Требуется уточнение данных.',
+          timestamp: '2026-08-13T14:00:05+03:00',
+          channel: 'telegram',
+        },
+      ],
+      history: [
+        {
+          timestamp: '2026-08-13T14:00:00+03:00',
+          note: 'Создана неполная заявка T-880. Передано в HITL диспетчеру.',
+          author: 'AI Dispatcher Core',
+        },
+      ],
+    },
+  ],
+  closed_tickets: [
+    {
+      ticket_id: 'T-801',
+      customer_id: 'C-101',
+      site_id: 'S-MSK-01',
+      asset_id: 'A-1002',
+      priority: 'high',
+      summary: 'Замена фреонового фильтра на ХУ-17-БАК',
+      description: 'Работы выполнены в полном объеме, акт подписан.',
+      sla_deadline: '2026-07-28T18:00:00+03:00',
+      assigned_group: 'Группа №2 (Холод-МСК)',
+      status: 'CLOSED',
+      created_at: '2026-07-28T10:00:00+03:00',
+      updated_at: '2026-07-28T16:30:00+03:00',
+      history: [
+        {
+          timestamp: '2026-07-28T16:30:00+03:00',
+          note: 'Заявка успешно закрыта инженером. Акт №801-SF передан в 1С.',
+          author: 'Старший Диспетчер',
+        },
+      ],
+    },
+    {
+      ticket_id: 'T-795',
+      customer_id: 'C-303',
+      site_id: 'S-EKB-02',
+      asset_id: 'A-2001',
+      priority: 'medium',
+      summary: 'Калибровка датчиков температуры в камере овощехранилища',
+      description: 'Тестирование прошло успешно.',
+      sla_deadline: '2026-07-20T17:00:00+03:00',
+      assigned_group: 'Группа Урал Сервис',
+      status: 'CLOSED',
+      created_at: '2026-07-20T09:00:00+03:00',
+      updated_at: '2026-07-20T14:15:00+03:00',
+      history: [
+        {
+          timestamp: '2026-07-20T14:15:00+03:00',
+          note: 'Заявка закрыта.',
           author: 'AI Dispatcher System',
         },
       ],

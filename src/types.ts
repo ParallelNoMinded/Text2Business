@@ -45,6 +45,25 @@ export interface Contract {
   active: boolean;
 }
 
+export interface Contractor {
+  customer_id: string;
+  name: string;
+  inn: string;
+  contact_phone: string;
+  contact_email: string;
+  contract_number: string;
+  status: 'ACTIVE' | 'BLOCKED';
+}
+
+export interface TicketMessage {
+  id: string;
+  sender: 'client' | 'bot' | 'operator';
+  author_name: string;
+  text: string;
+  timestamp: string;
+  channel?: string;
+}
+
 export interface Ticket {
   ticket_id: string;
   customer_id: string;
@@ -55,10 +74,24 @@ export interface Ticket {
   description: string;
   sla_deadline: string;
   assigned_group: string;
-  status: 'NEW' | 'IN_PROGRESS' | 'WAITING_DISPATCHER' | 'RESOLVED';
+  status: 'NEW' | 'IN_PROGRESS' | 'WAITING_DISPATCHER' | 'RESOLVED' | 'CLOSED';
   created_at: string;
   updated_at?: string;
+  channel?: string;
+  chat_id?: string | number;
+  missing_fields?: string[];
+  messages?: TicketMessage[];
   history?: Array<{ timestamp: string; note: string; author: string }>;
+}
+
+export interface SystemLogEntry {
+  id: string;
+  timestamp: string;
+  level: 'INFO' | 'WARN' | 'ERROR' | 'SUCCESS';
+  channel: 'TELEGRAM' | 'EMAIL' | 'VOICE' | 'REST' | 'SYSTEM' | '1C';
+  message: string;
+  details?: Record<string, any>;
+  duration_ms?: number;
 }
 
 export type BusinessAction =
