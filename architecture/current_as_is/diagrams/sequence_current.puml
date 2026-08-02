@@ -1,0 +1,57 @@
+@startuml sequence_current
+title Sequence — Полный цикл сквозной обработки обращения в текущем монолите (As-Is)
+
+autonumber
+actor "B2B Клиент (СеверФуд)" as client
+participant "Telegram Bot API" as tg_api
+participant "Express Router\n(server.ts)" as server
+participant "LLM Perception Core\n(extractFactsWithGitHubModels)" as llm_service
+participant "GitHub Models API\n(gpt-4o / JSON Mode)" as github
+participant "Deterministic Engine\n(dispatcherEngine.ts)" as engine
+database "In-Memory Store\n(mockDb.ts)" as db
+participant "React HITL Console\n(Operator UI)" as ui
+participant "1С:ERP OData Adapter\n(/api/1c/tickets)" as erp
+
+client -> tg_api: "Снова 17-я: температура уже +8 и растет..."
+tg_api -> server: Long Polling getUpdates / POST /api/webhooks/telegram
+
+group 1. Извлечение фактов (LLM Perception Phase)
+    server -> llm_service: extractFactsWithGemini(text, 'telegram')
+    llm_service -> github: POST /chat/completions (response_format: json_object)
+    github --> llm_service: JSON: { customer_name: "СеверФуд", asset_code: "17-я", problem: "температура +8" }
+    llm_service --> server: ExtractedFacts object (Confidence: 0.92)
+end
+
+group 2. Детерминированная диспетчеризация (Deterministic Rules Core)
+    server -> engine: runDeterministicDispatch(mockDb, facts, text, channel, time)
+    
+    engine -> engine: checkGuardrails(text) [Проверка инъекций]
+    
+    engine -> db: tool_find_customer_or_site("СеверФуд")
+    db --> engine: Found sites: [S-MSK-01 (Москва), S-EKB-02 (Екатеринбург)]
+    
+    note over engine: Разрешение неоднозначности адреса (TC-02):\nПоиск открытых заявок по коду "17-я" (ХУ-17)
+    engine -> db: tool_find_assets_and_open_tickets("A-1001")
+    db --> engine: Found Open Ticket T-884 on site S-MSK-01
+    
+    engine -> db: tool_get_contract_and_sla("S-MSK-01")
+    db --> engine: Contract: Gold Plan (60m SLA, 24x7)
+    
+    note over engine: Decision Matrix Decision:\n• Action: UPDATE_TICKET (T-884)\n• Priority: CRITICAL\n• Status: REQUIRES_HUMAN_CONFIRMATION
+    engine --> server: ProcessingResult + ExecutionTrace
+end
+
+group 3. Исполнение и Доставка ответов (Execution Phase)
+    server -> db: saveOrUpdateTicketInDb() [Обновление T-884 и запись сообщений]
+    server -> tg_api: sendTelegramMessage(chat_id, "Заявка T-884 переведена в статус CRITICAL...")
+    tg_api --> client: Доставка ответа в чат Telegram
+end
+
+group 4. Human-in-the-Loop & 1C Sync
+    server -> ui: WebSocket/Polling Обновление статуса (Красная плашка HITL)
+    ui -> server: Диспетчер нажимает "Утвердить и перенести в 1С"
+    server -> erp: GET/POST /api/1c/tickets
+    erp --> server: 200 OK (OData Document_ЗаявкаНаРемонт)
+end
+
+@enduml

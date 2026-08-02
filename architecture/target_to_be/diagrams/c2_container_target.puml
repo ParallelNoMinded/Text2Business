@@ -1,0 +1,62 @@
+@startuml c2_container_target
+!include <C4/C4_Container>
+LAYOUT_TOP_DOWN()
+
+title C2 — Container: Text2Business Enterprise (Целевое микросервисное состояние / To-Be)
+
+Person(client, "B2B Заявитель", "Мультимедийные каналы")
+Person(operator, "Диспетчер (HITL)", "Оператор системы")
+
+System_Boundary(target_system, "Text2Business Event-Driven Platform") {
+  
+  Container(envoy_gateway, "Омниканальный Ingress Gateway", "Envoy Gateway / C++", "TLS 1.3 Termination, Rate Limiting, Webhook Ingress (Telegram, Email, REST), gRPC Proxy")
+  
+  ContainerDb(kafka_bus, "Kafka / RabbitMQ Event Bus", "Apache Kafka Cluster", "Асинхронная шина событий: Топики `InboundMessages`, `SpeechChunks`, `FactsExtracted`, `DispatchDecisions`")
+  
+  Container(stt_service, "Service 1: STT & Speech Service", "Go / Python + Yandex SpeechKit", "Потоковая транскрипция аудио, удаление шумов, диаризация спикеров")
+  
+  Container(ai_service, "Service 2: Perception & AI Engine", "Python / LangGraph + Instructor", "Мультиагентный анализ, извлечение фактов, RAG векторный поиск, JSON Schema валидация")
+  
+  Container(core_engine, "Service 3: Core Decision Engine", "Go + Temporal.io Workflow Worker", "Гарантированная оркестрация процессов, детерминированная матрица решений, HITL паузы и расчет SLA")
+  
+  Container(adapter_1c, "Service 4: 1C Enterprise Adapter", "Go / OData Client", "Адаптер интеграции с 1С:Предприятие, обработка повторов (Retries) и трансформация XML/JSON")
+  
+  ContainerDb(postgres_db, "Data Store & Vector DB", "PostgreSQL 18 + pgvector + Redis", "Реляционные заявки, векторные эмбеддинги для RAG, кэш сессий и блокировки")
+  
+  Container(otel_agent, "OpenTelemetry Collector", "OTel Collector / Go", "Сбор спанов задержек, метаданных токенов и отправка в Arize AI")
+  
+  Container(operator_ui, "React HITL Operator Workbench", "React 19, TypeScript, Tailwind", "Веб-интерфейс диспетчера с поддержкой WebSocket уведомлений в реальном времени")
+}
+
+System_Ext(ai_cloud, "LLM Inference (GitHub Models / vLLM)", "LLM APIs")
+System_Ext(erp_1c, "1С:ERP Предприятие", "1C OData REST")
+System_Ext(arize_cloud, "Arize AI Cloud", "Observability SaaS")
+
+' Связи Ingress & Event Bus
+Rel(client, envoy_gateway, "Входящие запросы и звонки", "HTTPS / SIP / gRPC")
+Rel(envoy_gateway, kafka_bus, "Публикация события `InboundMessageReceived`", "gRPC / Kafka Protocol")
+
+' Связи Микросервисов с Kafka
+Rel(kafka_bus, stt_service, "Подписка на аудиопотоки", "Kafka Consumer")
+Rel(stt_service, kafka_bus, "Публикация `SpeechTranscribed`", "Kafka Producer")
+
+Rel(kafka_bus, ai_service, "Подписка на текстовые обращения", "Kafka Consumer")
+Rel(ai_service, ai_cloud, "Запрос извлечения фактов (ReAct Agent)", "HTTPS / gRPC")
+Rel(ai_service, postgres_db, "Векторный поиск похожих инцидентов (pgvector)", "TCP :5432")
+Rel(ai_service, kafka_bus, "Публикация `FactsExtracted`", "Kafka Producer")
+
+Rel(kafka_bus, core_engine, "Подписка на факты и события", "Kafka Consumer")
+Rel(core_engine, postgres_db, "Сохранение состояния Workflow (Temporal State)", "TCP :5432")
+Rel(core_engine, operator_ui, "Уведомление о неполных тикетах (HITL)", "WebSocket / Push")
+Rel(operator_ui, envoy_gateway, "Утверждение решения диспетчером", "HTTPS / REST")
+
+Rel(core_engine, adapter_1c, "Запуск проведение тикета", "gRPC Internal")
+Rel(adapter_1c, erp_1c, "Проведение документа ЗаявкаНаРемонт", "OData REST / HTTPS")
+
+' Наблюдаемость
+Rel(ai_service, otel_agent, "Отправка спанов LLM", "OTLP gRPC :4317")
+Rel(core_engine, otel_agent, "Отправка спанов Temporal Workflows", "OTLP gRPC :4317")
+Rel(otel_agent, arize_cloud, "Экспорт телеметрии в Arize AI", "HTTPS / OTLP")
+
+SHOW_LEGEND()
+@endl

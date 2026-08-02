@@ -1,0 +1,135 @@
+@startuml er_diagram_target
+title ER Diagram — Промышленная схема данных PostgreSQL 18 + pgvector (To-Be)
+
+entity "contractors (Контрагенты)" as contractor {
+  * id : uuid <<PK>>
+  --
+  name : varchar(255)
+  inn : varchar(12) <<UNIQUE>>
+  kpp : varchar(9)
+  contact_phone : varchar(30)
+  contact_email : varchar(100)
+  contract_number : varchar(50)
+  status : varchar(20) ' ACTIVE | BLOCKED
+  created_at : timestamptz
+  updated_at : timestamptz
+}
+
+entity "sites (Объекты / Склады)" as site {
+  * id : uuid <<PK>>
+  --
+  * contractor_id : uuid <<FK>>
+  name : varchar(255)
+  address : text
+  geo_point : point ' Координаты склада
+  contact_person : varchar(255)
+  timezone : varchar(50) ' Europe/Moscow
+  region : varchar(100)
+  created_at : timestamptz
+}
+
+entity "assets (Оборудование & RAG)" as asset {
+  * id : uuid <<PK>>
+  --
+  * site_id : uuid <<FK>>
+  local_code : varchar(50) ' e.g. "ХУ-17"
+  name : varchar(255)
+  serial_number : varchar(100)
+  name_embedding : vector(1536) ' pgvector для семантического поиска
+  criticality : varchar(20) ' LOW | MEDIUM | HIGH | CRITICAL
+  status : varchar(20) ' OK | WARNING | CRITICAL_FAIL
+  created_at : timestamptz
+}
+
+entity "contracts (Договоры & SLA)" as contract {
+  * id : uuid <<PK>>
+  --
+  * site_id : uuid <<FK, UNIQUE>>
+  plan_type : varchar(20) ' Gold | Silver | Standard
+  sla_response_minutes : integer
+  service_window_cron : varchar(50) ' 24x7 / 09:00-18:00
+  penalty_rate_hourly : numeric(10,2)
+  is_active : boolean
+}
+
+entity "tickets (Сервисные Заявки)" as ticket {
+  * id : uuid <<PK>>
+  --
+  ticket_number : varchar(50) <<UNIQUE>>
+  * contractor_id : uuid <<FK>>
+  * site_id : uuid <<FK>>
+  * asset_id : uuid <<FK>>
+  temporal_workflow_id : varchar(100) <<INDEX>>
+  priority : varchar(20) ' LOW | MEDIUM | HIGH | CRITICAL
+  summary : text
+  description : text
+  sla_deadline : timestamptz
+  assigned_group : varchar(100)
+  status : varchar(30) ' NEW | IN_PROGRESS | WAITING_DISPATCHER | RESOLVED | CLOSED
+  confidence_score : numeric(3,2)
+  created_at : timestamptz
+  updated_at : timestamptz
+}
+
+entity "ticket_messages (История сообщений)" as message {
+  * id : uuid <<PK>>
+  --
+  * ticket_id : uuid <<FK>>
+  channel : varchar(30) ' telegram | email | voice | portal
+  sender_type : varchar(20) ' client | bot | operator
+  sender_name : varchar(100)
+  text_content : text
+  raw_payload : jsonb ' Полный сырой JSON входящего вебхука
+  created_at : timestamptz
+}
+
+entity "ticket_audit_log (Журнал аудита)" as audit {
+  * id : uuid <<PK>>
+  --
+  * ticket_id : uuid <<FK>>
+  action : varchar(50)
+  actor : varchar(100)
+  details_json : jsonb
+  timestamp : timestamptz
+}
+
+entity "rag_documents (Паспорта и Инструкции)" as rag_doc {
+  * id : uuid <<PK>>
+  --
+  * asset_id : uuid <<FK>>
+  doc_title : varchar(255)
+  content_chunk : text
+  embedding : vector(1536) ' pgvector индекс
+  created_at : timestamptz
+}
+
+entity "llm_trace_metrics (Метрики LLM & OTel)" as llm_trace {
+  * id : uuid <<PK>>
+  --
+  * ticket_id : uuid <<FK>>
+  trace_id : varchar(100)
+  model_name : varchar(50)
+  prompt_tokens : integer
+  completion_tokens : integer
+  latency_ms : integer
+  cost_usd : numeric(8,6)
+  hallucination_score : numeric(3,2)
+  created_at : timestamptz
+}
+
+' Реляционные связи
+contractor ||..o{ site : "имеет объекты"
+site ||..o{ asset : "содержит оборудование"
+site ||..|| contract : "имеет SLA контракт"
+
+contractor ||..o{ ticket : "заказчик"
+site ||..o{ ticket : "локация"
+asset ||..o{ ticket : "ассет в инциденте"
+
+ticket ||..o{ message : "история переписки"
+ticket ||..o{ audit : "аудит транзакций"
+ticket ||..o{ llm_trace : "телеметрия AI"
+
+asset ||..o{ rag_doc : "документация RAG"
+
+@enduml

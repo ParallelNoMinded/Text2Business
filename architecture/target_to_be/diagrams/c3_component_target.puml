@@ -1,0 +1,52 @@
+@startuml c3_component_target
+!include <C4/C4_Component>
+LAYOUT_TOP_DOWN()
+
+title C3 — Component: Сервисы AI и Движка решений (Целевое состояние To-Be)
+
+Container_Boundary(ai_service_boundary, "Service 2: Perception & AI Engine (Python / LangGraph)") {
+  Component(agent_orchestrator, "LangGraph Agent Orchestrator", "Python Class", "Управляет графом агентов ReAct, логикой повторных попыток и выбора моделей")
+  Component(fact_extractor, "Fact Extractor Agent", "Python Agent + Instructor", "Извлекает структурированные сущности (Клиент, Адрес, Ассет, Проблема, Дедлайн)")
+  Component(schema_validator, "Pydantic Schema Validator", "Pydantic v2", "Валидирует структуры данных на соответствие `ExtractedFacts` схеме")
+  Component(rag_retriever, "RAG Knowledge Retriever", "LangChain / pgvector", "Ищет паспорта оборудования и историю инцидентов в PostgreSQL 18 (`pgvector`)")
+  Component(prompt_guardrail, "Prompt Guardrail Filter", "NeMo Guardrails / Llama Guard", "Блокирует попытки Prompt Injection, Jailbreak и несанкционированные изменения SLA")
+}
+
+Container_Boundary(core_engine_boundary, "Service 3: Core Decision Engine (Go / Temporal.io Engine)") {
+  Component(workflow_worker, "Dispatch Temporal Workflow Worker", "Go Temporal SDK", "Управляет долгоживущими рабочими процессами (Saga Pattern) обработками заявок")
+  Component(act_guardrail, "Guardrail Verification Activity", "Go Activity", "Выполняет жесткую серверную проверку правил безопасности")
+  Component(act_db_lookup, "Database Enrichment Activity", "Go Activity", "Выполняет поиск клиентов, складов и договоров в репозитории")
+  Component(act_disambiguation, "Asset Disambiguator Activity", "Go Activity", "Разрешает конфликты локаций на основе анализа открытых заявок по кодам оборудования")
+  Component(act_sla_calc, "Business Hours SLA Calculator", "Go Activity", "Рассчитывает дедлайн с учетом часовых поясов, рабочих окон (09:00-18:00) и штрафных санкций")
+  Component(act_hitl_pause, "HITL Pause & Resume Signal Activity", "Go Activity Signal", "Ставит workflow на паузу при `Confidence < 0.85` и ожидает Signal от диспетчера")
+  Component(act_1c_commit, "1C ERP Commit Activity", "Go Activity", "Формирует запрос на проведение документа ЗаявкаНаРемонт в 1С:ERP")
+}
+
+ContainerDb(postgres, "PostgreSQL 18 + pgvector", "Database")
+System_Ext(1c_erp, "1С:ERP", "OData Interface")
+System_Ext(llm_cloud, "GitHub Models / vLLM", "LLM APIs")
+
+' Связи компонентов AI Сервиса
+Rel(agent_orchestrator, prompt_guardrail, "1. Фильтрация текста", "In-Process")
+Rel(agent_orchestrator, fact_extractor, "2. Извлечение фактов", "In-Process")
+Rel(fact_extractor, llm_cloud, "Запрос к LLM c Pydantic Схемой", "HTTPS / JSON")
+Rel(fact_extractor, schema_validator, "3. Валидация вывода", "In-Process")
+Rel(agent_orchestrator, rag_retriever, "4. Векторный поиск RAG", "In-Process")
+Rel(rag_retriever, postgres, "Поиск схожих эмбеддингов", "SQL / pgvector")
+
+' Связи компонентов Core Decision Engine (Temporal Workflow)
+Rel(workflow_worker, act_guardrail, "Вызов Activity", "Temporal Execution")
+Rel(workflow_worker, act_db_lookup, "Вызов Activity", "Temporal Execution")
+Rel(act_db_lookup, postgres, "Запрос справочников клиентов", "SQL")
+
+Rel(workflow_worker, act_disambiguation, "Вызов Activity", "Temporal Execution")
+Rel(act_disambiguation, postgres, "Поиск открытых тикетов по ассету", "SQL")
+
+Rel(workflow_worker, act_sla_calc, "Вызов Activity", "Temporal Execution")
+Rel(workflow_worker, act_hitl_pause, "Пауза при неопределенности (Signal Waiting)", "Temporal State")
+
+Rel(workflow_worker, act_1c_commit, "Вызов Activity после утверждения", "Temporal Execution")
+Rel(act_1c_commit, 1c_erp, "Проведение ЗаявкиНаРемонт", "OData REST")
+
+SHOW_LEGEND()
+@endl

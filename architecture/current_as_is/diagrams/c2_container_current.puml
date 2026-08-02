@@ -1,0 +1,45 @@
+@startuml c2_container_current
+!include <C4/C4_Container>
+LAYOUT_TOP_DOWN()
+
+title C2 — Container: Text2Business AI-Диспетчер (Текущая реализация / As-Is)
+
+Person(client, "B2B Заявитель", "Email / Telegram / Voice")
+Person(operator, "Диспетчер (HITL)", "Оператор системы")
+
+System_Boundary(monolith_app, "Text2Business Full-Stack Container (Port 3000)") {
+  Container(frontend_spa, "React SPA UI", "React 19, TypeScript, Vite, Tailwind CSS", "Одностраничное веб-приложение: Рабочее место HITL, Запуск пресетов, Инспектор БД, Логи/Трейсы, Архитектура")
+  
+  Container(express_server, "Express Web Server & API Gateway", "Node.js 20, Express, TypeScript (server.ts)", "Прием Webhooks (Telegram, Email, Telephony, REST), Long Polling цикл Telegram, HTTP роутинг, 1C OData эмулятор")
+  
+  Container(llm_perception, "LLM Perception Core Module", "TypeScript (`server.ts`)", "Формирование системного промпта, отправка JSON Schema, вызов GitHub Models / Gemini API или локальный Fallback")
+  
+  Container(dispatcher_engine, "Deterministic Dispatch Engine", "TypeScript (`src/dispatcherEngine.ts`)", "Детерминированный 8-шаговый пайплайн: Guardrails, поиск контрагента, дедупликация, расчет SLA и вызов Dry-Run")
+  
+  ContainerDb(in_memory_db, "In-Memory DB Store", "TypeScript Data Schema (`src/mockDb.ts`)", "Реляционное хранилище в ОЗУ: Контрагенты, Объекты, Оборудование, Договоры, Открытые/Закрытые заявки")
+}
+
+System_Ext(github_models, "GitHub Models / Gemini API", "Inference API")
+System_Ext(telegram_api, "Telegram Bot API", "Bot Platform")
+System_Ext(erp_1c, "1C:ERP OData Service", "1C Enterprise OData")
+
+Rel(client, telegram_api, "Сообщение в бот", "HTTPS")
+Rel(telegram_api, express_server, "Long Polling getUpdates / Webhook", "HTTPS / JSON")
+Rel(client, express_server, "Прямые REST / Webhook запросы", "HTTP / JSON")
+
+Rel(operator, frontend_spa, "Управление и утверждение тикетов", "HTTPS / Browser")
+Rel(frontend_spa, express_server, "Внутренний REST API (`/api/dispatch`, `/api/database`, `/api/operator/reply`)", "HTTP / JSON")
+
+Rel(express_server, llm_perception, "Передача неструктурированного текста", "In-Process Call")
+Rel(llm_perception, github_models, "Запрос извлечения фактов (response_format: json_object)", "HTTPS / POST")
+Rel(llm_perception, express_server, "Возврат структурированного JSON ExtractedFacts", "In-Process Return")
+
+Rel(express_server, dispatcher_engine, "Запуск `runDeterministicDispatch(db, facts, text)`", "In-Process Call")
+Rel(dispatcher_engine, in_memory_db, "Чтение справочников и поиск открытых заявок", "In-Process Memory Access")
+Rel(express_server, in_memory_db, "Сохранение / Обновление тикетов", "In-Process Memory Write")
+
+Rel(express_server, telegram_api, "Отправка ответа клиенту (`sendTelegramMessage`)", "HTTPS / POST")
+Rel(express_server, erp_1c, "Экспорт документа ЗаявкаНаРемонт (`/api/1c/tickets`)", "OData REST / JSON")
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,48 @@
+@startuml deployment_current
+!include <C4/C4_Deployment>
+LAYOUT_TOP_DOWN()
+
+title Deployment — Схема развертывания Текущей системы (As-Is)
+
+Deployment_Node(user_node, "Клиентские Устройства", "Браузер / Telegram App") {
+  Deployment_Node(browser, "Веб-Браузер Диспетчера", "Chrome / Firefox / Edge") {
+    Container(react_app, "React 19 SPA", "JavaScript / DOM", "Фронтенд консоли диспетчера и панелей навигации")
+  }
+  Deployment_Node(tg_mobile, "Мобильный клиент Telegram", "iOS / Android / Desktop") {
+    Container(tg_app, "Telegram Messenger", "Native Client", "Интерфейс общения B2B заявителя")
+  }
+}
+
+Deployment_Node(cloud_host, "Хост приложения (Cloud Run / Local Node Host)", "Linux Alpine / Docker Container") {
+  Deployment_Node(docker_container, "Docker Контейнер (Port 3000)", "Node.js 20 Runtime") {
+    Container(express_process, "Express Web Engine", "Node.js Process (dist/server.cjs)", "Сервер обработчик HTTP/HTTPS вебхуков и статичный Vite сервер")
+    Container(engine_process, "Deterministic Dispatch Core", "In-Process TypeScript", "Модуль бизнес-логики, Guardrails и расчета SLA")
+    ContainerDb(ram_db, "In-Memory Database Store", "Process RAM State (`mockDb.ts`)", "Оперативное хранилище JSON справочников и тикетов")
+  }
+}
+
+Deployment_Node(ext_cloud, "Внешние Облачные Сервисы", "SaaS / PaaS APIs") {
+  Deployment_Node(github_cloud, "GitHub Models Cloud", "Azure AI Inference") {
+    System_Ext(github_api, "GitHub Models API", "gpt-4o, qwen, deepseek (HTTPS Port 443)")
+  }
+  Deployment_Node(telegram_cloud, "Telegram Cloud Infrastructure", "Telegram Servers") {
+    System_Ext(tg_bot_api, "Telegram Bot API", "api.telegram.org (HTTPS Port 443)")
+  }
+  Deployment_Node(enterprise_1c, "Корпоративный Сервер 1С", "1С:Предприятие 8.3") {
+    System_Ext(1c_odata, "1C:ERP OData Endpoint", "OData HTTP Service")
+  }
+}
+
+Rel(browser, express_process, "Загрузка SPA и REST API вызовы (`/api/*`)", "HTTP/1.1 :3000")
+Rel(tg_app, tg_bot_api, "Отправка сообщения в чат", "HTTPS :443")
+Rel(tg_bot_api, express_process, "Long Polling (`getUpdates`) / Webhook", "HTTPS :443")
+
+Rel(express_process, engine_process, "Прямой прямой вызов функций пайплайна", "In-Process Memory")
+Rel(engine_process, ram_db, "Чтение и запись справочников", "In-Process RAM")
+
+Rel(express_process, github_api, "Извлечение фактов JSON Mode (`/chat/completions`)", "HTTPS :443 / Bearer")
+Rel(express_process, tg_bot_api, "Отправка ответа клиенту (`sendMessage`)", "HTTPS :443 / POST")
+Rel(express_process, 1c_odata, "Экспорт ЗаявкиНаРемонт (`/api/1c/tickets`)", "HTTP / OData REST")
+
+SHOW_LEGEND()
+@enduml

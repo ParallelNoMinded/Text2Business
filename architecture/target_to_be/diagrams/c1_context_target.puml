@@ -1,0 +1,39 @@
+@startuml c1_context_target
+!include <C4/C4_Context>
+LAYOUT_TOP_DOWN()
+
+title C1 — System Context: Text2Business AI-Платформа (Целевая архитектура / To-Be)
+
+Person(client, "B2B Клиент / Заявитель", "Отправляет обращения через Telegram, Email, Голосовые вызовы (SIP), Веб-Портал или REST API")
+Person(operator, "Диспетчер-Оператор (HITL)", "Контролирует неопределенности, утверждает действия при рисках и ведет диалог с клиентом")
+Person(tech_lead, "AI Tech Lead / SRE Инженер", "Мониторит дрейф моделей (Model Drift), задержки P99, OpenTelemetry трейсы и метрики SLA в Arize AI")
+
+System(target_platform, "Text2Business Enterprise Platform", "Событийно-ориентированная платформа диспетчеризации: Envoy Ingress, Kafka, STT, AI LangGraph, Go Temporal, Postgres 18")
+
+System_Ext(telegram_cloud, "Telegram Bot API", "Мессенджер-платформа (Webhook Ingress)")
+System_Ext(sip_pbx, "Виртуальная АТС / SIP Trunk", "Телефонная сеть и аудиопотоки RTP / gRPC")
+System_Ext(email_mcp, "Corporate Email / MCP Gateway", "IMAP/SMTP шлюз корпоративной почты")
+
+System_Ext(ai_inference, "GitHub Models / Azure AI / Local vLLM", "Провайдеры LLM моделей (gpt-4o, qwen3.6-27b, deepseek) с подстраховкой Air-Gapped")
+System_Ext(yandex_stt, "Yandex SpeechKit v3 STT", "Облачный сервис потокового распознавания речи и диаризации дикторов")
+System_Ext(erp_1c, "1С:ERP Предприятие 8.3", "Корпоративная ERP-система (Проведение документов ЗаявкаНаРемонт по OData REST / SOAP)")
+System_Ext(arize_ai, "Arize AI / OpenTelemetry Cloud", "Платформа наблюдения за качеством галлюцинаций LLM, задержками и трейсами вызовов")
+
+Rel(client, telegram_cloud, "Сообщения в чат", "HTTPS")
+Rel(client, sip_pbx, "Голосовой телефонный звонок", "SIP / RTP")
+Rel(client, email_mcp, "Сервисное письмо", "SMTP / IMAP")
+
+Rel(telegram_cloud, target_platform, "Входящий Webhook", "HTTPS / Envoy")
+Rel(sip_pbx, target_platform, "Потоковое аудио", "gRPC / RTP")
+Rel(email_mcp, target_platform, "Сбор писем по MCP", "HTTPS / JSON")
+
+Rel(operator, target_platform, "HITL Консоль Диспетчера (Утверждение и диалог)", "HTTPS / React SPA")
+Rel(tech_lead, target_platform, "Мониторинг метрик, промптов и SLA", "HTTPS / Grafana")
+
+Rel(target_platform, ai_inference, "Извлечение фактов (Structured Output)", "HTTPS / gRPC")
+Rel(target_platform, yandex_stt, "Потоковая транскрипция речи", "gRPC Streaming")
+Rel(target_platform, erp_1c, "Двусторонняя синхронизация документов", "OData REST / SOAP")
+Rel(target_platform, arize_ai, "Экспорт OTel спанов и метрик качества", "OTLP gRPC :4317")
+
+SHOW_LEGEND()
+@enduml

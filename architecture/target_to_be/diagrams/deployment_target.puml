@@ -1,0 +1,75 @@
+@startuml deployment_target
+!include <C4/C4_Deployment>
+LAYOUT_TOP_DOWN()
+
+title Deployment — Схема развертывания Целевой системы (To-Be / Kubernetes Cluster)
+
+Deployment_Node(clients, "Внешний контур заявителей", "Заказчики и Операторы") {
+  Container(browser_ui, "React Operator Workbench", "React 19 SPA", "Интерфейс оператора HITL c WebSockets")
+  Container(tg_cloud, "Telegram App", "iOS / Android / Desktop", "Мессенджер клиентов")
+  Container(sip_caller, "IP Телефония / PBX", "SIP / RTP Audio Stream", "Голосовые вызовы клиентов")
+}
+
+Deployment_Node(k8s_cluster, "Enterprise Kubernetes Cluster (Production K8s)", "Multi-AZ Cloud / On-Prem High Availability") {
+  
+  Deployment_Node(ingress_ns, "Namespace: ingress-layer", "Ingress Infrastructure") {
+    Container(envoy_pods, "Envoy Gateway Pods", "Envoy / C++ (3 Replicas)", "TLS 1.3 Termination, Rate Limiting, Webhook Ingress, gRPC Proxy")
+  }
+
+  Deployment_Node(event_ns, "Namespace: event-streaming", "Kafka Strimzi Operator") {
+    ContainerDb(kafka_cluster, "Kafka Brokers Cluster", "Apache Kafka (3 Nodes StatefulSet)", "Шина событий: `InboundMessages`, `SpeechChunks`, `FactsExtracted`")
+    ContainerDb(zookeeper, "KRaft / Zookeeper", "Quorum StatefulSet", "Консенсус кластера Kafka")
+  }
+
+  Deployment_Node(services_ns, "Namespace: core-services", "Microservices Workloads") {
+    Container(stt_pods, "STT Service Pods", "Go / Python (2 Replicas)", "Обработка аудиопотоков и взаимодействие с Yandex SpeechKit")
+    Container(ai_pods, "AI Perception Pods (GPU Nodes)", "Python FastAPI / LangGraph (NVIDIA CUDA)", "Мультиагентный анализ, извлечение фактов и валидация Pydantic")
+    Container(temporal_pods, "Temporal.io Cluster Pods", "Temporal Server + History/Matching", "Оркестрация состояния бизнес-процессов (Sagas)")
+    Container(core_worker_pods, "Core Decision Workers", "Go Temporal Workers (4 Replicas)", "Детерминированные правила, расчет SLA и вызовы 1С")
+    Container(adapter_1c_pods, "1C OData Adapter Pods", "Go Service (2 Replicas)", "Двусторонняя синхронизация документов с 1С:Предприятие")
+  }
+
+  Deployment_Node(db_ns, "Namespace: database-layer", "HA Storage Cluster") {
+    ContainerDb(postgres_ha, "PostgreSQL 18 HA Cluster", "Patroni / PgBouncer (Primary + 2 Replicas)", "Реляционные тикеты, справочники и pgvector эмбеддинги")
+    ContainerDb(redis_cluster, "Redis Cluster", "Redis 7 Sentinel", "Кэширование сессий, лимиты и блокировки (Distributed Locks)")
+  }
+
+  Deployment_Node(obs_ns, "Namespace: observability", "Telemetry Infrastructure") {
+    Container(otel_pods, "OpenTelemetry Collector Pods", "OTel DaemonSet", "Сбор спанов, метрик задержек и отправка в Arize AI")
+  }
+}
+
+Deployment_Node(ext_saas, "Внешние SaaS & Enterprise Системы", "Cloud & On-Prem") {
+  System_Ext(yandex_stt, "Yandex SpeechKit v3 API", "gRPC Cloud STT")
+  System_Ext(llm_cloud, "GitHub Models / Azure AI / vLLM", "LLM Inference APIs")
+  System_Ext(1c_server, "1С:ERP Предприятие 8.3", "1C OData REST Server")
+  System_Ext(arize_cloud, "Arize AI Observability Platform", "LLM Monitoring SaaS")
+}
+
+' Сетевые связи
+Rel(browser_ui, envoy_pods, "HTTPS / WSS (Port 443)", "TLS 1.3")
+Rel(tg_cloud, envoy_pods, "Telegram Webhooks", "HTTPS :443")
+Rel(sip_caller, envoy_pods, "Голосовой поток", "gRPC / RTP")
+
+Rel(envoy_pods, kafka_cluster, "Публикация событий в топики", "Kafka Protocol :9092")
+
+Rel(kafka_cluster, stt_pods, "Чтение аудио событий", "Kafka Consumer")
+Rel(stt_pods, yandex_stt, "Потоковая транскрипция речи", "gRPC Streaming :443")
+
+Rel(kafka_cluster, ai_pods, "Чтение текстовых обращений", "Kafka Consumer")
+Rel(ai_pods, llm_cloud, "Запрос извлечения фактов (JSON Mode)", "HTTPS :443 / gRPC")
+Rel(ai_pods, postgres_ha, "RAG векторный поиск", "TCP :5432 (pgvector)")
+
+Rel(kafka_cluster, core_worker_pods, "Чтение извлеченных фактов", "Kafka Consumer")
+Rel(core_worker_pods, temporal_pods, "Регистрация Workflows & Activities", "gRPC :7233")
+Rel(core_worker_pods, postgres_ha, "Сохранение состояния процессов", "TCP :5432")
+
+Rel(core_worker_pods, adapter_1c_pods, "Вызов проведения в 1С", "gRPC Internal")
+Rel(adapter_1c_pods, 1c_server, "Проведение ЗаявкиНаРемонт", "OData REST / HTTPS")
+
+Rel(ai_pods, otel_pods, "Отправка спанов LLM", "OTLP gRPC :4317")
+Rel(core_worker_pods, otel_pods, "Отправка спанов Workflows", "OTLP gRPC :4317")
+Rel(otel_pods, arize_cloud, "Экспорт телеметрии", "OTLP / HTTPS")
+
+SHOW_LEGEND()
+@endl

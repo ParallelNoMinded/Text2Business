@@ -1,0 +1,29 @@
+@startuml c1_context_current
+!include <C4/C4_Context>
+LAYOUT_TOP_DOWN()
+
+title C1 — System Context: Text2Business AI-Диспетчер (Текущая реализация / As-Is)
+
+Person(client, "B2B Заявитель / Клиент", "Отправляет сервисные обращения через Telegram, Email, Голосовую телефонию или REST API")
+Person(operator, "Диспетчер-Оператор (HITL)", "Контролирует неопределенные обращения, ведет диалог с клиентом в боте, дозаполняет факты")
+Person(tech_lead, "AI Solution Architect / Tech Lead", "Анализирует трассировку вызовов, проверяет метрики точности LLM, правила SLA и Guardrails")
+
+System(dispatcher_app, "AI-Диспетчер (Text2Business)", "Монолитное веб-приложение: прием сообщений, извлечение фактов, детерминированная диспетчеризация, расчёт SLA и регистрация заявок")
+
+System_Ext(github_models, "GitHub Models API / Gemini API", "LLM инференс (gpt-4o, qwen3.6-27b, deepseek) с гарантией вывода в JSON Mode (Structured Output)")
+System_Ext(telegram_api, "Telegram Bot API", "Серверная платформа Telegram для приема обновлений (Long Polling / Webhook) и отправки ответов")
+System_Ext(erp_1c, "1С:Предприятие 8 / 1С:ERP", "Корпоративная ERP-система: получение и проведение документов 'ЗаявкаНаРемонт' по протоколу OData REST")
+
+Rel(client, telegram_api, "Отправляет обращение в свободном формате", "HTTPS / Chat")
+Rel(client, dispatcher_app, "Ввод через Web UI / Email / Voice / REST", "HTTPS / JSON")
+Rel(telegram_api, dispatcher_app, "Передача обновлений бота (Long Polling / Webhook)", "HTTPS / JSON")
+
+Rel(operator, dispatcher_app, "Интерактивный контроль (HITL Workbench), дозаполнение полей", "HTTPS / React UI")
+Rel(tech_lead, dispatcher_app, "Анализ трассировки (Trace), логов, SLA матрицы и CRUD БД", "HTTPS / React UI")
+
+Rel(dispatcher_app, github_models, "Запрос извлечения фактов с JSON Schema (Perception Core)", "HTTPS / Bearer JSON")
+Rel(dispatcher_app, telegram_api, "Отправка сообщений и ответов клиенту в чат", "HTTPS / POST sendMessage")
+Rel(dispatcher_app, erp_1c, "Синхронизация и проведение тикетов", "OData REST / JSON")
+
+SHOW_LEGEND()
+@enduml

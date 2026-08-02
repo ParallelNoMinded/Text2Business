@@ -1,0 +1,67 @@
+@startuml c3_component_current
+!include <C4/C4_Component>
+LAYOUT_TOP_DOWN()
+
+title C3 — Component: Text2Business AI-Диспетчер (Детализация модулей кода As-Is)
+
+Container_Boundary(express_app, "Express Backend & Decision Engine (server.ts & dispatcherEngine.ts)") {
+  
+  Component(ingress_router, "Ingress Webhook Router", "Express Router (`server.ts`)", "Принимает входящие запросы `/api/webhooks/dispatch`, `/api/webhooks/telegram`, `/api/webhooks/email`, `/api/webhooks/telephony`")
+  
+  Component(telegram_poller, "Telegram Bot Manager", "Async Polling Loop (`pollTelegramUpdates`)", "Слушает сообщения Telegram через `getUpdates`, обрабатывает команды `/start`, `/help` и управляет отправкой ответов")
+  
+  Component(llm_service, "LLM Perception Service", "Async Extractor (`extractFactsWithGemini` / `extractFactsWithGitHubModels`)", "Формирует JSON Schema для `gpt-4o` / `qwen` / `gemini`, вызывает API с параметром `json_object`")
+  
+  Component(fallback_extractor, "Rule-Based Fallback Extractor", "Function (`extractFactsFromText`)", "Локальный эвристический парсер регулярных выражений, включающийся при отсутствии API-ключей")
+  
+  Component(guardrail_checker, "Guardrail Inspector", "Function (`checkGuardrails`)", "Проверяет входящий текст на промпт-инъекции, команды 'SYSTEM OVERRIDE', 'SET SLA' и попытки удаления БД")
+  
+  Component(site_lookup, "Customer & Site Lookup Tool", "Function (`tool_find_customer_or_site`)", "Выполняет нечеткий поиск контрагентов в базе по названию компании и адресу склада")
+  
+  Component(asset_disambiguator, "Asset Disambiguator & Matcher", "Function (`tool_find_assets_and_open_tickets`)", "Разрешает неоднозначности оборудования (например '17-я') путем сопоставления открытых заявок T-884 по объектам")
+  
+  Component(sla_calculator, "SLA & Penalty Calculator", "Function (`tool_get_contract_and_sla`)", "Рассчитывает дедлайны на основе тарифных планов (Gold: 60m 24x7, Silver: 240m, Standard: 480m) и штрафы")
+  
+  Component(decision_matrix, "Decision Core Matrix", "Function (`runDeterministicDispatch`)", "Принимает решение: `CREATE_TICKET`, `UPDATE_TICKET`, `REQUEST_CLARIFICATION`, `ESCALATE_TO_HUMAN`, `REJECT`")
+  
+  Component(odata_adapter, "1C:ERP OData Adapter", "Express Route (`/api/1c/tickets`)", "Преобразует тикеты из внутреннего формата в стандартный JSON/XML OData-контекст `Document_ЗаявкаНаРемонт`")
+  
+  Component(trace_collector, "Execution Trace Logger", "In-Memory Collector", "Замеряет задержки `duration_ms` каждого шага пайплайна и формирует Trace для UI")
+  
+  ComponentDb(db_manager, "In-Memory Repository Manager", "State Manager (`INITIAL_DATABASE` / `mockDb`)", "Предоставляет CRUD-операции к массивам `contractors`, `sites`, `assets`, `contracts`, `open_tickets`, `closed_tickets`")
+}
+
+Container_Boundary(frontend_app, "React SPA UI Components (src/components/)") {
+  Component(landing_ui, "Landing Home", "React (`LandingHome.tsx`)", "Главная страница с интерактивным сетчатым фоном и 4 плитками навигации")
+  Component(scenario_ui, "Scenario Runner", "React (`ScenarioRunner.tsx`)", "Панель быстрого запуска кейсов TC-01 ... TC-04 с хоткеем Ctrl+Enter")
+  Component(hitl_ui, "Operator Console", "React (`OperatorConsoleView.tsx`)", "Рабочее место HITL-диспетчера: чат с ботом, укомплектование неполных тикетов, передача в 1С")
+  Component(channels_ui, "Channels Config & STT", "React (`ChannelsConfigView.tsx`)", "Конфигуратор токенов, тест Web Speech API микрофона и Swagger REST API Sandbox")
+  Component(db_ui, "Database Inspector", "React (`DatabaseInspectorView.tsx`)", "Таблицы контрагентов, объектов, оборудования, открытых/закрытых заявок с функциями CRUD")
+  Component(logs_ui, "Logs & Traces View", "React (`LogsTracesView.tsx`)", "Визуализатор OpenTelemetry трейсов, задержек и дашбордов метрик")
+}
+
+' Связи бэкенд компонентов
+Rel(ingress_router, llm_service, "Запрос извлечения фактов", "Async Call")
+Rel(telegram_poller, llm_service, "Запрос извлечения фактов из чата", "Async Call")
+Rel(llm_service, fallback_extractor, "Переключение при отсутствии токена / ошибке API", "Fallback Call")
+
+Rel(ingress_router, decision_matrix, "Запуск диспетчеризации с извлеченными фактами", "Function Call")
+Rel(telegram_poller, decision_matrix, "Запуск диспетчеризации с извлеченными фактами", "Function Call")
+
+Rel(decision_matrix, guardrail_checker, "1. Проверка безопасности текста", "In-Process")
+Rel(decision_matrix, site_lookup, "2. Поиск контрагента и объекта", "In-Process")
+Rel(decision_matrix, asset_disambiguator, "3. Поиск оборудования и проверка открытых тикетов", "In-Process")
+Rel(decision_matrix, sla_calculator, "4. Расчет SLA дедлайна по договору", "In-Process")
+Rel(decision_matrix, trace_collector, "5. Фиксация задержек и параметров шагов", "In-Process")
+Rel(decision_matrix, db_manager, "6. Чтение и сохранение состояния тикетов", "In-Memory Read/Write")
+
+Rel(odata_adapter, db_manager, "Чтение открытых тикетов для экспорта в 1С", "In-Memory Read")
+
+' Связи фронтенд компонентов с бэкендом
+Rel(scenario_ui, ingress_router, "POST /api/dispatch", "HTTP / JSON")
+Rel(hitl_ui, ingress_router, "POST /api/operator/reply, /api/commit-ticket", "HTTP / JSON")
+Rel(channels_ui, ingress_router, "POST /api/telegram/config, /api/webhooks/telephony", "HTTP / JSON")
+Rel(db_ui, db_manager, "GET /api/database, POST /api/database/reset", "HTTP / JSON")
+
+SHOW_LEGEND()
+@enduml

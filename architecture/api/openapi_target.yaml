@@ -1,0 +1,57 @@
+openapi: 3.0.3
+info:
+  title: Text2Business AI-Dispatcher Platform API (To-Be Envoy Gateway)
+  description: OpenAPI 3.0 спецификация целевого омниканального Ingress Gateway и gRPC/AMQP эндпоинтов
+  version: 2.0.0
+servers:
+  - url: https://gateway.ai-dispatcher.enterprise.local
+    description: Production Envoy Gateway
+  - url: http://localhost:8080
+    description: Staging Ingress Gateway
+
+paths:
+  /v1/ingress/telegram:
+    post:
+      summary: Прием входящих вебхуков от Telegram Bot API
+      operationId: telegramWebhookTarget
+      responses:
+        '202':
+          description: Сообщение принято и помещено в Kafka topic `ingress.messages.v1`
+
+  /v1/ingress/email:
+    post:
+      summary: Прием входящей почты от SMTP/Mailgun Gateway
+      operationId: emailWebhookTarget
+      responses:
+        '202':
+          description: Письмо принято и помещено в Kafka topic `ingress.messages.v1`
+
+  /v1/ingress/speech/stream:
+    post:
+      summary: Потоковое гейтвей-соединение для речи (SIP / Telephony Audio Streaming)
+      operationId: speechStreamTarget
+      responses:
+        '101':
+          description: Переключение на WebSocket / gRPC audio pipeline
+
+  /v1/tickets:
+    get:
+      summary: Получение списка заявок из PostgreSQL 18
+      operationId: getTicketsTarget
+      responses:
+        '200':
+          description: Пагинированный список заявок
+    post:
+      summary: Ручное создание/утверждение заявки оператором (HITL)
+      operationId: createTicketTarget
+      responses:
+        '201':
+          description: Заявка передана в Go Temporal Workflow
+
+  /v1/erp/1c/odata/tickets:
+    post:
+      summary: Асинхронная отправка документа в 1С:ERP OData Enterprise Adapter
+      operationId: sync1cTicketTarget
+      responses:
+        '200':
+          description: Подтверждение очереди синхронизации
