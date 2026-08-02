@@ -68,7 +68,6 @@ export const Header: React.FC<HeaderProps> = ({
             title="Открыть архитектурный отчёт и C4 схемы"
           >
             <BookOpen className="h-5 w-5 text-cyan-400" />
-            <span className="hidden sm:inline">Архитектура & C4</span>
           </button>
 
           <button
@@ -228,24 +227,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Activity className="h-3.5 w-3.5" />
               <span>Логи & Трейсы</span>
-            </button>
-
-            {/* 6. Архитектура & C4 */}
-            <button
-              id="header-tab-architecture"
-              onClick={() => setActiveTab('architecture')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-                activeTab === 'architecture'
-                  ? isDark
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                    : 'bg-blue-950 text-white font-extrabold shadow-sm'
-                  : isDark
-                  ? 'text-cyan-400/90 hover:text-cyan-300 hover:bg-white/5'
-                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
-              }`}
-            >
-              <BookOpen className="h-3.5 w-3.5 text-cyan-400" />
-              <span>Архитектура</span>
             </button>
           </nav>
 

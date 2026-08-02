@@ -1,7 +1,7 @@
 @startuml er_diagram_current
-title ER Diagram — Схема данных текущей версии (In-Memory Database / mockDb)
+title ER Diagram — Схема данных текущей версии (mockDb)
 
-entity "Contractor (Контрагенты)" as contractor {
+entity "Contractor" as contractor {
   * customer_id : string <<PK>>
   --
   name : string
@@ -12,7 +12,7 @@ entity "Contractor (Контрагенты)" as contractor {
   status : ACTIVE | BLOCKED
 }
 
-entity "Site (Объекты / Склады)" as site {
+entity "Site" as site {
   * site_id : string <<PK>>
   --
   * customer_id : string <<FK>>
@@ -23,17 +23,17 @@ entity "Site (Объекты / Склады)" as site {
   region : string
 }
 
-entity "Asset (Оборудование)" as asset {
+entity "Asset" as asset {
   * asset_id : string <<PK>>
   --
   * site_id : string <<FK>>
-  local_code : string  ' e.g. "ХУ-17"
+  local_code : string
   name : string
   criticality : LOW | MEDIUM | HIGH | CRITICAL
   status : OK | WARNING | CRITICAL_FAIL
 }
 
-entity "Contract (Договоры & SLA)" as contract {
+entity "Contract" as contract {
   * site_id : string <<PK, FK>>
   --
   plan : Gold | Silver | Standard
@@ -43,7 +43,7 @@ entity "Contract (Договоры & SLA)" as contract {
   active : boolean
 }
 
-entity "Ticket (Сервисные Заявки)" as ticket {
+entity "Ticket" as ticket {
   * ticket_id : string <<PK>>
   --
   * customer_id : string <<FK>>
@@ -62,36 +62,11 @@ entity "Ticket (Сервисные Заявки)" as ticket {
   missing_fields : string[]
 }
 
-entity "TicketMessage (История чата)" as message {
-  * id : string <<PK>>
-  --
-  * ticket_id : string <<FK>>
-  sender : client | bot | operator
-  author_name : string
-  text : string
-  timestamp : string
-  channel : string
-}
-
-entity "TicketHistory (Журнал аудита)" as history {
-  * id : string <<PK>>
-  --
-  * ticket_id : string <<FK>>
-  timestamp : string
-  note : string
-  author : string
-}
-
-' Реляционные связи
-contractor ||..o{ site : "обслуживает объекты"
-site ||..o{ asset : "содержит оборудование"
-site ||..|| contract : "имеет SLA договор"
-
-contractor ||..o{ ticket : "заказчик тикета"
-site ||..o{ ticket : "локация инцидента"
-asset ||..o{ ticket : "ассет в аварии"
-
-ticket ||..o{ message : "содержит диалог"
-ticket ||..o{ history : "фиксирует историю"
+contractor ||..o{ site
+site ||..o{ asset
+site ||..|| contract
+contractor ||..o{ ticket
+site ||..o{ ticket
+asset ||..o{ ticket
 
 @enduml

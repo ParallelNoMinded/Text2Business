@@ -1,5 +1,5 @@
 @startuml c1_context_current
-!include <C4/C4_Context>
+!include <C4/C4_Context.puml>
 LAYOUT_TOP_DOWN()
 
 title C1 — System Context: Text2Business AI-Диспетчер (Текущая реализация / As-Is)
