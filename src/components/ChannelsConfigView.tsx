@@ -32,7 +32,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
 
   // Telegram state
   const [telegramToken, setTelegramToken] = useState(
-    process.env.TELEGRAM_BOT_TOKEN || ''
+    (typeof process !== 'undefined' && process.env?.TELEGRAM_BOT_TOKEN) || ''
   );
   const [showTelegramToken, setShowTelegramToken] = useState(false);
   const [telegramStatus, setTelegramStatus] = useState<string | null>(null);
