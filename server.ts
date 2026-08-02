@@ -1,3 +1,9 @@
+import dns from 'dns';
+// Принудительно используем IPv4 для DNS (решает ошибку "fetch failed" в Node.js)
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
 import express from 'express';
 import path from 'path';
 import { GoogleGenAI, Type } from '@google/genai';
