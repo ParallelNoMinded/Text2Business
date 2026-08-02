@@ -5,14 +5,49 @@ import { ChannelsConfigView } from './components/ChannelsConfigView';
 import { OperatorConsoleView } from './components/OperatorConsoleView';
 import { DatabaseInspectorView } from './components/DatabaseInspectorView';
 import { LogsTracesView } from './components/LogsTracesView';
+import { ArchitectureView } from './components/ArchitectureView';
+import { GithubTokenModal } from './components/GithubTokenModal';
 import { INITIAL_DATABASE, DatabaseSchema } from './mockDb';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [geminiActive, setGeminiActive] = useState(true);
-  const [selectedModel, setSelectedModel] = useState<string>('gemini 3.6');
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-4o');
   const [isDryRun, setIsDryRun] = useState<boolean>(true);
+
+  // GITHUB_MODELS_TOKEN state
+  const [githubToken, setGithubToken] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('GITHUB_MODELS_TOKEN') || '';
+    }
+    return '';
+  });
+  const [isTokenModalOpen, setIsTokenModalOpen] = useState<boolean>(false);
+
+  // Sync token with server on mount & model change
+  useEffect(() => {
+    fetch('/api/llm/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: githubToken, model: selectedModel }),
+    }).catch(() => {});
+  }, [githubToken, selectedModel]);
+
+  const handleSelectModel = (newModel: string) => {
+    setSelectedModel(newModel);
+    // Prompt token modal if user selects model and no token is saved locally
+    if (!githubToken) {
+      setIsTokenModalOpen(true);
+    }
+  };
+
+  const handleSaveToken = (newToken: string) => {
+    setGithubToken(newToken);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('GITHUB_MODELS_TOKEN', newToken);
+    }
+  };
 
   // DB State
   const [db, setDb] = useState<DatabaseSchema>(INITIAL_DATABASE);
@@ -94,8 +129,20 @@ export default function App() {
         isDryRun={isDryRun}
         setIsDryRun={setIsDryRun}
         selectedModel={selectedModel}
-        setSelectedModel={setSelectedModel}
+        setSelectedModel={handleSelectModel}
         pendingOperatorCount={pendingOperatorCount}
+        githubToken={githubToken}
+        onOpenTokenModal={() => setIsTokenModalOpen(true)}
+      />
+
+      {/* GITHUB_MODELS_TOKEN Setup Modal */}
+      <GithubTokenModal
+        isOpen={isTokenModalOpen}
+        onClose={() => setIsTokenModalOpen(false)}
+        token={githubToken}
+        onSaveToken={handleSaveToken}
+        selectedModel={selectedModel}
+        theme={theme}
       />
 
       {/* Main Content Area */}
@@ -139,6 +186,11 @@ export default function App() {
         {/* TAB 4: LOGS & TRACES */}
         {activeTab === 'logs_traces' && (
           <LogsTracesView theme={theme} />
+        )}
+
+        {/* TAB 5: ARCHITECTURE REPORT & C4 SCHEMAS */}
+        {activeTab === 'architecture' && (
+          <ArchitectureView theme={theme} />
         )}
       </main>
 

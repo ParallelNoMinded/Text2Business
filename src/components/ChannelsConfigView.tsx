@@ -189,7 +189,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
       });
       const data = await res.json();
       if (data.success) {
-        setTelegramStatus('✅ Бот успешно подключен и слушает Telegram!');
+        setTelegramStatus(data.message || '✅ Бот успешно подключен и слушает Telegram!');
       } else {
         setTelegramStatus(`❌ Ошибка подключения: ${data.error || 'Проверьте токен'}`);
       }
@@ -248,14 +248,36 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
     setIsApiLoading(true);
     setApiResponseOutput(null);
     try {
+      let url = selectedApiEndpoint;
       const init: RequestInit = {
         method: apiMethod,
         headers: { 'Content-Type': 'application/json' },
       };
+
       if (apiMethod === 'POST') {
         init.body = apiRequestBody;
+      } else if (apiMethod === 'GET') {
+        // If query parameters provided in JSON body box, convert to URL query parameters
+        try {
+          if (apiRequestBody && apiRequestBody.trim().startsWith('{')) {
+            const parsed = JSON.parse(apiRequestBody);
+            const params = new URLSearchParams();
+            Object.keys(parsed).forEach((k) => {
+              if (parsed[k] !== undefined && parsed[k] !== null) {
+                params.append(k, String(parsed[k]));
+              }
+            });
+            const queryString = params.toString();
+            if (queryString) {
+              url += (url.includes('?') ? '&' : '?') + queryString;
+            }
+          }
+        } catch (e) {
+          // ignore parsing error and perform direct GET
+        }
       }
-      const res = await fetch(selectedApiEndpoint, init);
+
+      const res = await fetch(url, init);
       const data = await res.json();
       setApiResponseOutput(JSON.stringify(data, null, 2));
     } catch (err: any) {
@@ -288,8 +310,12 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
         </div>
 
         <div className="flex items-center space-x-2">
-          <span className="text-[11px] font-mono px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 font-bold flex items-center space-x-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span className={`text-[11px] font-mono px-3 py-1.5 rounded-xl border flex items-center space-x-1.5 ${
+            isDark
+              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 font-bold'
+              : 'bg-emerald-500/20 text-emerald-950 border-emerald-500/40 font-extrabold'
+          }`}>
+            <span className={`h-2 w-2 rounded-full animate-pulse ${isDark ? 'bg-emerald-400' : 'bg-emerald-800'}`}></span>
             <span>5 Каналов Активно</span>
           </span>
         </div>
@@ -320,8 +346,10 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   </span>
                 </div>
               </div>
-              <span className={`text-[10px] font-mono px-2.5 py-1 rounded font-bold uppercase ${
-                telegramToken ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${
+                telegramToken
+                  ? (isDark ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold' : 'bg-emerald-500/20 text-emerald-950 border border-emerald-500/40 font-extrabold')
+                  : (isDark ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold' : 'bg-rose-500/20 text-rose-950 border border-rose-500/40 font-extrabold')
               }`}>
                 {telegramToken ? 'Бот подключен' : 'Ожидает токен'}
               </span>
@@ -422,7 +450,11 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   </span>
                 </div>
               </div>
-              <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 uppercase">
+              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${
+                isDark
+                  ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
+                  : 'bg-rose-500/20 text-rose-950 font-extrabold border border-rose-500/40'
+              }`}>
                 MCP Active
               </span>
             </div>
@@ -486,7 +518,11 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
           <div className="mt-4 pt-3 border-t border-slate-700/30">
             <button
               onClick={handleTestEmailWebhook}
-              className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-1.5"
+              className={`w-full py-2.5 px-4 rounded-xl font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-1.5 ${
+                isDark
+                  ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                  : 'bg-orange-800 hover:bg-orange-700 text-white border border-orange-600'
+              }`}
             >
               <Mail className="h-4 w-4" />
               <span>Симуляция входящего Email</span>
@@ -522,7 +558,11 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   </span>
                 </div>
               </div>
-              <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30 uppercase">
+              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${
+                isDark
+                  ? 'bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30'
+                  : 'bg-purple-500/20 text-purple-950 font-extrabold border border-purple-500/40'
+              }`}>
                 SIP Ready
               </span>
             </div>
@@ -610,7 +650,11 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   </span>
                 </div>
               </div>
-              <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 uppercase">
+              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${
+                isDark
+                  ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30'
+                  : 'bg-emerald-500/20 text-emerald-950 font-extrabold border border-emerald-500/40'
+              }`}>
                 Swagger Live
               </span>
             </div>
@@ -631,38 +675,87 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                 <select
                   value={selectedApiEndpoint}
                   onChange={(e) => {
-                    setSelectedApiEndpoint(e.target.value);
-                    if (e.target.value === '/api/1c/tickets') {
+                    const ep = e.target.value;
+                    setSelectedApiEndpoint(ep);
+                    if (ep === '/api/1c/tickets') {
                       setApiMethod('GET');
                     } else {
                       setApiMethod('POST');
+                      if (ep === '/api/webhooks/dispatch') {
+                        setApiRequestBody(
+                          JSON.stringify(
+                            {
+                              channel: 'telegram',
+                              sender: 'ООО "СеверФуд" (ИНН 7701234567)',
+                              text: 'Срочно! Сломался компрессор на ХУ-17, температура поднялась до +6 градусов.',
+                            },
+                            null,
+                            2
+                          )
+                        );
+                      } else if (ep === '/api/webhooks/telegram') {
+                        setApiRequestBody(
+                          JSON.stringify(
+                            {
+                              sender: 'ООО "СеверФуд"',
+                              text: 'СеверФуд, Дмитровское шоссе 100, аварийная остановка ХУ-17',
+                            },
+                            null,
+                            2
+                          )
+                        );
+                      } else if (ep === '/api/webhooks/email') {
+                        setApiRequestBody(
+                          JSON.stringify(
+                            {
+                              from: 'dispatch@severfood.ru',
+                              subject: 'Аварийный вызов - компрессор ХУ-17',
+                              body: 'ООО СеверФуд. Срочный ремонт холодильной установки ХУ-17 на складе Дмитровское ш. 100',
+                            },
+                            null,
+                            2
+                          )
+                        );
+                      } else if (ep === '/api/webhooks/telephony') {
+                        setApiRequestBody(
+                          JSON.stringify(
+                            {
+                              caller_number: '+7 999 111-2233',
+                              transcript: 'Здравствуйте, это ООО СеверФуд. У нас авария на Дмитровском шоссе, компрессор ХУ-17 отключился.',
+                            },
+                            null,
+                            2
+                          )
+                        );
+                      }
                     }
                   }}
                   className={`w-full p-2 rounded-lg border font-bold ${
                     isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 >
-                  <option value="/api/webhooks/dispatch">POST /api/webhooks/dispatch</option>
-                  <option value="/api/webhooks/telegram">POST /api/webhooks/telegram</option>
-                  <option value="/api/webhooks/email">POST /api/webhooks/email</option>
-                  <option value="/api/webhooks/telephony">POST /api/webhooks/telephony</option>
+                  <option value="/api/webhooks/dispatch">POST /api/webhooks/dispatch (AI Dispatcher Webhook)</option>
+                  <option value="/api/webhooks/telegram">POST /api/webhooks/telegram (Telegram Webhook)</option>
+                  <option value="/api/webhooks/email">POST /api/webhooks/email (Email IMAP Webhook)</option>
+                  <option value="/api/webhooks/telephony">POST /api/webhooks/telephony (SIP Voice STT)</option>
                   <option value="/api/1c/tickets">GET /api/1c/tickets (1C OData Sync)</option>
                 </select>
               </div>
 
-              {apiMethod === 'POST' && (
-                <div>
-                  <label className="block text-[10px] text-slate-400 mb-0.5">Payload (JSON):</label>
-                  <textarea
-                    rows={4}
-                    value={apiRequestBody}
-                    onChange={(e) => setApiRequestBody(e.target.value)}
-                    className={`w-full p-2 rounded-lg border text-[11px] font-mono leading-tight focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
-                      isDark ? 'bg-[#030712] border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-[10px] text-slate-400 mb-0.5">
+                  {apiMethod === 'POST' ? 'Payload (JSON):' : 'Параметры запроса (JSON / Query):'}
+                </label>
+                <textarea
+                  rows={4}
+                  value={apiRequestBody}
+                  onChange={(e) => setApiRequestBody(e.target.value)}
+                  placeholder={apiMethod === 'GET' ? '{"sender": "ООО СеверФуд", "text": "Срочный ремонт"}' : '{"text": "Заявка..."}'}
+                  className={`w-full p-2 rounded-lg border text-[11px] font-mono leading-tight focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
+                    isDark ? 'bg-[#030712] border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
             </div>
           </div>
 
@@ -670,7 +763,11 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
             <button
               onClick={handleRunApiTest}
               disabled={isApiLoading}
-              className="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-1.5 disabled:opacity-50"
+              className={`w-full py-2.5 px-4 rounded-xl font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-1.5 border disabled:opacity-50 ${
+                isDark
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-emerald-400'
+                  : 'bg-emerald-900 hover:bg-emerald-800 text-white border-emerald-700'
+              }`}
             >
               {isApiLoading ? (
                 <>
@@ -710,8 +807,10 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   </span>
                 </div>
               </div>
-              <span className={`text-[10px] font-mono px-2.5 py-1 rounded font-bold uppercase ${
-                isRecording ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${
+                isRecording
+                  ? (isDark ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse font-bold' : 'bg-rose-500/20 text-rose-950 border border-rose-500/40 animate-pulse font-extrabold')
+                  : (isDark ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold' : 'bg-emerald-500/20 text-emerald-950 border border-emerald-500/40 font-extrabold')
               }`}>
                 {isRecording ? '🔴 Запись идет...' : 'Готов к записи'}
               </span>

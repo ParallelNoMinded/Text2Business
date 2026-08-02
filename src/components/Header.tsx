@@ -10,6 +10,8 @@ import {
   Moon,
   Send,
   AlertTriangle,
+  Key,
+  BookOpen,
 } from 'lucide-react';
 
 export type TabType =
@@ -18,7 +20,8 @@ export type TabType =
   | 'console'
   | 'operator'
   | 'database'
-  | 'logs_traces';
+  | 'logs_traces'
+  | 'architecture';
 
 interface HeaderProps {
   activeTab: TabType;
@@ -31,6 +34,8 @@ interface HeaderProps {
   selectedModel?: string;
   setSelectedModel?: (model: string) => void;
   pendingOperatorCount?: number;
+  githubToken?: string;
+  onOpenTokenModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -40,16 +45,32 @@ export const Header: React.FC<HeaderProps> = ({
   setTheme,
   isDryRun,
   setIsDryRun,
-  selectedModel = 'gemini 3.6',
+  selectedModel = 'gpt-4o',
   setSelectedModel,
   pendingOperatorCount = 1,
+  githubToken = '',
+  onOpenTokenModal,
 }) => {
   const isDark = theme === 'dark';
 
   if (activeTab === 'home') {
     return (
       <header className="sticky top-0 z-50 p-4 pointer-events-none">
-        <div className="max-w-7xl mx-auto flex justify-end">
+        <div className="max-w-7xl mx-auto flex justify-end items-center space-x-2">
+          <button
+            id="book-architecture-btn-home"
+            onClick={() => setActiveTab('architecture')}
+            className={`pointer-events-auto p-2.5 rounded-xl border transition-all flex items-center space-x-2 font-mono text-xs font-bold ${
+              isDark
+                ? 'bg-[#06060e]/90 hover:bg-cyan-500/20 border-cyan-500/40 text-cyan-300 backdrop-blur-md shadow-[0_0_15px_rgba(0,0,0,0.5)]'
+                : 'bg-white/90 hover:bg-slate-100 border-slate-300 text-blue-900 shadow-md backdrop-blur-md'
+            }`}
+            title="Открыть архитектурный отчёт и C4 схемы"
+          >
+            <BookOpen className="h-5 w-5 text-cyan-400" />
+            <span className="hidden sm:inline">Архитектура & C4</span>
+          </button>
+
           <button
             id="theme-toggle-btn"
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
@@ -208,9 +229,27 @@ export const Header: React.FC<HeaderProps> = ({
               <Activity className="h-3.5 w-3.5" />
               <span>Логи & Трейсы</span>
             </button>
+
+            {/* 6. Архитектура & C4 */}
+            <button
+              id="header-tab-architecture"
+              onClick={() => setActiveTab('architecture')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+                activeTab === 'architecture'
+                  ? isDark
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
+                    : 'bg-blue-950 text-white font-extrabold shadow-sm'
+                  : isDark
+                  ? 'text-cyan-400/90 hover:text-cyan-300 hover:bg-white/5'
+                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
+              }`}
+            >
+              <BookOpen className="h-3.5 w-3.5 text-cyan-400" />
+              <span>Архитектура</span>
+            </button>
           </nav>
 
-          {/* Controls: Model Selector & Theme Toggle */}
+          {/* Controls: Model Selector, GITHUB_MODELS_TOKEN, Architecture Book & Theme Toggle */}
           <div className="flex items-center space-x-2 text-xs font-mono">
             <div
               className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-semibold ${
@@ -223,20 +262,42 @@ export const Header: React.FC<HeaderProps> = ({
               <select
                 id="header-model-dropdown"
                 value={selectedModel}
-                onChange={(e) => setSelectedModel && setSelectedModel(e.target.value)}
+                onChange={(e) => {
+                  const newModel = e.target.value;
+                  if (setSelectedModel) setSelectedModel(newModel);
+                }}
                 className={`bg-transparent text-xs font-mono font-bold focus:outline-none cursor-pointer ${
                   isDark
                     ? 'text-cyan-300 [&>option]:bg-[#060612] [&>option]:text-white'
                     : 'text-blue-950 [&>option]:bg-white [&>option]:text-slate-900'
                 }`}
               >
-                <option value="glm 5.2">glm 5.2</option>
-                <option value="qwen 3.6">qwen 3.6</option>
-                <option value="nemotron 550B">nemotron 550B</option>
-                <option value="deepseek">deepseek</option>
-                <option value="gemini 3.6">gemini 3.6</option>
+                <option value="qwen3.6-27b">qwen3.6-27b</option>
+                <option value="gpt-4o">gpt-4o</option>
+                <option value="gemma4:e4b">gemma4:e4b</option>
+                <option value="deepseek-reasoner">deepseek-reasoner</option>
+                <option value="nemotron-3-ultra-550b-a55b">nemotron-3-ultra-550b-a55b</option>
               </select>
             </div>
+
+            <button
+              id="header-github-token-btn"
+              type="button"
+              onClick={onOpenTokenModal}
+              className={`px-2.5 py-1 rounded-lg border font-mono font-bold text-[11px] transition flex items-center space-x-1 ${
+                githubToken
+                  ? isDark
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                    : 'bg-emerald-100 text-emerald-950 border-emerald-400 font-extrabold hover:bg-emerald-200'
+                  : isDark
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30 animate-pulse'
+                  : 'bg-amber-100 text-amber-950 border-amber-400 font-extrabold hover:bg-amber-200 animate-pulse'
+              }`}
+              title="Настроить GITHUB_MODELS_TOKEN"
+            >
+              <Key className="h-3 w-3" />
+              <span>{githubToken ? 'G_TOKEN: ✅' : 'G_TOKEN: 🔑'}</span>
+            </button>
 
             <button
               id="header-dryrun-toggle"
@@ -253,6 +314,24 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               {isDryRun ? 'ТЕСТОВЫЙ РЕЖИМ' : 'ПРОМ 1С'}
+            </button>
+
+            {/* Book Icon Button to Open Architecture Report */}
+            <button
+              id="header-architecture-btn"
+              onClick={() => setActiveTab('architecture')}
+              className={`p-2 rounded-lg border transition-all ${
+                activeTab === 'architecture'
+                  ? isDark
+                    ? 'bg-cyan-500/20 border-cyan-500/60 text-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.4)]'
+                    : 'bg-blue-950 text-white border-blue-900'
+                  : isDark
+                  ? 'bg-white/5 hover:bg-cyan-500/20 border-white/10 text-cyan-400'
+                  : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-blue-950'
+              }`}
+              title="Открыть архитектурный отчёт и C4 схемы"
+            >
+              <BookOpen className="h-4 w-4" />
             </button>
 
             <button

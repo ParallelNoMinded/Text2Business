@@ -449,8 +449,8 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
                   onClick={handleApproveAndCommitTicket}
                   className={`flex-1 py-2.5 px-4 rounded-xl font-bold flex items-center justify-center space-x-1.5 transition ${
                     isDark
-                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
-                      : 'bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-sm'
+                      ? 'bg-emerald-900 hover:bg-emerald-800 text-white border border-emerald-700 shadow-md'
+                      : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
                   }`}
                 >
                   <FileCheck className="h-4 w-4" />

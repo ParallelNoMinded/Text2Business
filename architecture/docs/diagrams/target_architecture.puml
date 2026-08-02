@@ -1,0 +1,38 @@
+@startuml Target_Architecture
+!include <C4/C4_Container>
+LAYOUT_TOP_DOWN()
+
+title Целевая Событийная Архитектура AI-Диспетчера (Target Event-Driven Architecture)
+
+System_Boundary(ingress, "Ingress Layer") {
+  Container(gateway, "ОМНИКАНАЛЬНЫЙ INGRESS GATEWAY", "Envoy Gateway", "TLS Termination, Rate Limiting, Telegram/Email/SIP/REST Ingress")
+}
+
+System_Boundary(event_bus, "Event Streaming Layer") {
+  ContainerDb(kafka, "KAFKA / RABBITMQ EVENT BUS", "Apache Kafka / RabbitMQ", "Асинхронная шина событий и буферизация обращений")
+}
+
+System_Boundary(microservices, "Core Services Layer") {
+  Container(stt, "SERVICE 1: STT & SPEECH", "Yandex SpeechKit / Mochi", "Потоковая транскрипция аудио и звонков")
+  Container(ai_service, "SERVICE 2: PERCEPTION & AI", "Python / LangGraph + vLLM / GitHub Models", "Мультиагентный анализ и извлечение фактов")
+  Container(core_engine, "SERVICE 3: CORE DECISION ENGINE", "Go / Temporal.io State Engine", "Оркестрация процессов, HITL Диспетчер, правила проведения")
+}
+
+System_Boundary(data_layer, "Data Layer & Observability") {
+  ContainerDb(postgres, "PostgreSQL 18 + pgvector + Redis", "PostgreSQL / Redis", "Реляционные заявки, векторные эмбеддинги, кэш сессий")
+  Container(arize, "Arize AI (OTel Metrics)", "OpenTelemetry / Arize AI", "Трейсинг и мониторинг качества LLM")
+  Container(adapter_1c, "1C:ERP OData Enterprise Adapter", "OData REST Protocol", "Двусторонняя синхронизация с 1С:Предприятие")
+}
+
+Rel(gateway, kafka, "Издает события обращений", "gRPC / AMQP")
+Rel(kafka, stt, "События аудиопотока", "Event Stream")
+Rel(kafka, ai_service, "События текстовых обращений", "Event Stream")
+Rel(stt, core_engine, "Транскрипты", "Event Stream")
+Rel(ai_service, core_engine, "Извлеченные факты (JSON)", "Event Stream")
+Rel(kafka, core_engine, "Прямые события диспетчеризации", "Event Stream")
+Rel(core_engine, postgres, "Сохранение состояния и заявок", "TCP 5432")
+Rel(core_engine, arize, "Метрики и трейсы", "OTLP gRPC")
+Rel(core_engine, adapter_1c, "Проведение документов", "OData REST")
+
+SHOW_LEGEND()
+@enduml

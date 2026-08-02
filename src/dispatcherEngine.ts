@@ -217,21 +217,43 @@ export function runDeterministicDispatch(
     requested_deadline: facts.requested_deadline,
   });
 
-  // Step 3: Tool - Customer / Site Lookup
+  // Step 3: Tool - Customer / Site / Contractor Lookup
   const t3 = performance.now();
   const custName = facts.customer_name.value?.toLowerCase() || '';
   const siteAddr = facts.site_info.value?.toLowerCase() || '';
+  const rawLower = rawText.toLowerCase();
+
+  const knownContractors = db.contractors.filter((c) => {
+    const cName = c.name.toLowerCase();
+    const cClean = cName.replace(/ооо|пао|зао|ао|"/g, '').trim();
+    return (
+      (custName && (cName.includes(custName) || cClean.includes(custName))) ||
+      (cClean.length >= 3 && rawLower.includes(cClean))
+    );
+  });
 
   const matchedSites: Site[] = db.sites.filter((s) => {
     const nameMatch = custName && s.customer_name.toLowerCase().includes(custName);
     const addrMatch = siteAddr && s.address.toLowerCase().includes(siteAddr);
-    return nameMatch || addrMatch;
+    const rawMatch = rawLower.includes(s.customer_name.toLowerCase()) ||
+      (s.address.toLowerCase().split(',')[1] && rawLower.includes(s.address.toLowerCase().split(',')[1].trim()));
+    return nameMatch || addrMatch || rawMatch;
   });
 
-  addTrace('03_tool_find_customer_or_site', performance.now() - t3, matchedSites.length > 0 ? 'SUCCESS' : 'WARNING', {
+  const matchedAssetsInDb = db.assets.filter((a) => {
+    const aDigits = extractDigits(a.local_code);
+    const targetDigits = extractDigits(facts.asset_code.value || rawText);
+    return targetDigits && targetDigits.length >= 2 && aDigits === targetDigits;
+  });
+
+  const isContractorOrAssetInDb =
+    matchedSites.length > 0 || knownContractors.length > 0 || matchedAssetsInDb.length > 0;
+
+  addTrace('03_tool_find_customer_or_site', performance.now() - t3, isContractorOrAssetInDb ? 'SUCCESS' : 'WARNING', {
     query_customer: facts.customer_name.value,
     query_site: facts.site_info.value,
     found_count: matchedSites.length,
+    known_contractors_found: knownContractors.length,
     matched_sites: matchedSites,
   });
 
@@ -349,6 +371,11 @@ export function runDeterministicDispatch(
     resultStatus = 'REQUIRES_HUMAN_CONFIRMATION';
     confidenceScore = 0.4;
     reasoning.push(`Блокировка безопасности: ${guard.reason}`);
+  } else if (!isContractorOrAssetInDb) {
+    recommendedAction = 'REJECT';
+    resultStatus = 'BLOCKED';
+    confidenceScore = 0.1;
+    reasoning.push('Контрагент не заведен в базу данных и не обслуживается.');
   } else if (!selectedSite) {
     recommendedAction = 'REQUEST_CLARIFICATION';
     resultStatus = 'REQUIRES_HUMAN_CONFIRMATION';
@@ -402,7 +429,9 @@ export function runDeterministicDispatch(
     minute: '2-digit',
   });
 
-  if (recommendedAction === 'UPDATE_TICKET') {
+  if (recommendedAction === 'REJECT') {
+    customerReply = `Контр-агент не заведен в базу и не обслуживается.`;
+  } else if (recommendedAction === 'UPDATE_TICKET') {
     customerReply = `Здравствуйте! Информация о текущем статусе оборудования принята и добавлена к вашей заявке №${targetTicketId}. Ваша заявка переведена в высший приоритет (CRITICAL). Наш инженер уже находится на связи с объектом.`;
   } else if (recommendedAction === 'CREATE_TICKET') {
     customerReply = `Здравствуйте! Заявка зарегистрирована в системе под №${ticketPayload?.ticket_id}. Объект: ${selectedSite?.address}. Назначен плановый срок отклика по договору (${matchedContract?.plan || 'Gold'}): до ${deadlineFormatted}. Инженер сервисной службы оповещен.`;

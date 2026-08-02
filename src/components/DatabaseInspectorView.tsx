@@ -451,10 +451,10 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
           {activeTab === 'contractors' && (
             <button
               onClick={() => setModalType('ADD_CONTRACTOR')}
-              className={`px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1 transition ${
+              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
                 isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm'
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
+                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
               }`}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -465,10 +465,10 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
           {activeTab === 'sites' && (
             <button
               onClick={() => setModalType('ADD_SITE')}
-              className={`px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1 transition ${
+              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
                 isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm'
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
+                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
               }`}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -479,10 +479,10 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
           {activeTab === 'assets' && (
             <button
               onClick={() => setModalType('ADD_ASSET')}
-              className={`px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1 transition ${
+              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
                 isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm'
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
+                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
               }`}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -493,7 +493,11 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
           {activeTab === 'open_tickets' && (
             <button
               onClick={() => setModalType('ADD_TICKET')}
-              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center space-x-1"
+              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
+                isDark
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
+                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
+              }`}
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Создать Открытую Заявку</span>
@@ -503,7 +507,11 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
           {activeTab === 'closed_tickets' && (
             <button
               onClick={() => setModalType('ADD_CLOSED_TICKET')}
-              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center space-x-1"
+              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
+                isDark
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
+                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
+              }`}
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Добавить Закрытую Заявку</span>
@@ -693,7 +701,9 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                   <td className="p-3 text-right flex items-center justify-end space-x-1">
                     <button
                       onClick={() => handleCloseTicket(t.ticket_id)}
-                      className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-mono text-[10px] font-bold flex items-center space-x-1"
+                      className={`px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 font-mono text-[10px] flex items-center space-x-1 ${
+                        isDark ? 'text-emerald-300 font-bold' : 'text-emerald-950 font-extrabold'
+                      }`}
                       title="Завершить и перенести в архив"
                     >
                       <Check className="h-3 w-3" />
@@ -818,7 +828,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                 </div>
                 <button
                   onClick={handleSaveContractor}
-                  className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold mt-2"
+                  className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
                 >
                   Сохранить Контрагента
                 </button>
@@ -850,7 +860,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                 </div>
                 <button
                   onClick={handleSaveSite}
-                  className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold mt-2"
+                  className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
                 >
                   Сохранить Объект
                 </button>
@@ -882,7 +892,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                 </div>
                 <button
                   onClick={handleSaveAsset}
-                  className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold mt-2"
+                  className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
                 >
                   Сохранить Оборудование
                 </button>
@@ -914,7 +924,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                 </div>
                 <button
                   onClick={() => handleSaveTicket(modalType === 'ADD_CLOSED_TICKET')}
-                  className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold mt-2"
+                  className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
                 >
                   {modalType === 'ADD_CLOSED_TICKET' ? 'Сохранить Закрытую Заявку' : 'Создать Открытую Заявку'}
                 </button>

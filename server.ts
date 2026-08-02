@@ -46,93 +46,171 @@ const SYSTEM_EXTRACTION_PROMPT = `
 - has_backup: { value, confidence, type: 'inference' }
 `;
 
-// Helper for Gemini Structured Fact Extraction
-async function extractFactsWithGemini(text: string, channel: string): Promise<ExtractedFacts> {
-  if (!aiClient) {
-    return extractFactsFromText(text, channel);
+let activeGithubToken: string | null = process.env.GITHUB_MODELS_TOKEN || process.env.GITHUB_TOKEN || null;
+let activeSelectedModel: string = process.env.GITHUB_MODELS_MODEL || 'gpt-4o';
+
+// GitHub Models API Fact Extractor (Supports gpt-4o, qwen3.6-27b, gemma4:e4b, deepseek-reasoner, nemotron-3-ultra-550b-a55b)
+async function extractFactsWithGitHubModels(
+  text: string,
+  channel: string,
+  token: string,
+  modelName: string
+): Promise<ExtractedFacts | null> {
+  try {
+    const cleanToken = token.trim();
+    if (!cleanToken) return null;
+
+    // Map user UI model name to API model identifier if needed
+    let apiModel = modelName || 'gpt-4o';
+    if (apiModel === 'qwen3.6-27b') apiModel = 'qwen-3.6-27b';
+    if (apiModel === 'gemma4:e4b') apiModel = 'gemma-2-9b-it';
+    if (apiModel === 'deepseek-reasoner') apiModel = 'DeepSeek-R1';
+
+    const res = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cleanToken}`,
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: SYSTEM_EXTRACTION_PROMPT },
+          { role: 'user', content: `Канал: ${channel}\nОбращение: "${text}"` },
+        ],
+        model: apiModel,
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    if (res.ok) {
+      const data: any = await res.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (content) {
+        const parsed = JSON.parse(content.trim()) as ExtractedFacts;
+        return {
+          customer_name: parsed.customer_name || { value: null, confidence: 0, type: 'fact' },
+          site_info: parsed.site_info || { value: null, confidence: 0, type: 'fact' },
+          asset_code: parsed.asset_code || { value: null, confidence: 0, type: 'fact' },
+          problem_summary: parsed.problem_summary || { value: text.slice(0, 100), confidence: 0.8, type: 'fact' },
+          requested_deadline: parsed.requested_deadline || { value: null, confidence: 0, type: 'fact' },
+          has_backup: parsed.has_backup || { value: 'Неизвестно', confidence: 0.5, type: 'inference' },
+        };
+      }
+    } else {
+      const errText = await res.text();
+      console.warn(`GitHub Models API (${apiModel}) error ${res.status}:`, errText.slice(0, 200));
+    }
+  } catch (err: any) {
+    console.warn('GitHub Models call failed:', err?.message || err);
+  }
+  return null;
+}
+
+// Helper for LLM Fact Extraction (GitHub Models -> Gemini -> Rule-based Extractor)
+async function extractFactsWithGemini(
+  text: string,
+  channel: string,
+  overrideToken?: string,
+  overrideModel?: string
+): Promise<ExtractedFacts> {
+  const tokenToUse = overrideToken || activeGithubToken || process.env.GITHUB_MODELS_TOKEN;
+  const modelToUse = overrideModel || activeSelectedModel || process.env.GITHUB_MODELS_MODEL || 'gpt-4o';
+
+  if (tokenToUse) {
+    const ghFacts = await extractFactsWithGitHubModels(text, channel, tokenToUse, modelToUse);
+    if (ghFacts) {
+      return ghFacts;
+    }
   }
 
-  try {
-    const response = await aiClient.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents: `Канал: ${channel}\nОбращение: "${text}"`,
-      config: {
-        systemInstruction: SYSTEM_EXTRACTION_PROMPT,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            customer_name: {
+  if (aiClient) {
+    const candidateModels = ['gemini-3.6-flash', 'gemini-flash-latest'];
+
+    for (const modelName of candidateModels) {
+      try {
+        const response = await aiClient.models.generateContent({
+          model: modelName,
+          contents: `Канал: ${channel}\nОбращение: "${text}"`,
+          config: {
+            systemInstruction: SYSTEM_EXTRACTION_PROMPT,
+            responseMimeType: 'application/json',
+            responseSchema: {
               type: Type.OBJECT,
               properties: {
-                value: { type: Type.STRING },
-                quote: { type: Type.STRING },
-                confidence: { type: Type.NUMBER },
-                type: { type: Type.STRING },
-              },
-            },
-            site_info: {
-              type: Type.OBJECT,
-              properties: {
-                value: { type: Type.STRING },
-                quote: { type: Type.STRING },
-                confidence: { type: Type.NUMBER },
-                type: { type: Type.STRING },
-              },
-            },
-            asset_code: {
-              type: Type.OBJECT,
-              properties: {
-                value: { type: Type.STRING },
-                quote: { type: Type.STRING },
-                confidence: { type: Type.NUMBER },
-                type: { type: Type.STRING },
-              },
-            },
-            problem_summary: {
-              type: Type.OBJECT,
-              properties: {
-                value: { type: Type.STRING },
-                quote: { type: Type.STRING },
-                confidence: { type: Type.NUMBER },
-                type: { type: Type.STRING },
-              },
-            },
-            requested_deadline: {
-              type: Type.OBJECT,
-              properties: {
-                value: { type: Type.STRING },
-                quote: { type: Type.STRING },
-                confidence: { type: Type.NUMBER },
-                type: { type: Type.STRING },
-              },
-            },
-            has_backup: {
-              type: Type.OBJECT,
-              properties: {
-                value: { type: Type.STRING },
-                confidence: { type: Type.NUMBER },
-                type: { type: Type.STRING },
+                customer_name: {
+                  type: Type.OBJECT,
+                  properties: {
+                    value: { type: Type.STRING },
+                    quote: { type: Type.STRING },
+                    confidence: { type: Type.NUMBER },
+                    type: { type: Type.STRING },
+                  },
+                },
+                site_info: {
+                  type: Type.OBJECT,
+                  properties: {
+                    value: { type: Type.STRING },
+                    quote: { type: Type.STRING },
+                    confidence: { type: Type.NUMBER },
+                    type: { type: Type.STRING },
+                  },
+                },
+                asset_code: {
+                  type: Type.OBJECT,
+                  properties: {
+                    value: { type: Type.STRING },
+                    quote: { type: Type.STRING },
+                    confidence: { type: Type.NUMBER },
+                    type: { type: Type.STRING },
+                  },
+                },
+                problem_summary: {
+                  type: Type.OBJECT,
+                  properties: {
+                    value: { type: Type.STRING },
+                    quote: { type: Type.STRING },
+                    confidence: { type: Type.NUMBER },
+                    type: { type: Type.STRING },
+                  },
+                },
+                requested_deadline: {
+                  type: Type.OBJECT,
+                  properties: {
+                    value: { type: Type.STRING },
+                    quote: { type: Type.STRING },
+                    confidence: { type: Type.NUMBER },
+                    type: { type: Type.STRING },
+                  },
+                },
+                has_backup: {
+                  type: Type.OBJECT,
+                  properties: {
+                    value: { type: Type.STRING },
+                    confidence: { type: Type.NUMBER },
+                    type: { type: Type.STRING },
+                  },
+                },
               },
             },
           },
-        },
-      },
-    });
+        });
 
-    if (response.text) {
-      const parsed = JSON.parse(response.text.trim()) as ExtractedFacts;
-      return {
-        customer_name: parsed.customer_name || { value: null, confidence: 0, type: 'fact' },
-        site_info: parsed.site_info || { value: null, confidence: 0, type: 'fact' },
-        asset_code: parsed.asset_code || { value: null, confidence: 0, type: 'fact' },
-        problem_summary: parsed.problem_summary || { value: text.slice(0, 100), confidence: 0.8, type: 'fact' },
-        requested_deadline: parsed.requested_deadline || { value: null, confidence: 0, type: 'fact' },
-        has_backup: parsed.has_backup || { value: 'Неизвестно', confidence: 0.5, type: 'inference' },
-      };
+        if (response?.text) {
+          const parsed = JSON.parse(response.text.trim()) as ExtractedFacts;
+          return {
+            customer_name: parsed.customer_name || { value: null, confidence: 0, type: 'fact' },
+            site_info: parsed.site_info || { value: null, confidence: 0, type: 'fact' },
+            asset_code: parsed.asset_code || { value: null, confidence: 0, type: 'fact' },
+            problem_summary: parsed.problem_summary || { value: text.slice(0, 100), confidence: 0.8, type: 'fact' },
+            requested_deadline: parsed.requested_deadline || { value: null, confidence: 0, type: 'fact' },
+            has_backup: parsed.has_backup || { value: 'Неизвестно', confidence: 0.5, type: 'inference' },
+          };
+        }
+      } catch (err: any) {
+        console.warn(`Gemini extraction call to ${modelName} failed, falling back:`, err?.message || err);
+      }
     }
-  } catch (err) {
-    console.warn('Gemini extraction fallback triggered:', err);
   }
 
   return extractFactsFromText(text, channel);
@@ -159,6 +237,7 @@ app.get('/api/health', (req, res) => {
 let activeBotToken: string | null = process.env.TELEGRAM_BOT_TOKEN || null;
 let isPollingActive = false;
 let pollingOffset = 0;
+let lastActiveChatId: number | string | null = null;
 
 // Helper to send message back to Telegram Chat
 async function sendTelegramMessage(chatId: number | string, text: string) {
@@ -191,8 +270,13 @@ function saveOrUpdateTicketInDb(
   const timeIso = new Date().toISOString();
   const ticketId = result.ticket_payload?.ticket_id || `T-${Math.floor(100 + Math.random() * 899)}`;
   const missingInfo = result.missing_information || [];
+  const isRejected = result.recommended_action === 'REJECT' || result.status === 'BLOCKED';
   const requiresClarification =
-    result.recommended_action === 'REQUEST_CLARIFICATION' || missingInfo.length > 0;
+    isRejected || result.recommended_action === 'REQUEST_CLARIFICATION' || missingInfo.length > 0;
+
+  if (chatId) {
+    lastActiveChatId = chatId;
+  }
 
   let ticket = mockDb.open_tickets.find(
     (t) => (chatId && t.chat_id === chatId) || (result.target_ticket_id && t.ticket_id === result.target_ticket_id)
@@ -221,7 +305,9 @@ function saveOrUpdateTicketInDb(
 
     if (requiresClarification) {
       ticket.status = 'WAITING_DISPATCHER';
-      ticket.missing_fields = missingInfo.length > 0 ? missingInfo : ['Уточнение данных'];
+      ticket.missing_fields = isRejected
+        ? ['Неизвестный контрагент (требуется проверка Диспетчера)']
+        : (missingInfo.length > 0 ? missingInfo : ['Уточнение данных']);
     }
 
     if (result.matched_asset) ticket.asset_id = result.matched_asset.asset_id;
@@ -252,7 +338,9 @@ function saveOrUpdateTicketInDb(
     created_at: timeIso,
     channel,
     chat_id: chatId || undefined,
-    missing_fields: requiresClarification ? (missingInfo.length > 0 ? missingInfo : ['Код оборудования']) : [],
+    missing_fields: isRejected
+      ? ['Неизвестный контрагент (требуется проверка Диспетчера)']
+      : (requiresClarification ? (missingInfo.length > 0 ? missingInfo : ['Код оборудования']) : []),
     messages: [
       {
         id: `m-${Date.now()}`,
@@ -266,7 +354,7 @@ function saveOrUpdateTicketInDb(
         id: `m-${Date.now() + 1}`,
         sender: 'bot',
         author_name: 'AI-Диспетчер',
-        text: result.customer_response_draft || 'Ваше обращение принято и обрабатывается.',
+        text: result.customer_response_draft || 'Ваше обращение принято в обработку и передано диспетчеру.',
         timestamp: new Date().toISOString(),
         channel,
       },
@@ -302,12 +390,27 @@ async function pollTelegramUpdates() {
           pollingOffset = update.update_id + 1;
           if (update.message && update.message.text) {
             const chatId = update.message.chat.id;
-            const incomingText = update.message.text;
-            const senderName = update.message.from?.first_name || update.message.chat?.title || 'Telegram User';
+            const incomingText = update.message.text.trim();
+            const senderName = update.message.from?.first_name || update.message.chat?.title || 'Пользователь';
 
             console.log(`[Telegram Bot] Inbound msg from Chat ${chatId}: "${incomingText}"`);
 
-            // Execute full AI Dispatcher Pipeline
+            // 1. Check for /start or /help command
+            if (incomingText.startsWith('/start') || incomingText.startsWith('/help')) {
+              const welcomeReply =
+                `👋 <b>Добрый день, ${senderName}! Я AI-Диспетчер сервисной службы.</b>\n\n` +
+                `Принимаю и регистрирую заявки на обслуживание холодильного и климатического оборудования.\n\n` +
+                `<b>Чтобы подать заявку, опишите проблему в свободной форме:</b>\n` +
+                `• Название вашей компании/контрагента\n` +
+                `• Адрес объекта или номер склада\n` +
+                `• Код оборудования (например: <i>ХУ-17</i>, <i>ЧИЛ-01</i>)\n` +
+                `• Суть неисправности\n\n` +
+                `<i>Пример: «СеверФуд, Дмитровское шоссе 100, аварийная остановка ХУ-17»</i>`;
+              await sendTelegramMessage(chatId, welcomeReply);
+              continue;
+            }
+
+            // 2. Execute full AI Dispatcher Pipeline
             const timeIso = new Date().toISOString();
             const facts = await extractFactsWithGemini(incomingText, 'telegram');
             const result = runDeterministicDispatch(
@@ -319,10 +422,22 @@ async function pollTelegramUpdates() {
               false // Live commit to DB
             );
 
-            // Save or Update ticket in DB
-            const savedTicket = saveOrUpdateTicketInDb('telegram', incomingText, result, senderName, chatId);
+            // 3. Handle non-existent counter-party
+            if (result.recommended_action === 'REJECT' || result.status === 'BLOCKED') {
+              const rejectReply = `⚠️ <b>Обращение не зарегистрировано:</b> Контр-агент не заведен в базу и не обслуживается.`;
+              await sendTelegramMessage(chatId, rejectReply);
+              continue;
+            }
 
-            // Format clean response for Telegram user
+            // 4. Save or Update ticket in DB
+            const savedTicket = saveOrUpdateTicketInDb('telegram', incomingText, result, senderName, chatId);
+            if (!savedTicket) {
+              const rejectReply = `⚠️ <b>Обращение не зарегистрировано:</b> Контр-агент не заведен в базу и не обслуживается.`;
+              await sendTelegramMessage(chatId, rejectReply);
+              continue;
+            }
+
+            // 5. Format clean response for Telegram user
             const ticketId = savedTicket.ticket_id;
             const priority = (savedTicket.priority || 'high').toUpperCase();
             const group = savedTicket.assigned_group || 'Дежурная служба';
@@ -355,7 +470,7 @@ if (activeBotToken) {
   pollTelegramUpdates();
 }
 
-// 1. Real Webhook Endpoint for Telegram Bot (POST from Telegram Servers or Webhook Simulators)
+// 1. Real Webhook Endpoint for Telegram Bot
 app.post('/api/webhooks/telegram', async (req, res) => {
   try {
     const update = req.body;
@@ -370,18 +485,44 @@ app.post('/api/webhooks/telegram', async (req, res) => {
     } else if (typeof update.text === 'string') {
       messageText = update.text;
       senderName = update.sender || 'Telegram Webhook Test';
+      chatId = update.chat_id || update.chatId || null;
+    }
+
+    if (chatId) {
+      lastActiveChatId = chatId;
     }
 
     if (!messageText) {
       return res.status(400).json({ error: 'No text message payload found in Telegram update.' });
     }
 
+    const trimmedText = messageText.trim();
+    if (trimmedText.startsWith('/start') || trimmedText.startsWith('/help')) {
+      const welcomeReply =
+        `👋 <b>Добрый день, ${senderName}! Я AI-Диспетчер сервисной службы.</b>\n\n` +
+        `Принимаю и регистрирую заявки на обслуживание холодильного и климатического оборудования.\n\n` +
+        `<b>Чтобы подать заявку, опишите проблему в свободной форме:</b>\n` +
+        `• Название вашей компании/контрагента\n` +
+        `• Адрес объекта или номер склада\n` +
+        `• Код оборудования (например: <i>ХУ-17</i>, <i>ЧИЛ-01</i>)\n` +
+        `• Суть неисправности\n\n` +
+        `<i>Пример: «СеверФуд, Дмитровское шоссе 100, аварийная остановка ХУ-17»</i>`;
+      if (chatId && activeBotToken) {
+        await sendTelegramMessage(chatId, welcomeReply);
+      }
+      return res.json({ success: true, message: 'Welcome greeting sent', channel: 'telegram' });
+    }
+
+    const fullText = senderName && !messageText.toLowerCase().includes(senderName.toLowerCase())
+      ? `${senderName}: ${messageText}`
+      : messageText;
+
     // Execute full pipeline
-    const facts = await extractFactsWithGemini(messageText, 'telegram');
+    const facts = await extractFactsWithGemini(fullText, 'telegram');
     const result = runDeterministicDispatch(
       mockDb,
       facts,
-      messageText,
+      fullText,
       'telegram',
       new Date().toISOString(),
       false
@@ -390,13 +531,14 @@ app.post('/api/webhooks/telegram', async (req, res) => {
     // Save ticket to DB
     const savedTicket = saveOrUpdateTicketInDb('telegram', messageText, result, senderName, chatId);
 
-    // If chat ID exists and active bot token set, reply directly to Telegram
-    if (chatId && activeBotToken) {
+    // Reply directly to Telegram if bot active
+    const effChat = chatId || lastActiveChatId;
+    if (effChat && activeBotToken) {
       const replyMsg = `🤖 <b>AI-Диспетчер: Обращение обработано</b>\n` +
         `🎟 <b>Заявка №:</b> ${savedTicket.ticket_id}\n` +
         `⚡ <b>Приоритет:</b> ${savedTicket.priority.toUpperCase()}\n` +
         `🛠 <b>Группа:</b> ${savedTicket.assigned_group}`;
-      await sendTelegramMessage(chatId, replyMsg);
+      await sendTelegramMessage(effChat, replyMsg);
     }
 
     res.json({
@@ -413,7 +555,7 @@ app.post('/api/webhooks/telegram', async (req, res) => {
   }
 });
 
-// 2. Real Webhook Endpoint for Email (IMAP/Inbound Webhook from SendGrid, Postmark, Mailgun)
+// 2. Real Webhook Endpoint for Email
 app.post('/api/webhooks/email', async (req, res) => {
   try {
     const { from, subject, body, text } = req.body;
@@ -423,7 +565,8 @@ app.post('/api/webhooks/email', async (req, res) => {
       return res.status(400).json({ error: 'Email body or text is required.' });
     }
 
-    const fullText = subject ? `Тема: ${subject}\n\n${emailText}` : emailText;
+    const senderStr = from || 'dispatch@severfood.ru';
+    const fullText = subject ? `Откравитель: ${senderStr}\nТема: ${subject}\n\n${emailText}` : `${senderStr}: ${emailText}`;
     const facts = await extractFactsWithGemini(fullText, 'email');
     const result = runDeterministicDispatch(
       mockDb,
@@ -434,12 +577,21 @@ app.post('/api/webhooks/email', async (req, res) => {
       false
     );
 
-    const savedTicket = saveOrUpdateTicketInDb('email', fullText, result, from || 'Email Client');
+    const savedTicket = saveOrUpdateTicketInDb('email', emailText, result, senderStr);
+
+    // Notify Telegram Bot if active
+    if (activeBotToken && lastActiveChatId) {
+      const notifyMsg = `🤖 <b>[Входящий Email] Новая заявка в базе № ${savedTicket.ticket_id}</b>\n` +
+        `📧 <b>От:</b> ${senderStr}\n` +
+        `⚡ <b>Приоритет:</b> ${savedTicket.priority.toUpperCase()}\n` +
+        `📝 <b>Текст:</b> ${emailText.slice(0, 100)}`;
+      await sendTelegramMessage(lastActiveChatId, notifyMsg);
+    }
 
     res.json({
       success: true,
       channel: 'email',
-      sender: from || 'inbound-email@service.ru',
+      sender: senderStr,
       dispatch_result: result,
       ticket: savedTicket,
       database_open_tickets_count: mockDb.open_tickets.length,
@@ -449,32 +601,43 @@ app.post('/api/webhooks/email', async (req, res) => {
   }
 });
 
-// 3. Real Webhook Endpoint for Telephony (Voice STT Transcripts)
+// 3. Real Webhook Endpoint for Telephony (Voice STT)
 app.post('/api/webhooks/telephony', async (req, res) => {
   try {
-    const { caller_number, transcript, audio_url } = req.body;
-    const text = transcript || '';
+    const { caller_number, transcript, audio_url, text } = req.body;
+    const voiceText = transcript || text || '';
 
-    if (!text) {
+    if (!voiceText) {
       return res.status(400).json({ error: 'Voice transcript text is required.' });
     }
 
-    const facts = await extractFactsWithGemini(text, 'voice');
+    const callerStr = caller_number || '+7 999 111-2233';
+    const fullText = `Звонок с ${callerStr}: ${voiceText}`;
+    const facts = await extractFactsWithGemini(fullText, 'voice');
     const result = runDeterministicDispatch(
       mockDb,
       facts,
-      text,
+      fullText,
       'voice',
       new Date().toISOString(),
       false
     );
 
-    const savedTicket = saveOrUpdateTicketInDb('voice', text, result, caller_number || '+7 999 000-00-00');
+    const savedTicket = saveOrUpdateTicketInDb('voice', voiceText, result, callerStr);
+
+    // Notify Telegram Bot if active
+    if (activeBotToken && lastActiveChatId) {
+      const notifyMsg = `🤖 <b>[Телефонный звонок STT] Новая заявка № ${savedTicket.ticket_id}</b>\n` +
+        `📞 <b>Звонок:</b> ${callerStr}\n` +
+        `⚡ <b>Приоритет:</b> ${savedTicket.priority.toUpperCase()}\n` +
+        `📝 <b>Транскрипт:</b> ${voiceText.slice(0, 100)}`;
+      await sendTelegramMessage(lastActiveChatId, notifyMsg);
+    }
 
     res.json({
       success: true,
       channel: 'voice',
-      caller: caller_number || '+7 999 000-00-00',
+      caller: callerStr,
       dispatch_result: result,
       ticket: savedTicket,
       database_open_tickets_count: mockDb.open_tickets.length,
@@ -482,6 +645,150 @@ app.post('/api/webhooks/telephony', async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Telephony webhook error' });
   }
+});
+
+// 4. REST API & Swagger Live Dispatcher Endpoint (POST & GET)
+const handleDispatchLogic = async (req: any, res: any, queryOrBodyData: any) => {
+  try {
+    const { channel = 'telegram', sender, text, message, chat_id, chatId } = queryOrBodyData;
+    const rawText = text || message || '';
+
+    if (!rawText) {
+      return res.json({
+        success: true,
+        endpoint: '/api/webhooks/dispatch',
+        method: req.method,
+        status: 'online',
+        active_model: activeSelectedModel,
+        github_models_configured: !!(activeGithubToken || process.env.GITHUB_MODELS_TOKEN),
+        open_tickets_count: mockDb.open_tickets.length,
+        usage: 'To run dispatch via GET, pass query parameters: ?channel=telegram&sender=Иван&text=Срочно%20сломался%20компрессор',
+        sample_query: '/api/webhooks/dispatch?sender=ООО%20СеверФуд&text=Срочный%20ремонт%20ХУ-17',
+        open_tickets: mockDb.open_tickets,
+      });
+    }
+
+    const senderStr = sender || 'ООО "СеверФуд" (ИНН 7701234567)';
+    const effChatId = chat_id || chatId || lastActiveChatId;
+    const fullText = senderStr && !rawText.includes(senderStr) ? `${senderStr}: ${rawText}` : rawText;
+
+    const facts = await extractFactsWithGemini(fullText, channel);
+    const result = runDeterministicDispatch(
+      mockDb,
+      facts,
+      fullText,
+      channel,
+      new Date().toISOString(),
+      false
+    );
+
+    const savedTicket = saveOrUpdateTicketInDb(channel, rawText, result, senderStr, effChatId);
+
+    // Send Telegram Notification if active
+    if (activeBotToken && effChatId) {
+      const notifyMsg =
+        `🤖 <b>AI-Диспетчер (REST API / Swagger): Новое обращение</b>\n\n` +
+        `🎟 <b>Заявка №:</b> ${savedTicket.ticket_id}\n` +
+        `🏢 <b>Канал:</b> ${channel.toUpperCase()}\n` +
+        `👤 <b>Отправитель:</b> ${senderStr}\n` +
+        `⚡ <b>Приоритет:</b> ${savedTicket.priority.toUpperCase()}\n` +
+        `🛠 <b>Статус:</b> ${savedTicket.status}\n` +
+        `📝 <b>Текст:</b> ${rawText.slice(0, 120)}`;
+      await sendTelegramMessage(effChatId, notifyMsg);
+    }
+
+    return res.json({
+      success: true,
+      channel,
+      sender: senderStr,
+      dispatch_result: result,
+      ticket: savedTicket,
+      database_open_tickets_count: mockDb.open_tickets.length,
+      telegram_notification_sent: !!(activeBotToken && effChatId),
+    });
+  } catch (err: any) {
+    console.error('Swagger dispatch endpoint error:', err);
+    return res.status(500).json({ error: err.message || 'Swagger dispatch error' });
+  }
+};
+
+app.post('/api/webhooks/dispatch', async (req, res) => {
+  await handleDispatchLogic(req, res, req.body || {});
+});
+
+app.get('/api/webhooks/dispatch', async (req, res) => {
+  await handleDispatchLogic(req, res, req.query || {});
+});
+
+// Supporting GET on other channel webhooks for Swagger
+app.get('/api/webhooks/telegram', async (req, res) => {
+  if (req.query && (req.query.text || req.query.message)) {
+    return handleDispatchLogic(req, res, { ...req.query, channel: 'telegram' });
+  }
+  return res.json({
+    success: true,
+    channel: 'telegram',
+    method: 'GET',
+    status: 'online',
+    open_tickets_count: mockDb.open_tickets.length,
+    message: 'Telegram webhook active. Send POST update or GET with ?text=...',
+  });
+});
+
+app.get('/api/webhooks/email', async (req, res) => {
+  if (req.query && (req.query.text || req.query.body || req.query.subject)) {
+    return handleDispatchLogic(req, res, { ...req.query, channel: 'email' });
+  }
+  return res.json({
+    success: true,
+    channel: 'email',
+    method: 'GET',
+    status: 'online',
+    open_tickets_count: mockDb.open_tickets.length,
+    message: 'Email webhook active. Send POST update or GET with ?text=...',
+  });
+});
+
+app.get('/api/webhooks/telephony', async (req, res) => {
+  if (req.query && (req.query.transcript || req.query.text)) {
+    return handleDispatchLogic(req, res, { ...req.query, channel: 'voice' });
+  }
+  return res.json({
+    success: true,
+    channel: 'voice',
+    method: 'GET',
+    status: 'online',
+    open_tickets_count: mockDb.open_tickets.length,
+    message: 'Telephony webhook active. Send POST update or GET with ?transcript=...',
+  });
+});
+
+// Endpoint to configure LLM / GitHub Models token
+app.post('/api/llm/config', (req, res) => {
+  const { token, model } = req.body;
+  if (token !== undefined) {
+    activeGithubToken = token ? token.trim() : null;
+  }
+  if (model) {
+    activeSelectedModel = model;
+  }
+  res.json({
+    success: true,
+    configured: !!(activeGithubToken || process.env.GITHUB_MODELS_TOKEN),
+    model: activeSelectedModel,
+    message: (activeGithubToken || process.env.GITHUB_MODELS_TOKEN)
+      ? `✅ GITHUB_MODELS_TOKEN активирован. Подключена модель: ${activeSelectedModel}`
+      : `⚠️ Токен не установлен. Включен локальный эвристический распознаватель.`,
+  });
+});
+
+app.get('/api/llm/config', (req, res) => {
+  const token = activeGithubToken || process.env.GITHUB_MODELS_TOKEN;
+  res.json({
+    configured: !!token,
+    model: activeSelectedModel || process.env.GITHUB_MODELS_MODEL || 'gpt-4o',
+    token_preview: token ? `${token.slice(0, 6)}...${token.slice(-4)}` : null,
+  });
 });
 
 // 4. Endpoint to Configure Telegram Bot Token live from the UI
@@ -527,31 +834,58 @@ app.post('/api/operator/reply', async (req, res) => {
 });
 
 // 5. Endpoint to Configure Telegram Bot Token live from the UI
-app.post('/api/telegram/config', (req, res) => {
-  const { token, enable_polling } = req.body;
-  if (!token) {
+app.post('/api/telegram/config', async (req, res) => {
+  const { token, enable_polling = true } = req.body;
+  if (!token || !token.trim()) {
     activeBotToken = null;
     isPollingActive = false;
-    return res.json({ success: true, message: 'Telegram Bot Token cleared', configured: false });
+    return res.json({ success: true, message: 'Токен Telegram бота очищен', configured: false });
   }
 
-  activeBotToken = token.trim();
-  if (enable_polling) {
-    isPollingActive = false; // Reset loop if running
-    pollTelegramUpdates();
-  }
+  const cleanToken = token.trim();
+  try {
+    // 1. Validate token with getMe API
+    const meRes = await fetch(`https://api.telegram.org/bot${cleanToken}/getMe`);
+    const meData: any = await meRes.json();
 
-  res.json({
-    success: true,
-    message: 'Telegram Bot Token active!',
-    configured: true,
-    webhook_url: `${req.protocol}://${req.get('host')}/api/webhooks/telegram`,
-  });
+    if (!meData.ok) {
+      return res.status(400).json({
+        success: false,
+        error: `Неверный токен бота (${meData.description || 'Ошибка Telegram API'}). Проверьте токен из @BotFather.`,
+      });
+    }
+
+    // 2. Clear webhook so long polling works without Conflict 409 error
+    await fetch(`https://api.telegram.org/bot${cleanToken}/deleteWebhook?drop_pending_updates=true`);
+
+    activeBotToken = cleanToken;
+    isPollingActive = false; // Reset existing loop if running
+
+    if (enable_polling !== false) {
+      setTimeout(() => {
+        pollTelegramUpdates();
+      }, 300);
+    }
+
+    const botHandle = meData.result.username ? `@${meData.result.username}` : meData.result.first_name;
+
+    return res.json({
+      success: true,
+      message: `✅ Бот ${botHandle} успешно активирован и слушает Telegram!`,
+      bot_info: meData.result,
+      configured: true,
+      webhook_url: `${req.protocol}://${req.get('host')}/api/webhooks/telegram`,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: `Не удалось связаться с Telegram API: ${err.message}`,
+    });
+  }
 });
 
-// 5. Real 1C / CRM OData Integration Endpoint
-app.get('/api/1c/tickets', (req, res) => {
-  // Returns tickets in 1C OData XML / JSON format
+// 5. Real 1C / CRM OData Integration Endpoint (GET & POST)
+const handle1cTicketsResponse = (req: any, res: any) => {
   const odataResponse = {
     '@odata.context': `${req.protocol}://${req.get('host')}/api/1c/$metadata#Document_ЗаявкаНаРемонт`,
     value: mockDb.open_tickets.map((ticket) => ({
@@ -570,7 +904,10 @@ app.get('/api/1c/tickets', (req, res) => {
     })),
   };
   res.json(odataResponse);
-});
+};
+
+app.get('/api/1c/tickets', handle1cTicketsResponse);
+app.post('/api/1c/tickets', handle1cTicketsResponse);
 
 app.get('/api/database', (req, res) => {
   res.json(mockDb);

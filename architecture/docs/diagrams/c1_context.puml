@@ -1,0 +1,23 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_TOP_DOWN()
+
+title C1 — System Context: Text2Business AI-Диспетчер
+
+Person(client, "B2B Клиент / Заказчик", "Отправляет заявки через Telegram, Email, Голос")
+Person(dispatcher, "Диспетчер (HITL)", "Контролирует заявки, дозаполняет факты")
+
+System(dispatcher_app, "AI-Диспетчер (Text2Business)", "Автоматический прием, извлечение фактов и регистрация заявок")
+
+System_Ext(github_models, "GitHub Models API / vLLM", "gpt-4o, qwen3.6-27b, gemma4:e4b, deepseek-reasoner, nemotron")
+System_Ext(erp_1c, "1С:ERP / 1С:Управление Сервисным Центром", "Реестр ЗаявокНаРемонт и ЗаказНарядов по OData")
+System_Ext(telegram, "Telegram Bot API", "Мессенджер канал связи")
+
+Rel(client, telegram, "Шлет обращение", "HTTPS")
+Rel(telegram, dispatcher_app, "Webhook update", "HTTPS")
+Rel(dispatcher, dispatcher_app, "HITL контроль и утверждение", "Web UI")
+Rel(dispatcher_app, github_models, "Извлечение фактов", "HTTPS / JSON Mode")
+Rel(dispatcher_app, erp_1c, "Синхронизация документов", "OData REST")
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,92 @@
+openapi: 3.0.3
+info:
+  title: Text2Business AI-Dispatcher API
+  description: API омниканального AI-диспетчера обращений с поддержкой GitHub Models и 1С OData
+  version: 2.0.0
+servers:
+  - url: http://localhost:3000
+    description: Local development / Cloud Run container
+
+paths:
+  /api/webhooks/dispatch:
+    post:
+      summary: Диспетчеризация входящего обращения (Telegram, Email, Telephony, REST)
+      operationId: dispatchMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channel:
+                  type: string
+                  example: telegram
+                sender:
+                  type: string
+                  example: ООО "СеверФуд" (ИНН 7701234567)
+                text:
+                  type: string
+                  example: Срочно сломался компрессор ХУ-17 на объекте Северный
+      responses:
+        '200':
+          description: Успешная обработка обращения и извлечение фактов
+    get:
+      summary: Проверка статуса и Swagger-тест эндпоинта
+      operationId: getDispatchStatus
+      parameters:
+        - name: channel
+          in: query
+          schema:
+            type: string
+        - name: sender
+          in: query
+          schema:
+            type: string
+        - name: text
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Статус диспетчера или результат выполнения запроса
+
+  /api/llm/config:
+    post:
+      summary: Настройка GITHUB_MODELS_TOKEN и активной нейросети
+      operationId: configureLLM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                model:
+                  type: string
+                  example: gpt-4o
+      responses:
+        '200':
+          description: Успешное обновление токена и модели
+    get:
+      summary: Получение текущего статуса токена и модели
+      operationId: getLLMConfig
+      responses:
+        '200':
+          description: Информация о токене и модели
+
+  /api/1c/tickets:
+    get:
+      summary: Получение списка заявок в формате 1C:ERP OData
+      operationId: get1cTickets
+      responses:
+        '200':
+          description: OData JSON список заявок
+    post:
+      summary: Создание/синхронизация заявки из 1С
+      operationId: post1cTickets
+      responses:
+        '200':
+          description: Подтверждение проведения заявки
