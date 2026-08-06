@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { apiFetch } from '../api';
 import {
   Send,
   Mail,
@@ -43,7 +44,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
   const [emailHost, setEmailHost] = useState('imap.yandex.ru');
   const [emailPort, setEmailPort] = useState('993');
   const [emailAddress, setEmailAddress] = useState('dispatch@severfood.ru');
-  const [emailPassword, setEmailPassword] = useState('sec_app_pass_99812');
+  const [emailPassword, setEmailPassword] = useState('');
   const [showEmailPass, setShowEmailPass] = useState(false);
   const [mcpEnabled, setMcpEnabled] = useState(true);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
@@ -51,7 +52,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
   // Telephony state
   const [sttProvider, setSttProvider] = useState('Yandex SpeechKit v3 (Cloud STT)');
   const [sipTrunk, setSipTrunk] = useState('sip-trunk-7495-msk-01');
-  const [telephonySecret, setTelephonySecret] = useState('tel_sec_key_88192');
+  const [telephonySecret, setTelephonySecret] = useState('');
   const [showTelephonySecret, setShowTelephonySecret] = useState(false);
   const [telephonyStatus, setTelephonyStatus] = useState<string | null>(null);
 
@@ -132,7 +133,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
     setIsVoiceSubmitting(true);
     setVoiceInputStatus('🚀 Отправка распознанной речи в AI-Диспетчер...');
     try {
-      const res = await fetch('/api/webhooks/telephony', {
+      const res = await apiFetch('/api/webhooks/telephony', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -182,7 +183,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
     setIsSavingToken(true);
     setTelegramStatus(null);
     try {
-      const res = await fetch('/api/telegram/config', {
+      const res = await apiFetch('/api/telegram/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: telegramToken, enable_polling: isPolling }),
@@ -204,7 +205,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
   const handleTestEmailWebhook = async () => {
     setEmailStatus('📧 Отправка тестового письма...');
     try {
-      const res = await fetch('/api/webhooks/email', {
+      const res = await apiFetch('/api/webhooks/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -226,7 +227,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
   const handleTestTelephonyWebhook = async () => {
     setTelephonyStatus('📞 Запуск симуляции входящего звонка...');
     try {
-      const res = await fetch('/api/webhooks/telephony', {
+      const res = await apiFetch('/api/webhooks/telephony', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -277,7 +278,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
         }
       }
 
-      const res = await fetch(url, init);
+      const res = await apiFetch(url, init);
       const data = await res.json();
       setApiResponseOutput(JSON.stringify(data, null, 2));
     } catch (err: any) {

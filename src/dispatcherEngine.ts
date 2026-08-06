@@ -20,35 +20,176 @@ export function extractDigits(input: string | null | undefined): string {
   return input.replace(/[^0-9]/g, '');
 }
 
+// --- PII Masking (phones, INN, emails) ---
+const PII_PATTERNS: RegExp[] = [
+  /\+?\d[\d\s\-()]{8,}\d/g, // phone numbers with separators
+  /\b\d{10,12}\b/g, // INN / long numeric IDs
+  /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, // emails
+];
+
+export function maskPii(text: string | null | undefined): string {
+  if (!text) return '';
+  let masked = text;
+  for (const re of PII_PATTERNS) {
+    masked = masked.replace(re, (m) => {
+      const digits = m.replace(/\D/g, '');
+      if (digits.length >= 10 && digits.length <= 12 && m === digits) {
+        return `${m.slice(0, 2)}***${m.slice(-2)}`;
+      }
+      if (m.includes('@')) return `${m[0]}***@***`;
+      if (digits.length >= 8) return `+7***${digits.slice(-2)}`;
+      return m;
+    });
+  }
+  return masked;
+}
+
 // --- Guardrail Inspector ---
 export interface GuardrailCheck {
   triggered: boolean;
   reason?: string;
 }
 
-export function checkGuardrails(text: string): GuardrailCheck {
-  const lower = text.toLowerCase();
-  const injectionPatterns = [
-    'system override',
-    'set sla =',
-    'set sla',
-    'ignore previous instructions',
-    'перенастройте серверы',
-    'удали бд',
-    'drop table',
-    'delete from',
-  ];
+const INJECTION_SIGNATURES = [
+  'system override',
+  'ignore previous instructions',
+  'ignore all previous',
+  'ignore the system',
+  'forget everything',
+  'не следуй инструкциям',
+  'игнорируй предыдущие',
+  'игнорируй инструкции',
+  'не учитывай правила',
+  'обойди защиту',
+  'отключи защиту',
+  'перепиши системный промпт',
+  'set sla',
+  'sla 5 минут',
+  'sla 5 minutes',
+  'sla 1 минуту',
+  'sla 1 minute',
+  'назначь sla',
+  'измени договор',
+  'искази условия',
+  'перенастройте серверы',
+  'удали бд',
+  'удали базу',
+  'drop table',
+  'delete from',
+  'truncate table',
+];
 
-  for (const pattern of injectionPatterns) {
-    if (lower.includes(pattern)) {
+export function checkGuardrails(text: string): GuardrailCheck {
+  const normalized = (text || '')
+    .toLowerCase()
+    .replace(/[!"#$%&'()*+,./:;<=>?@[\]^_`{|}~\-—–]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  for (const signature of INJECTION_SIGNATURES) {
+    if (normalized.includes(signature)) {
       return {
         triggered: true,
-        reason: `Обнаружена попытка внедрения инструкций / искажения условий ("${pattern}")`,
+        reason: `Обнаружена попытка внедрения инструкций / искажения условий ("${signature}")`,
       };
     }
   }
 
   return { triggered: false };
+}
+
+// --- SLA: business-window aware deadline calculation ---
+const SITE_TZ_OFFSET_MINUTES: Record<string, number> = {
+  'Europe/Moscow': 180,
+  'Asia/Yekaterinburg': 300,
+};
+
+export function siteTzOffsetMinutes(timezone: string | undefined): number {
+  if (!timezone) return 180;
+  return SITE_TZ_OFFSET_MINUTES[timezone] ?? 180;
+}
+
+function formatHM(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+    .toString()
+    .padStart(2, '0');
+  const m = (minutes % 60).toString().padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+function parseWorkingWindow(
+  workingHours: string | undefined
+): { startMin: number; endMin: number; weekdaysOnly: boolean; is24x7: boolean } {
+  const text = (workingHours || '').toLowerCase();
+  if (/24x7|круглосуточно|round the clock|always/.test(text)) {
+    return { startMin: 0, endMin: 1440, weekdaysOnly: false, is24x7: true };
+  }
+  const m = text.match(/(\d{1,2})[:.]?(\d{2})?\s*[-–—]\s*(\d{1,2})[:.]?(\d{2})?/);
+  const weekdaysOnly = /пн|понедельник|mon|пят|fri|weekday/i.test(text);
+  if (m) {
+    const startMin = Number(m[1]) * 60 + (m[2] ? Number(m[2]) : 0);
+    const endMin = Number(m[3]) * 60 + (m[4] ? Number(m[4]) : 0);
+    return { startMin, endMin: endMin > startMin ? endMin : endMin + 1440, weekdaysOnly, is24x7: false };
+  }
+  return { startMin: 9 * 60, endMin: 18 * 60, weekdaysOnly: true, is24x7: false };
+}
+
+function addServiceMinutes(
+  baseUtcMs: number,
+  minutes: number,
+  offsetMin: number,
+  win: { startMin: number; endMin: number; weekdaysOnly: boolean; is24x7: boolean }
+): number {
+  if (win.is24x7) return baseUtcMs + minutes * 60000;
+  let lm = Math.floor(baseUtcMs / 60000) + offsetMin;
+  let remaining = minutes;
+  while (remaining > 0) {
+    const dayIndex = Math.floor(lm / 1440);
+    const jsDow = (((dayIndex + 4) % 7) + 7) % 7; // 0=Sun..4=Thu (1970-01-01 was Thursday)
+    const minuteOfDay = ((lm % 1440) + 1440) % 1440;
+    if (win.weekdaysOnly && (jsDow === 0 || jsDow === 6)) {
+      const toMonday = jsDow === 6 ? 2 : 1;
+      lm += toMonday * 1440 + (win.startMin - minuteOfDay);
+      continue;
+    }
+    if (minuteOfDay < win.startMin) {
+      lm += win.startMin - minuteOfDay;
+      continue;
+    }
+    if (minuteOfDay >= win.endMin) {
+      lm += 1440 - minuteOfDay + win.startMin;
+      continue;
+    }
+    const available = win.endMin - minuteOfDay;
+    const take = Math.min(available, remaining);
+    lm += take;
+    remaining -= take;
+  }
+  return (lm - offsetMin) * 60000;
+}
+
+export function calculateSlaDeadline(
+  incomingTimeIso: string,
+  slaMinutes: number,
+  workingHours: string | undefined,
+  timezone: string | undefined
+): { deadlineIso: string; working_window: string } {
+  const baseUtcMs = new Date(incomingTimeIso).getTime();
+  if (isNaN(baseUtcMs)) {
+    return {
+      deadlineIso: new Date(Date.now() + slaMinutes * 60000).toISOString(),
+      working_window: workingHours || 'default',
+    };
+  }
+  const offset = siteTzOffsetMinutes(timezone);
+  const win = parseWorkingWindow(workingHours);
+  const deadlineUtcMs = addServiceMinutes(baseUtcMs, slaMinutes, offset, win);
+  return {
+    deadlineIso: new Date(deadlineUtcMs).toISOString(),
+    working_window: win.is24x7
+      ? '24x7'
+      : `${formatHM(win.startMin)}-${formatHM(win.endMin)}${win.weekdaysOnly ? ' Пн-Пт' : ''}`,
+  };
 }
 
 // --- Rule-Based / Fallback Fact Extractor ---
@@ -194,7 +335,7 @@ export function runDeterministicDispatch(
       timestamp: new Date().toISOString().split('T')[1].slice(0, 8),
       duration_ms: Math.round(duration_ms),
       status,
-      details,
+      details: JSON.parse(maskPii(JSON.stringify(details ?? {}))),
     });
   };
 
@@ -266,7 +407,17 @@ export function runDeterministicDispatch(
 
   const targetAssetDigits = extractDigits(facts.asset_code.value);
 
-  if (matchedSites.length === 1) {
+  const addressMatchedSites = db.sites.filter((s) => {
+    const sAddr = s.address.toLowerCase();
+    return siteAddr && sAddr.includes(siteAddr);
+  });
+
+  if (addressMatchedSites.length === 1) {
+    selectedSite = addressMatchedSites[0];
+    reasoning.push(
+      `Объект однозначно определён по адресу: "${selectedSite.customer_name}" (${selectedSite.address}).`
+    );
+  } else if (matchedSites.length === 1) {
     selectedSite = matchedSites[0];
     reasoning.push(`Объект однозначно определён: "${selectedSite.customer_name}" (${selectedSite.address}).`);
   } else if (matchedSites.length > 1) {
@@ -294,6 +445,39 @@ export function runDeterministicDispatch(
 
     if (!selectedSite) {
       reasoning.push(`Не удалось однозначно привязать объект среди нескольких локаций клиента.`);
+    }
+  }
+
+  // TC-02: resolve site through a recent open ticket when customer/address are absent
+  if (!selectedSite && targetAssetDigits) {
+    const incomingTs = new Date(incomingTimeIso).getTime();
+    const recentOpen = db.open_tickets
+      .map((t) => {
+        const asset = db.assets.find((a) => a.asset_id === t.asset_id) || null;
+        const created = new Date(t.created_at).getTime();
+        const withinWindow =
+          !isNaN(created) && !isNaN(incomingTs) && incomingTs - created >= 0 && incomingTs - created <= 24 * 3600 * 1000;
+        return { ticket: t, asset, withinWindow };
+      })
+      .filter((r) => r.asset && extractDigits(r.asset.local_code) === targetAssetDigits && r.withinWindow);
+
+    const distinctSiteIds = [...new Set(recentOpen.map((r) => r.asset!.site_id))];
+    if (recentOpen.length >= 1 && distinctSiteIds.length === 1) {
+      const hit = recentOpen[0];
+      selectedSite = db.sites.find((s) => s.site_id === hit.asset!.site_id) || null;
+      selectedAsset = hit.asset;
+      matchingOpenTickets = recentOpen.map((r) => r.ticket);
+      reasoning.push(
+        `Объект определён через открытую заявку ${hit.ticket.ticket_id} (окно дедупликации 24ч): ${
+          selectedSite?.address || hit.asset!.site_id
+        }, оборудование "${hit.asset!.local_code}".`
+      );
+    } else if (recentOpen.length > 1) {
+      reasoning.push(
+        `По коду оборудования найдено несколько открытых заявок (${recentOpen.length}) на разных объектах — требуется уточнение у клиента.`
+      );
+    } else {
+      reasoning.push('Открытых заявок по коду оборудования в окне 24ч не найдено.');
     }
   }
 
@@ -335,18 +519,25 @@ export function runDeterministicDispatch(
   let matchedContract: Contract | null = null;
   let slaMinutes = 240; // Default 4 hrs
   let slaDeadlineIso = new Date(Date.now() + 4 * 3600 * 1000).toISOString();
-
-  const baseTime = new Date(incomingTimeIso);
+  let slaWorkingWindow = 'Пн-Пт 09:00-18:00 (default)';
 
   if (selectedSite) {
     matchedContract = db.contracts.find((c) => c.site_id === selectedSite!.site_id) || null;
     if (matchedContract) {
       slaMinutes = matchedContract.sla_minutes;
-      const deadlineDate = new Date(baseTime.getTime() + slaMinutes * 60 * 1000);
-      slaDeadlineIso = deadlineDate.toISOString();
-      reasoning.push(
-        `Договор "${matchedContract.plan}": SLA отклика ${slaMinutes} минут (${matchedContract.working_hours}). Неустойка: ${matchedContract.penalty_per_hour}.`
+      const calc = calculateSlaDeadline(
+        incomingTimeIso,
+        slaMinutes,
+        matchedContract.working_hours,
+        selectedSite.timezone
       );
+      slaDeadlineIso = calc.deadlineIso;
+      slaWorkingWindow = calc.working_window;
+      reasoning.push(
+        `Договор "${matchedContract.plan}": SLA отклика ${slaMinutes} минут, рабочее окно ${slaWorkingWindow} (${matchedContract.working_hours}). Неустойка: ${matchedContract.penalty_per_hour}.`
+      );
+    } else {
+      reasoning.push('Договор на объект не найден — применён стандартный SLA 4 часа.');
     }
   }
 
@@ -354,6 +545,7 @@ export function runDeterministicDispatch(
     site_id: selectedSite?.site_id || null,
     contract_plan: matchedContract?.plan || 'Standard (Default)',
     sla_minutes: slaMinutes,
+    sla_working_window: slaWorkingWindow,
     calculated_sla_deadline: slaDeadlineIso,
   });
 
@@ -462,8 +654,8 @@ export function runDeterministicDispatch(
   });
 
   const missingInfo: string[] = [];
-  if (!facts.site_info.value) missingInfo.push('Адрес объекта');
-  if (!facts.asset_code.value) missingInfo.push('Код оборудования');
+  if (!selectedSite) missingInfo.push('Адрес объекта');
+  if (!selectedAsset) missingInfo.push('Код оборудования');
 
   return {
     status: resultStatus,

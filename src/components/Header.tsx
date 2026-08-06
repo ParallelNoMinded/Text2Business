@@ -168,7 +168,25 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Каналы</span>
             </button>
 
-            {/* 3. Диспетчер (Pulsing Red Attention Badge if pending tickets exist) */}
+            {/* 3. Демо-стенд */}
+            <button
+              id="header-tab-console"
+              onClick={() => setActiveTab('console')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+                activeTab === 'console'
+                  ? isDark
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
+                    : 'bg-blue-950 text-white font-extrabold shadow-sm'
+                  : isDark
+                  ? 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
+              }`}
+            >
+              <Zap className="h-3.5 w-3.5" />
+              <span>Демо-стенд</span>
+            </button>
+
+            {/* 4. Диспетчер (Pulsing Red Attention Badge if pending tickets exist) */}
             <button
               id="header-tab-operator"
               onClick={() => setActiveTab('operator')}
@@ -193,7 +211,7 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
-            {/* 4. Реестр */}
+            {/* 5. Реестр */}
             <button
               id="header-tab-database"
               onClick={() => setActiveTab('database')}
@@ -211,7 +229,7 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Реестр</span>
             </button>
 
-            {/* 5. Логи & Трейсы */}
+            {/* 6. Логи & Трейсы */}
             <button
               id="header-tab-logs-traces"
               onClick={() => setActiveTab('logs_traces')}
@@ -280,24 +298,6 @@ export const Header: React.FC<HeaderProps> = ({
               <span>{githubToken ? 'G_TOKEN: ✅' : 'G_TOKEN: 🔑'}</span>
             </button>
 
-            <button
-              id="header-dryrun-toggle"
-              type="button"
-              onClick={() => setIsDryRun(!isDryRun)}
-              className={`px-2.5 py-1 rounded-lg border font-mono font-bold text-[11px] transition ${
-                isDryRun
-                  ? isDark
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                    : 'bg-amber-100 text-amber-950 border-amber-400 font-extrabold'
-                  : isDark
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                  : 'bg-emerald-100 text-emerald-950 border-emerald-400 font-extrabold'
-              }`}
-            >
-              {isDryRun ? 'ТЕСТОВЫЙ РЕЖИМ' : 'ПРОМ 1С'}
-            </button>
-
-            {/* Book Icon Button to Open Architecture Report */}
             <button
               id="header-architecture-btn"
               onClick={() => setActiveTab('architecture')}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Terminal,
   Activity,
@@ -16,96 +16,59 @@ import {
   BarChart2,
 } from 'lucide-react';
 import { SystemLogEntry } from '../types';
+import { apiFetch } from '../api';
+import { DatabaseSchema } from '../mockDb';
 
 interface LogsTracesViewProps {
   theme?: 'dark' | 'light';
+  db?: DatabaseSchema | null;
 }
 
-const INITIAL_LOGS: SystemLogEntry[] = [
-  {
-    id: 'log-101',
-    timestamp: '2026-08-01T17:04:10.120Z',
-    level: 'SUCCESS',
-    channel: 'TELEGRAM',
-    message: '[Telegram Bot] Inbound update received from chat_id 99182371. Text: "Срочно! ХУ-17 уходит в аварию"',
-    duration_ms: 12,
-  },
-  {
-    id: 'log-102',
-    timestamp: '2026-08-01T17:04:10.145Z',
-    level: 'INFO',
-    channel: 'SYSTEM',
-    message: '[PII Guardrails] Masked phone numbers and INN string in raw input context.',
-    duration_ms: 4,
-  },
-  {
-    id: 'log-103',
-    timestamp: '2026-08-01T17:04:10.580Z',
-    level: 'SUCCESS',
-    channel: 'SYSTEM',
-    message: '[Gemini 3.6 Flash] Extracted facts: customer_name="СеверФуд", site_info="S-MSK-01", asset_code="ХУ-17"',
-    duration_ms: 435,
-  },
-  {
-    id: 'log-104',
-    timestamp: '2026-08-01T17:04:10.605Z',
-    level: 'SUCCESS',
-    channel: '1C',
-    message: '[1C:ERP OData Engine] Registered ticket T-10294. Priority: HIGH. SLA Deadline: +2h.',
-    duration_ms: 22,
-  },
-  {
-    id: 'log-105',
-    timestamp: '2026-08-01T17:03:50.800Z',
-    level: 'WARN',
-    channel: 'EMAIL',
-    message: '[IMAP Service] Inbound email without local asset code. Flagged for Operator HITL clarification.',
-    duration_ms: 18,
-  },
-  {
-    id: 'log-106',
-    timestamp: '2026-08-01T17:02:12.300Z',
-    level: 'SUCCESS',
-    channel: 'VOICE',
-    message: '[Yandex SpeechKit v3] Converted 14s voice transcript to text. Caller identified: +7 999 111-2233.',
-    duration_ms: 610,
-  },
-  {
-    id: 'log-107',
-    timestamp: '2026-08-01T17:00:00.000Z',
-    level: 'INFO',
-    channel: 'REST',
-    message: '[Swagger REST API] Health check endpoint /api/health called from internal monitor.',
-    duration_ms: 2,
-  },
-];
-
-export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark' }) => {
+export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', db }) => {
   const isDark = theme === 'dark';
-  const [logFilter, setLogFilter] = useState<'ALL' | 'TELEGRAM' | 'EMAIL' | 'VOICE' | 'SYSTEM' | '1C'>('ALL');
+  const [logFilter, setLogFilter] = useState<'ALL' | 'TELEGRAM' | 'EMAIL' | 'VOICE' | 'SYSTEM' | '1C' | 'REST'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [logs, setLogs] = useState<SystemLogEntry[]>(INITIAL_LOGS);
+  const [logs, setLogs] = useState<SystemLogEntry[]>([]);
   const [activeTab, setActiveTab] = useState<'logs' | 'traces' | 'analytics'>('logs');
+
+  const fetchLogs = useCallback(async () => {
+    try {
+      const res = await apiFetch('/api/logs');
+      if (res.ok) {
+        const data = await res.json();
+        setLogs(data.logs || []);
+      }
+    } catch (err) {
+      // backend not available — keep current list
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 3000);
+    return () => clearInterval(interval);
+  }, [fetchLogs]);
 
   const filteredLogs = logs.filter((l) => {
     const matchesChannel = logFilter === 'ALL' || l.channel === logFilter;
     const matchesSearch =
       l.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.channel.toLowerCase().includes(searchTerm.toLowerCase());
+      (l.channel || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesChannel && matchesSearch;
   });
 
-  const handleAddSimulatedLog = () => {
-    const newLog: SystemLogEntry = {
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      level: 'SUCCESS',
-      channel: 'TELEGRAM',
-      message: `[Live Polling] Periodic update sync complete. Clean status.`,
-      duration_ms: Math.floor(Math.random() * 20 + 5),
-    };
-    setLogs((prev) => [newLog, ...prev]);
+  const handleRefreshLogs = () => {
+    fetchLogs();
   };
+
+  const totalRequests = (db?.open_tickets?.length || 0) + (db?.closed_tickets?.length || 0);
+  const pendingHITL = (db?.open_tickets || []).filter(
+    (t) => t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0)
+  ).length;
+  const autoRate = totalRequests > 0 ? Math.round(((totalRequests - pendingHITL) / totalRequests) * 1000) / 10 : 100;
+  const avgLatencyMs = logs.length > 0
+    ? Math.round(logs.reduce((acc, l) => acc + (l.duration_ms || 0), 0) / logs.length)
+    : 0;
 
   return (
     <div id="logs-traces-page" className="space-y-6">
@@ -181,33 +144,30 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark' }
         </div>
       </div>
 
-      {/* METRICS SUMMARY CARDS */}
+      {/* METRICS SUMMARY CARDS (по данным прототипа) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
         <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Всего Обращений</div>
-          <div className={`text-xl font-black ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>1,284</div>
-          <div className="text-[10px] text-emerald-600 font-extrabold mt-1 flex items-center space-x-1">
-            <TrendingUp className="h-3 w-3" />
-            <span>+14.2% за неделю</span>
-          </div>
+          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Всего Заявок</div>
+          <div className={`text-xl font-black ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>{totalRequests}</div>
+          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>открыто: {db?.open_tickets?.length || 0} • закрыто: {db?.closed_tickets?.length || 0}</div>
         </div>
 
         <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>SLA Соблюдение</div>
-          <div className={`text-xl font-black ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>99.4%</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>Средний дедлайн 1.8h</div>
+          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Авто-Диспетчеризация</div>
+          <div className={`text-xl font-black ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{autoRate}%</div>
+          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>SLA-дедлайн по контракту + бизнес-часам</div>
         </div>
 
         <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Доля Эскалаций HITL</div>
-          <div className={`text-xl font-black ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>1.8%</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>98.2% Авто-создание</div>
+          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Ожидают HITL</div>
+          <div className={`text-xl font-black ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>{pendingHITL}</div>
+          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>требуют уточнения диспетчера</div>
         </div>
 
         <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Средний Latency AI</div>
-          <div className={`text-xl font-black ${isDark ? 'text-purple-400' : 'text-purple-900'}`}>482 ms</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>Gemini 3.6 Flash Engine</div>
+          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Средний Latency</div>
+          <div className={`text-xl font-black ${isDark ? 'text-purple-400' : 'text-purple-900'}`}>{avgLatencyMs} ms</div>
+          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>по последним событиям логов</div>
         </div>
       </div>
 
@@ -234,6 +194,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark' }
                 <option value="EMAIL">Email</option>
                 <option value="VOICE">Телефония</option>
                 <option value="SYSTEM">Система / AI</option>
+                <option value="REST">REST / Диспетчер</option>
                 <option value="1C">1C:ERP</option>
               </select>
             </div>
@@ -251,7 +212,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark' }
               </div>
 
               <button
-                onClick={handleAddSimulatedLog}
+                onClick={handleRefreshLogs}
                 className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold whitespace-nowrap flex items-center space-x-1"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
@@ -262,6 +223,11 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark' }
 
           {/* Terminal Console Stream */}
           <div className="font-mono text-xs space-y-2 max-h-96 overflow-y-auto pr-2">
+            {filteredLogs.length === 0 && (
+              <div className="p-6 text-center text-slate-400 border border-dashed border-slate-700 rounded-xl">
+                Событий пока нет. Выполните обращение через демо-стенд (вкладка «Диспетчер») — логи появятся здесь из GET /api/logs.
+              </div>
+            )}
             {filteredLogs.map((log) => (
               <div
                 key={log.id}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Key, ShieldCheck, CheckCircle, AlertCircle, X, Eye, EyeOff, Zap } from 'lucide-react';
+import { apiFetch, getDispatchToken, setDispatchToken } from '../api';
 
 interface GithubTokenModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
   const [showToken, setShowToken] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [inputDispatchToken, setInputDispatchToken] = useState(getDispatchToken());
 
   useEffect(() => {
     setInputToken(token);
@@ -36,9 +38,10 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
     try {
       const trimmed = inputToken.trim();
       onSaveToken(trimmed);
+      setDispatchToken(inputDispatchToken);
 
       // Post to backend config
-      const res = await fetch('/api/llm/config', {
+      const res = await apiFetch('/api/llm/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: trimmed, model: selectedModel }),
@@ -63,7 +66,7 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
   const handleClear = () => {
     setInputToken('');
     onSaveToken('');
-    fetch('/api/llm/config', {
+    apiFetch('/api/llm/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: '', model: selectedModel }),
@@ -137,6 +140,26 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
             </div>
             <p className="mt-1.5 text-[11px] text-slate-400">
               Если токен установлен в переменных окружения сервера, поле можно оставить пустым или ввести собственный ключ.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-bold mb-1.5">
+              X-Dispatch-Token (заголовок защиты API):
+            </label>
+            <input
+              type="text"
+              value={inputDispatchToken}
+              onChange={(e) => setInputDispatchToken(e.target.value)}
+              placeholder="dev-dispatch-token"
+              className={`w-full p-3 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 ${
+                isDark
+                  ? 'bg-[#030712] border-slate-700 text-cyan-300 focus:ring-cyan-500/50'
+                  : 'bg-slate-50 border-slate-300 text-slate-900 focus:ring-blue-500'
+              }`}
+            />
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              Значение по умолчанию для прототипа — <span className="font-bold">dev-dispatch-token</span> (переопределяется env <span className="font-bold">DISPATCH_TOKEN</span>). Хранится только в sessionStorage.
             </p>
           </div>
 

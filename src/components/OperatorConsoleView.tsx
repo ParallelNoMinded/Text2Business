@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { DatabaseSchema } from '../mockDb';
 import { Ticket, TicketMessage } from '../types';
+import { apiFetch } from '../api';
 
 interface OperatorConsoleViewProps {
   db: DatabaseSchema | null;
@@ -71,7 +72,7 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
     setStatusMessage(null);
 
     try {
-      const res = await fetch('/api/operator/reply', {
+      const res = await apiFetch('/api/operator/reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
