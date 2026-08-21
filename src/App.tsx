@@ -14,12 +14,23 @@ import { ExecutionTraceTimeline } from './components/ExecutionTraceTimeline';
 import { SCENARIO_PRESETS } from './scenarios';
 import { ProcessingResult } from './types';
 import { apiFetch } from './api';
+import {
+  startUXSession,
+  startDispatchMeasurement,
+  markDecisionReceived,
+  completeUXScenario,
+  registerUXClick,
+} from './uxMetrics';
 import { INITIAL_DATABASE, DatabaseSchema } from './mockDb';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('home');
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+const [activeTab, setActiveTab] = useState<TabType>('home');
+const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [geminiActive, setGeminiActive] = useState(true);
+  useEffect(() => {
+    startUXSession();
+  }, []);
+
   const [selectedModel, setSelectedModel] = useState<string>('gpt-4o');
   const [isDryRun, setIsDryRun] = useState<boolean>(true);
 
@@ -78,6 +89,7 @@ export default function App() {
   };
 
   const handleRunDispatch = async () => {
+    startDispatchMeasurement();
     if (!rawText.trim()) return;
     setIsRunningDispatch(true);
     setCommitSuccessMsg(null);
@@ -94,6 +106,7 @@ export default function App() {
         }),
       });
       const data = await res.json();
+	markDecisionReceived();
       if (!res.ok) {
         setCommitSuccessMsg(`❌ Ошибка: ${data.error || res.status}`);
         return;
@@ -124,6 +137,7 @@ export default function App() {
         setCommitSuccessMsg(`❌ Коммит отклонен: ${data.error || res.status}`);
         return;
       }
+	completeUXScenario();
       setCommitSuccessMsg(`✅ Заявка ${data.ticket.ticket_id} подтверждена оператором и сохранена в БД (${data.action}).`);
       await fetchDatabase();
     } catch (err: any) {
