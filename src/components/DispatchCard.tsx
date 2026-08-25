@@ -42,11 +42,7 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
   if (!result) {
     return (
       <div
-        className={`oc-card p-5 text-center text-xs font-mono ${
-          isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
-            : 'bg-white border-slate-300 text-slate-700 font-semibold shadow-sm'
-        }`}
+        className={`oc-card p-5 text-center text-xs font-mono text-oc-muted`}
       >
         // Ожидание выполнения пайплайна...
       </div>
@@ -81,23 +77,15 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
   const getActionBadgeClass = (action: string) => {
     switch (action) {
       case 'CREATE_TICKET':
-        return isDark
-          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-          : 'bg-emerald-100 text-emerald-950 border-emerald-400 font-extrabold';
+        return 'bg-oc-success/10 text-oc-success border-oc-success/30';
       case 'UPDATE_TICKET':
-        return isDark
-          ? 'bg-amber-500/10 text-amber-300 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-          : 'bg-amber-100 text-amber-950 border-amber-400 font-extrabold';
+        return 'bg-oc-warning/10 text-oc-warning border-oc-warning/30';
       case 'REQUEST_CLARIFICATION':
-        return isDark
-          ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-          : 'bg-blue-100 text-blue-950 border-blue-400 font-extrabold';
+        return 'bg-oc-accent/10 text-oc-accent border-oc-accent/30';
       case 'ESCALATE_TO_HUMAN':
-        return isDark
-          ? 'bg-purple-500/10 text-purple-300 border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
-          : 'bg-purple-100 text-purple-950 border-purple-400 font-extrabold';
+        return 'bg-oc-ai/10 text-oc-ai border-oc-ai/30';
       default:
-        return 'bg-red-500/10 text-red-300 border-red-500/40';
+        return 'bg-oc-critical/10 text-oc-critical border-oc-critical/30';
     }
   };
 
@@ -119,11 +107,7 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
     if (status === 'REQUIRES_HUMAN_CONFIRMATION') {
       return (
         <span
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-mono font-bold text-xs border ${
-            isDark
-              ? 'bg-amber-950/80 text-amber-300 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
-              : 'bg-amber-100 text-amber-950 border-amber-400 font-extrabold'
-          }`}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-mono font-medium text-xs border bg-oc-warning/10 text-oc-warning border-oc-warning/30`}
         >
           <AlertTriangle className="h-4 w-4" />
           ТРЕБУЕТСЯ ПОДТВЕРЖДЕНИЕ
@@ -132,11 +116,7 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
     }
     return (
       <span
-        className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-mono font-bold text-xs border ${
-          isDark
-            ? 'bg-red-950/80 text-red-300 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.2)]'
-            : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
-        }`}
+        className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-mono font-medium text-xs border bg-oc-critical/10 text-oc-critical border-oc-critical/30`}
       >
         <XCircle className="h-4 w-4" />
         ЗАБЛОКИРОВАНО СИСТЕМОЙ ЗАЩИТЫ
@@ -147,18 +127,18 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
   return (
     <div
       id="dispatch-decision-card"
-      className="oc-card p-4 space-y-4"
+      className="oc-card p-5 space-y-4"
     >
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-700/30">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-oc-border">
         <div>
-          <div className="flex items-center space-x-2">
-            <Zap className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-oc-accent" />
+            <h2 className="text-xs font-mono font-medium uppercase tracking-wider text-oc-accent">
               STEP 2 — Decision
             </h2>
           </div>
-          <p className={`text-xs mt-0.5 font-sans ${isDark ? 'text-slate-400' : 'text-slate-700 font-medium'}`}>
+          <p className="text-xs mt-1 font-sans text-oc-secondary">
             Решение графа состояний на основе извлеченных фактов и сверки с реестром.
           </p>
         </div>
@@ -167,30 +147,26 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
       </div>
 
       {/* Main Action & SLA Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Business Action Box */}
         <div
-          className={`border rounded-xl p-3 flex flex-col justify-between shadow-inner ${
-            isDark
-              ? 'bg-[#020204]/90 border-cyan-500/20'
-              : 'bg-slate-50 border-slate-300'
-          }`}
+          className={`border rounded-lg p-3 flex flex-col justify-between bg-oc-bg-2 border-oc-border`}
         >
-          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
+          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-oc-accent">
             Рекомендуемое Бизнес-Действие
           </span>
           <div className="my-2">
             <span
-              className={`inline-block px-3 py-1.5 rounded-lg border text-xs font-extrabold font-mono tracking-wider ${getActionBadgeClass(
+              className={`inline-block px-3 py-1.5 rounded-md border text-xs font-semibold font-mono tracking-wider ${getActionBadgeClass(
                 result.recommended_action
               )}`}
             >
               {formatActionLabel(result.recommended_action)}
             </span>
           </div>
-          <div className="text-[11px] font-mono flex items-center justify-between pt-2 border-t border-slate-700/20">
-            <span className={isDark ? 'text-slate-400' : 'text-slate-700 font-semibold'}>Уверенность AI:</span>
-            <span className={`font-mono font-extrabold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
+          <div className="text-[11px] font-mono flex items-center justify-between pt-2 border-t border-oc-border">
+            <span className="text-oc-secondary">Уверенность AI:</span>
+            <span className="font-mono font-semibold text-oc-accent">
               {Math.round(result.confidence_score * 100)}%
             </span>
           </div>
@@ -198,31 +174,27 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
 
         {/* Matched Asset & Site */}
         <div
-          className={`border rounded-xl p-3 space-y-1.5 shadow-inner ${
-            isDark
-              ? 'bg-[#020204]/90 border-cyan-500/20'
-              : 'bg-slate-50 border-slate-300'
-          }`}
+          className={`border rounded-lg p-3 space-y-2 bg-oc-bg-2 border-oc-border`}
         >
-          <div className={`flex items-center space-x-1.5 text-[10px] font-mono font-bold uppercase ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            <Building className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
+          <div className="flex items-center gap-1.5 text-[10px] font-mono font-medium uppercase text-oc-accent">
+            <Building className="h-3.5 w-3.5 text-oc-accent" />
             <span>Привязка в БД</span>
           </div>
           <div>
-            <p className={`text-xs font-bold font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <p className="text-xs font-semibold font-mono text-oc-text">
               {result.matched_site ? (
                 `${result.matched_site.customer_name} (${result.matched_site.site_id})`
               ) : (
-                <span className="text-amber-600 font-sans font-bold">Объект не привязан</span>
+                <span className="text-oc-warning font-sans font-semibold">Объект не привязан</span>
               )}
             </p>
-            <p className={`text-[11px] line-clamp-1 mt-0.5 font-sans ${isDark ? 'text-slate-400' : 'text-slate-700 font-medium'}`}>
+            <p className="text-[11px] line-clamp-1 mt-0.5 font-sans text-oc-secondary">
               {result.matched_site?.address || 'Необходим запрос уточнения'}
             </p>
           </div>
-          <div className="pt-1.5 border-t border-slate-700/20 text-[11px] font-mono flex items-center justify-between">
-            <span className={isDark ? 'text-slate-300' : 'text-slate-700 font-semibold'}>Оборудование:</span>
-            <span className={`font-mono font-extrabold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
+          <div className="pt-1.5 border-t border-oc-border text-[11px] font-mono flex items-center justify-between">
+            <span className="text-oc-secondary">Оборудование:</span>
+            <span className="font-mono font-semibold text-oc-accent">
               {result.matched_asset ? result.matched_asset.local_code : 'Не определено'}
             </span>
           </div>
@@ -230,24 +202,20 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
 
         {/* SLA & Deadlines */}
         <div
-          className={`border rounded-xl p-3 space-y-1.5 shadow-inner ${
-            isDark
-              ? 'bg-[#020204]/90 border-cyan-500/20'
-              : 'bg-slate-50 border-slate-300'
-          }`}
+          className={`border rounded-lg p-3 space-y-2 bg-oc-bg-2 border-oc-border`}
         >
-          <div className={`flex items-center space-x-1.5 text-[10px] font-mono font-bold uppercase ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            <Clock className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
+          <div className="flex items-center gap-1.5 text-[10px] font-mono font-medium uppercase text-oc-accent">
+            <Clock className="h-3.5 w-3.5 text-oc-accent" />
             <span>SLA и Сроки (Договор)</span>
           </div>
           <div>
-            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono">
+            <p className="text-xs font-semibold text-oc-warning font-mono">
               План: {result.matched_contract?.plan || 'Gold (24x7)'}
             </p>
-            <p className={`text-[11px] mt-0.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
+            <p className="text-[11px] mt-0.5 font-mono text-oc-secondary">
               Дедлайн:{' '}
               {result.ticket_payload?.sla_deadline ? (
-                <span className={`font-mono font-extrabold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
+                <span className="font-mono font-semibold text-oc-accent">
                   {new Date(result.ticket_payload.sla_deadline).toLocaleTimeString('ru-RU', {
                     hour: '2-digit',
                     minute: '2-digit',
@@ -258,9 +226,9 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
               )}
             </p>
           </div>
-          <div className="pt-1.5 border-t border-slate-700/20 text-[11px] font-mono flex items-center justify-between">
-            <span className={isDark ? 'text-slate-400' : 'text-slate-700 font-semibold'}>Неустойка:</span>
-            <span className="font-mono text-xs text-rose-600 dark:text-rose-400 font-extrabold">
+          <div className="pt-1.5 border-t border-oc-border text-[11px] font-mono flex items-center justify-between">
+            <span className="text-oc-secondary">Неустойка:</span>
+            <span className="font-mono text-xs text-oc-critical font-semibold">
               {result.matched_contract?.penalty_per_hour || '50 000 руб./час'}
             </span>
           </div>
@@ -269,20 +237,16 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
 
       {/* Decision Rationale */}
       <div
-        className={`border rounded-xl p-3 ${
-          isDark
-            ? 'bg-[#020204]/80 border-cyan-500/20'
-            : 'bg-slate-50 border-slate-300'
-        }`}
+        className={`border rounded-lg p-3 bg-oc-bg-2 border-oc-border`}
       >
-        <h3 className={`text-[10px] font-mono font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-          <Shield className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
+        <h3 className="text-[10px] font-mono font-medium uppercase tracking-wider mb-2 flex items-center gap-1.5 text-oc-accent">
+          <Shield className="h-3.5 w-3.5 text-oc-accent" />
           STEP 3 — AI Reasoning
         </h3>
-        <ul className={`space-y-1 text-xs font-sans ${isDark ? 'text-slate-300' : 'text-slate-800 font-medium'}`}>
+        <ul className="space-y-1.5 text-xs font-sans text-oc-text">
           {result.decision_reasoning.map((reason, idx) => (
-            <li key={idx} className="flex items-start space-x-2">
-              <span className={`h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0 ${isDark ? 'bg-cyan-400' : 'bg-blue-900'}`}></span>
+            <li key={idx} className="flex items-start gap-2">
+              <span className="h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0 bg-oc-accent"></span>
               <span className="leading-relaxed">{reason}</span>
             </li>
           ))}
@@ -291,52 +255,40 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
 
       {/* AI Customer Reply Draft */}
       <div
-        className={`border rounded-xl p-3 ${
-          isDark
-            ? 'bg-[#020204]/80 border-cyan-500/20'
-            : 'bg-slate-50 border-slate-300'
-        }`}
+        className={`border rounded-lg p-3 bg-oc-bg-2 border-oc-border`}
       >
-        <div className="flex items-center justify-between mb-1.5">
-          <label className={`text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            <Send className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-[10px] font-mono font-medium uppercase tracking-wider flex items-center gap-1.5 text-oc-accent">
+            <Send className="h-3.5 w-3.5 text-oc-accent" />
             STEP 4 — Response
           </label>
           <button
             type="button"
             onClick={handleCopyReply}
-            className={`flex items-center space-x-1 px-2.5 py-1 text-[10px] font-mono border rounded-lg transition ${
-              isDark
-                ? 'text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/10'
-                : 'text-slate-800 hover:text-blue-950 bg-white hover:bg-slate-100 border-slate-300 font-bold'
-            }`}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-mono border rounded-md transition bg-oc-bg-3 hover:bg-oc-hover border-oc-border text-oc-secondary hover:text-oc-text"
           >
             {copied ? (
               <>
-                <Check className={`h-3 w-3 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-                <span className={`font-mono ${isDark ? 'text-cyan-400' : 'text-blue-900'}`}>Скопировано</span>
+                <Check className="h-3 w-3 text-oc-accent" />
+                <span className="font-mono text-oc-accent">Скопировано</span>
               </>
             ) : (
               <>
-                <Copy className="h-3 w-3 text-slate-500" />
+                <Copy className="h-3 w-3 text-oc-muted" />
                 <span>Копировать</span>
               </>
             )}
           </button>
         </div>
         <div
-          className={`p-3 border rounded-lg text-xs font-sans leading-relaxed ${
-            isDark
-              ? 'bg-[#080810] border-cyan-500/20 text-slate-200'
-              : 'bg-white border-slate-300 text-slate-900 font-medium'
-          }`}
+          className="p-3 border rounded-md text-xs font-sans leading-relaxed bg-oc-bg-3 border-oc-border text-oc-text"
         >
           {result.customer_response_draft}
         </div>
       </div>
 
       {/* Commit & Execution Actions */}
-      <div className="pt-2 border-t border-oc-border flex flex-col gap-3">
+      <div className="pt-3 border-t border-oc-border flex flex-col gap-3">
         <div className="text-xs text-oc-secondary">
           Режим:{' '}
           <span className="font-mono text-oc-accent">
@@ -349,17 +301,17 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
             type="button"
             onClick={onCommitLive}
             disabled={isCommitting || !result.ticket_payload}
-            className="h-9 px-4 rounded bg-oc-success text-[#041018] text-xs font-semibold uppercase tracking-wide disabled:opacity-40"
+            className="h-9 px-4 rounded-md bg-oc-success text-white text-xs font-semibold uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed hover:bg-oc-success/90 transition-all"
           >
             {isCommitting ? 'Saving…' : 'Approve & Execute'}
           </button>
-          <button type="button" onClick={onReject} className="h-9 px-3 rounded border border-oc-border text-xs text-oc-secondary hover:text-oc-text">
+          <button type="button" onClick={onReject} className="h-9 px-3 rounded-md border border-oc-border text-xs text-oc-secondary hover:text-oc-text hover:bg-oc-hover transition-all">
             Reject
           </button>
-          <button type="button" onClick={onEdit} className="h-9 px-3 rounded border border-oc-border text-xs text-oc-secondary hover:text-oc-text">
+          <button type="button" onClick={onEdit} className="h-9 px-3 rounded-md border border-oc-border text-xs text-oc-secondary hover:text-oc-text hover:bg-oc-hover transition-all">
             Edit
           </button>
-          <button type="button" onClick={onToggleDryRun} className="h-9 px-3 rounded border border-oc-border text-xs font-mono text-oc-accent">
+          <button type="button" onClick={onToggleDryRun} className="h-9 px-3 rounded-md border border-oc-border text-xs font-mono text-oc-accent hover:bg-oc-hover transition-all">
             Dry Run {isDryRun ? 'ON' : 'OFF'}
           </button>
         </div>
