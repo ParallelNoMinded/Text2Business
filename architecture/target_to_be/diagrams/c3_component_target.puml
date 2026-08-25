@@ -1,0 +1,47 @@
+@startuml c3_component_target
+!include <C4/C4_Component.puml>
+LAYOUT_TOP_DOWN()
+
+title C3 — Component: Сервисы AI и Движка решений (To-Be)
+
+Container_Boundary(ai_service_boundary, "Service 2: Perception AI Engine (Python / LangGraph)") {
+  Component(agent_orchestrator, "LangGraph Agent Orchestrator", "Python Class", "Управляет графом агентов ReAct")
+  Component(fact_extractor, "Fact Extractor Agent", "Python + Instructor", "Извлекает структурированные сущности")
+  Component(schema_validator, "Pydantic Schema Validator", "Pydantic v2", "Валидирует структуры ExtractedFacts")
+  Component(rag_retriever, "RAG Knowledge Retriever", "LangChain / pgvector", "Поиск паспортов и истории поломок")
+  Component(prompt_guardrail, "Prompt Guardrail Filter", "NeMo Guardrails", "Блокирует Prompt Injection")
+}
+
+Container_Boundary(core_engine_boundary, "Service 3: Core Decision Engine (Go / Temporal.io)") {
+  Component(workflow_worker, "Dispatch Temporal Worker", "Go Temporal SDK", "Оркестрация процессов (Saga Pattern)")
+  Component(act_guardrail, "Guardrail Activity", "Go Activity", "Серверная проверка безопасности")
+  Component(act_db_lookup, "Database Enrichment Activity", "Go Activity", "Поиск клиентов и договоров")
+  Component(act_disambiguation, "Asset Disambiguator Activity", "Go Activity", "Разрешение конфликта по открытым тикетам")
+  Component(act_sla_calc, "SLA Calculator Activity", "Go Activity", "Расчет дедлайнов и неустойки")
+  Component(act_hitl_pause, "HITL Signal Pause Activity", "Go Activity Signal", "Ожидание подтверждения диспетчера")
+  Component(act_1c_commit, "1C ERP Commit Activity", "Go Activity", "Проведение документа в 1С")
+}
+
+ContainerDb(postgres, "PostgreSQL 18 + pgvector", "Database")
+System_Ext(1c_erp, "1С:ERP", "OData Interface")
+System_Ext(llm_cloud, "GitHub Models / vLLM", "LLM APIs")
+
+Rel(agent_orchestrator, prompt_guardrail, "1. Фильтрация текста", "In-Process")
+Rel(agent_orchestrator, fact_extractor, "2. Извлечение фактов", "In-Process")
+Rel(fact_extractor, llm_cloud, "Запрос к LLM", "HTTPS / JSON")
+Rel(fact_extractor, schema_validator, "3. Валидация вывода", "In-Process")
+Rel(agent_orchestrator, rag_retriever, "4. Векторный поиск RAG", "In-Process")
+Rel(rag_retriever, postgres, "Поиск эмбеддингов", "pgvector")
+
+Rel(workflow_worker, act_guardrail, "Вызов Activity", "Temporal Execution")
+Rel(workflow_worker, act_db_lookup, "Вызов Activity", "Temporal Execution")
+Rel(act_db_lookup, postgres, "Запрос справочников", "SQL")
+Rel(workflow_worker, act_disambiguation, "Вызов Activity", "Temporal Execution")
+Rel(act_disambiguation, postgres, "Поиск открытых тикетов", "SQL")
+Rel(workflow_worker, act_sla_calc, "Вызов Activity", "Temporal Execution")
+Rel(workflow_worker, act_hitl_pause, "Пауза при неопределенности", "Temporal State")
+Rel(workflow_worker, act_1c_commit, "Вызов Activity", "Temporal Execution")
+Rel(act_1c_commit, 1c_erp, "Проведение ЗаявкиНаРемонт", "OData REST")
+
+SHOW_LEGEND()
+@enduml

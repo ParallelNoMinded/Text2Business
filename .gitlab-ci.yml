@@ -1,0 +1,41 @@
+stages:
+  - test
+  - build-diagrams
+  - build-report
+  - deploy
+
+lint-and-test:
+  stage: test
+  image: node:20-alpine
+  script:
+    - npm ci
+    - npm run lint
+
+render-diagrams:
+  stage: build-diagrams
+  image:
+    name: plantuml/plantuml-server:jetty
+    entrypoint: [""]
+  script:
+    - mkdir -p architecture/docs/images
+    - |
+      for file in architecture/docs/diagrams/*.puml; do
+        echo "Rendering $file..."
+        java -jar /plantuml.jar -tsvg "$file" -o "../images/"
+      done
+  artifacts:
+    paths:
+      - architecture/docs/images/
+    expire_in: 1 week
+
+build-report:
+  stage: build-report
+  image:
+    name: pandoc/extra:latest
+    entrypoint: [""]
+  script:
+    - cd architecture/report && pandoc report.md -o report.html --css=style.css
+  artifacts:
+    paths:
+      - architecture/report/report.html
+    expire_in: 4 weeks

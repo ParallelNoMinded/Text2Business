@@ -1,0 +1,72 @@
+@startuml er_diagram_current
+title ER Diagram — Схема данных текущей версии (mockDb)
+
+entity "Contractor" as contractor {
+  * customer_id : string <<PK>>
+  --
+  name : string
+  inn : string
+  contact_phone : string
+  contact_email : string
+  contract_number : string
+  status : ACTIVE | BLOCKED
+}
+
+entity "Site" as site {
+  * site_id : string <<PK>>
+  --
+  * customer_id : string <<FK>>
+  customer_name : string
+  address : string
+  contact_person : string
+  timezone : string
+  region : string
+}
+
+entity "Asset" as asset {
+  * asset_id : string <<PK>>
+  --
+  * site_id : string <<FK>>
+  local_code : string
+  name : string
+  criticality : LOW | MEDIUM | HIGH | CRITICAL
+  status : OK | WARNING | CRITICAL_FAIL
+}
+
+entity "Contract" as contract {
+  * site_id : string <<PK, FK>>
+  --
+  plan : Gold | Silver | Standard
+  sla_minutes : number
+  working_hours : string
+  penalty_per_hour : string
+  active : boolean
+}
+
+entity "Ticket" as ticket {
+  * ticket_id : string <<PK>>
+  --
+  * customer_id : string <<FK>>
+  * site_id : string <<FK>>
+  * asset_id : string <<FK>>
+  priority : low | medium | high | critical
+  summary : string
+  description : string
+  sla_deadline : string
+  assigned_group : string
+  status : NEW | IN_PROGRESS | WAITING_DISPATCHER | RESOLVED | CLOSED
+  created_at : string
+  updated_at : string
+  channel : email | telegram | voice | portal
+  chat_id : string | number
+  missing_fields : string[]
+}
+
+contractor ||..o{ site
+site ||..o{ asset
+site ||..|| contract
+contractor ||..o{ ticket
+site ||..o{ ticket
+asset ||..o{ ticket
+
+@enduml

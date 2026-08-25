@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    image: text2business-dispatcher:latest
+    container_name: text2business-dispatcher
+    ports:
+      - "3000:3000"
+    environment:
+      # Безопасность: обязателен для production (иначе dev-дефолт dev-dispatch-token)
+      DISPATCH_TOKEN: "${DISPATCH_TOKEN:-change-me-in-production}"
+      GITHUB_MODELS_TOKEN: "${GITHUB_MODELS_TOKEN:-}"
+      GITHUB_MODELS_MODEL: "${GITHUB_MODELS_MODEL:-gpt-4o}"
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
+    restart: unless-stopped

@@ -1,0 +1,62 @@
+@startuml sequence_target
+title Sequence — Асинхронная событийная цепочка обработки (To-Be)
+
+autonumber
+actor "B2B Заявитель" as client
+participant "Envoy Ingress Gateway" as envoy
+queue "Kafka Event Bus" as kafka
+participant "STT Service\n(Yandex SpeechKit)" as stt
+participant "AI Perception Service\n(Python LangGraph)" as ai_service
+database "PostgreSQL 18\n(pgvector)" as postgres
+participant "Core Decision Engine\n(Go / Temporal.io)" as temporal
+participant "React HITL Console" as ui
+participant "1C Enterprise Adapter" as adapter_1c
+participant "1С:ERP Server" as erp
+participant "Arize AI / OTel" as arize
+
+client -> envoy: Входящий звонок / Telegram / Email
+envoy -> kafka: Publish Event InboundMessageReceived
+
+alt Канал: Голосовой звонок (SIP)
+    kafka -> stt: Consume Event InboundMessageReceived
+    stt -> stt: Потоковое распознавание речи
+    stt -> kafka: Publish Event SpeechTranscribed
+end
+
+kafka -> ai_service: Consume Event SpeechTranscribed
+
+group 1. AI Perception & RAG Phase
+    ai_service -> postgres: Vector Search: Поиск инцидентов (pgvector)
+    postgres --> ai_service: Топ-3 похожих инцидентов
+    ai_service -> ai_service: Вызов LLM (gpt-4o) c JSON Schema
+    ai_service -> ai_service: Pydantic Validation & Guardrail Filter
+    ai_service -> kafka: Publish Event FactsExtracted
+    ai_service -> arize: Export OTel Span
+end
+
+group 2. Temporal State Machine Phase
+    kafka -> temporal: Consume Event FactsExtracted
+    temporal -> temporal: Start Workflow
+    temporal -> postgres: Activity: DBLookupActivity
+    postgres --> temporal: Site & Contract: Gold Plan (60m)
+    temporal -> postgres: Activity: AssetDisambiguationActivity
+    postgres --> temporal: Found Open Ticket T-884
+    temporal -> temporal: Activity: BusinessHoursSLACalculator
+    
+    alt Confidence < 0.85 OR Repeat Alert
+        temporal -> ui: WebSocket Event: TicketWaitingHITL
+        ui -> envoy: Оператор: "Утвердить в 1С"
+        envoy -> temporal: Send Signal ApproveTicketSignal
+    end
+end
+
+group 3. 1C Integration Phase
+    temporal -> adapter_1c: Activity: CommitTo1CActivity
+    adapter_1c -> erp: POST /1c/odata/v2/Document_ЗаявкаНаРемонт
+    erp --> adapter_1c: 201 Created (Ref_Key: ЗР-00042)
+    adapter_1c --> temporal: Commit Success
+    temporal -> postgres: Update Ticket Status -> IN_PROGRESS
+    temporal -> client: Telegram: "Заявка №ЗР-00042 зарегистрирована..."
+end
+
+@endl

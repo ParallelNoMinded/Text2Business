@@ -1,0 +1,27 @@
+@startuml
+title Sequence — Полный цикл обработки заявки через AI-Диспетчер
+
+actor "Клиент (ООО СеверФуд)" as client
+participant "Telegram / Ingress Gateway" as gateway
+participant "Core Webhook Engine" as engine
+participant "GitHub Models (gpt-4o)" as llm
+participant "HITL Консоль Диспетчера" as ui
+participant "1С:ERP OData Adapter" as erp
+
+client -> gateway: "Срочно сломался компрессор ХУ-17"
+gateway -> engine: POST /api/webhooks/dispatch
+engine -> llm: Извлечение фактов (JSON Schema)
+llm --> engine: { customer_name, site_info, asset_code, problem_summary, confidence: 0.95 }
+
+alt Все факты извлечены (Confidence >= 0.85)
+    engine -> erp: POST /api/1c/tickets (Создание ЗаявкиНаРемонт)
+    erp --> engine: Document_Ref "№ЗР-00042"
+    engine --> client: "Ваша заявка зарегистрирована №ЗР-00042"
+else Недостает информации / Confidence < 0.85
+    engine -> ui: Заявка переведена в WAITING_DISPATCHER
+    ui -> ui: Диспетчер уточняет данные вручную
+    ui -> engine: Утверждение заявки
+    engine -> erp: POST /api/1c/tickets
+    erp --> engine: Document_Ref "№ЗР-00042"
+end
+@startuml

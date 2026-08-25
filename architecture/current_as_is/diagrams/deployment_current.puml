@@ -1,0 +1,40 @@
+@startuml deployment_current
+!include <C4/C4_Deployment.puml>
+LAYOUT_TOP_DOWN()
+
+title Deployment — Схема развертывания Текущей системы (As-Is)
+
+Deployment_Node(user_node, "Клиентские Устройства", "Браузер / Telegram") {
+  Deployment_Node(browser, "Веб-Браузер Диспетчера", "Chrome / Firefox") {
+    Container(react_app, "React 19 SPA", "JavaScript / DOM", "Фронтенд консоли диспетчера")
+  }
+  Deployment_Node(tg_mobile, "Мобильный клиент Telegram", "iOS / Android") {
+    Container(tg_app, "Telegram Messenger", "Native Client", "Чат B2B клиентом")
+  }
+}
+
+Deployment_Node(cloud_host, "Хост приложения (Cloud Run / Local Node Host)", "Linux Alpine / Docker") {
+  Deployment_Node(docker_container, "Docker Контейнер (Port 3000)", "Node.js 20 Runtime") {
+    Container(express_process, "Express Web Engine", "Node.js Process", "Сервер обработки вебхуков и статики")
+    Container(engine_process, "Deterministic Dispatch Core", "TypeScript Module", "Модуль бизнес-логики и SLA")
+    ContainerDb(ram_db, "In-Memory DB Store", "Process RAM State", "JSON справочники в памяти")
+  }
+}
+
+Deployment_Node(ext_cloud, "Внешние Облачные Сервисы", "SaaS / PaaS") {
+  System_Ext(github_api, "GitHub Models API", "gpt-4o, qwen, deepseek (HTTPS :443)")
+  System_Ext(tg_bot_api, "Telegram Bot API", "api.telegram.org (HTTPS :443)")
+  System_Ext(1c_odata, "1C:ERP OData Endpoint", "OData HTTP Service")
+}
+
+Rel(browser, express_process, "SPA и REST API (/api/*)", "HTTP :3000")
+Rel(tg_app, tg_bot_api, "Сообщения в чат", "HTTPS :443")
+Rel(tg_bot_api, express_process, "Long Polling / Webhook", "HTTPS :443")
+Rel(express_process, engine_process, "Вызов пайплайна", "In-Process")
+Rel(engine_process, ram_db, "Чтение/запись данных", "RAM")
+Rel(express_process, github_api, "Извлечение фактов (JSON Mode)", "HTTPS :443")
+Rel(express_process, tg_bot_api, "Отправка ответов", "HTTPS :443")
+Rel(express_process, 1c_odata, "Экспорт ЗаявкиНаРемонт", "HTTP / REST")
+
+SHOW_LEGEND()
+@enduml

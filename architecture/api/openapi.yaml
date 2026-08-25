@@ -1,0 +1,198 @@
+openapi: 3.0.3
+info:
+  title: Text2Business AI-Dispatcher API (As-Is Express Monolith)
+  description: >
+    OpenAPI 3.0 контракт действующего прототипа AI-диспетчера сервисных заявок
+    (Node.js / Express + Vite + In-Memory mockDb).
+    Все мутирующие и чувствительные эндпоинты требуют заголовок X-Dispatch-Token
+    (env DISPATCH_TOKEN, по умолчанию dev-dispatch-token).
+    Целевая событийная архитектура (Envoy Gateway + Kafka + Temporal) описана
+    в architecture/target_to_be/.
+  version: 1.1.0
+servers:
+  - url: http://localhost:3000
+    description: Local development / Cloud Run container
+
+security:
+  - DispatchToken: []
+
+components:
+  securitySchemes:
+    DispatchToken:
+      type: apiKey
+      in: header
+      name: X-Dispatch-Token
+
+paths:
+  /api/health:
+    get:
+      summary: Healthcheck сервиса
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Статус сервера, наличие Gemini-клиента и список эндпоинтов
+  /api/dispatch:
+    post:
+      summary: Запуск AI-диспетчеризации (dry-run по умолчанию)
+      operationId: dispatchMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 4000
+                  description: Неструктурированный текст обращения
+                channel:
+                  type: string
+                  enum: [email, telegram, voice, call_transcript, portal, rest]
+                  default: email
+                incoming_time:
+                  type: string
+                  example: 2026-08-13T10:15:00+03:00
+                is_dry_run:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: ProcessingResult (решение движка + trace)
+        '400':
+          description: Валидация входа (пустой текст, недопустимый канал)
+        '401':
+          description: Отсутствует/неверный X-Dispatch-Token
+  /api/commit-ticket:
+    post:
+      summary: Подтверждённый оператором коммит заявки в БД (единственная мутация)
+      operationId: commitTicket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [CREATE_TICKET, UPDATE_TICKET]
+                ticket_payload:
+                  type: object
+      responses:
+        '200':
+          description: Заявка создана/обновлена
+        '400':
+          description: Неизвестный тикет или объект не найден в БД
+  /api/webhooks/telegram:
+    post:
+      summary: Webhook Telegram Bot API (dry-run предпросмотр)
+      operationId: telegramWebhook
+      responses:
+        '200':
+          description: Результат диспетчеризации без записи в БД
+  /api/webhooks/email:
+    post:
+      summary: Webhook входящего email (dry-run предпросмотр)
+      operationId: emailWebhook
+      responses:
+        '200':
+          description: Результат диспетчеризации без записи в БД
+  /api/webhooks/telephony:
+    post:
+      summary: Webhook телефонии (STT-транскрипт, dry-run предпросмотр)
+      operationId: telephonyWebhook
+      responses:
+        '200':
+          description: Результат диспетчеризации без записи в БД
+  /api/webhooks/dispatch:
+    get:
+      summary: Статус универсального REST-эндпоинта (+ выполнение через query-параметры)
+      operationId: getDispatchStatus
+      parameters:
+        - name: channel
+          in: query
+          schema:
+            type: string
+        - name: text
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Статус или результат диспетчеризации
+    post:
+      summary: Универсальный REST-эндпоинт диспетчеризации (dry-run)
+      operationId: dispatchMessageUniversal
+      responses:
+        '200':
+          description: Результат диспетчеризации без записи в БД
+  /api/llm/config:
+    get:
+      summary: Конфигурация LLM (без отдачи токена)
+      operationId: getLlmConfig
+      responses:
+        '200':
+          description: configured, model, active_token_source
+    post:
+      summary: Установка GITHUB_MODELS_TOKEN и модели (в памяти процесса)
+      operationId: configureLlm
+      responses:
+        '200':
+          description: Статус конфигурации
+  /api/operator/reply:
+    post:
+      summary: Ответ оператора HITL клиенту (Telegram + журнал тикета)
+      operationId: operatorReply
+      responses:
+        '200':
+          description: Сообщение записано и отправлено
+  /api/telegram/config:
+    post:
+      summary: Активация Telegram-бота через токен (getMe + long polling)
+      operationId: configureTelegram
+      responses:
+        '200':
+          description: Информация о подключённом боте
+  /api/1c/tickets:
+    get:
+      summary: OData-представление открытых заявок для 1С:ERP
+      operationId: get1cTickets
+      responses:
+        '200':
+          description: OData JSON (value)
+    post:
+      summary: То же представление (совместимость с 1С OData POST)
+      operationId: post1cTickets
+      responses:
+        '200':
+          description: OData JSON (value)
+  /api/database:
+    get:
+      summary: Текущее состояние mockDb
+      operationId: getDatabase
+      responses:
+        '200':
+          description: DatabaseSchema
+    post:
+      summary: Перезапись состояния mockDb (демо-инструмент)
+      operationId: updateDatabase
+      responses:
+        '200':
+          description: { success, db }
+  /api/database/reset:
+    post:
+      summary: Сброс mockDb к исходному тестовому состоянию (4 кейса ТЗ)
+      operationId: resetDatabase
+      responses:
+        '200':
+          description: { success }
+  /api/logs:
+    get:
+      summary: Маскированные логи системы (PII-очищенные)
+      operationId: getSystemLogs
+      responses:
+        '200':
+          description: { logs: SystemLogEntry[] }

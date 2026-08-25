@@ -1,0 +1,24 @@
+@startuml api_routes_target
+!include <C4/C4_Component.puml>
+LAYOUT_TOP_DOWN()
+
+title API Architecture — Карта целевых микросервисных API (To-Be)
+
+Container_Boundary(envoy_ingress, "Envoy Ingress Gateway (Public APIs)") {
+  Component(api_tg_webhook, "POST /v2/webhooks/telegram", "Telegram Ingress", "Прием событий от Telegram Bot API")
+  Component(api_email_mcp, "POST /v2/webhooks/email", "Email MCP Ingress", "Прием писем от почтового шлюза")
+  Component(api_sip_grpc, "gRPC StreamAudio", "Telephony Ingress", "Потоковый приём RTP/SIP аудио")
+  Component(api_rest_dispatch, "POST /v2/dispatch/submit", "Public Dispatch API", "REST эндпоинт личного кабинета")
+  Component(api_operator_ws, "WSS & REST /v2/operator/*", "Operator Workbench API", "WebSocket каналы для HITL консоли")
+}
+
+Container_Boundary(microservices_api, "Internal Microservices Interfaces") {
+  Component(stt_grpc, "gRPC /stt.v1.SpeechService", "STT Microservice", "Внутренний gRPC сервис транскрипции")
+  Component(perception_grpc, "gRPC /perception.v1.FactExtractor", "AI Microservice", "Извлечение фактов (Python LangGraph)")
+  Component(temporal_grpc, "gRPC :7233 Temporal Service", "Temporal State Engine", "Интерфейс запуска и сигналов Workflows")
+  Component(adapter_1c_rest, "REST /1c/odata/v2/Document_ЗаявкаНаРемонт", "1C Adapter", "Двусторонняя синхронизация с 1С")
+  Component(otlp_grpc, "gRPC :4317 OTLP Metrics", "OTel Collector", "Экспорт телеметрии в Arize AI")
+}
+
+SHOW_LEGEND()
+@enduml

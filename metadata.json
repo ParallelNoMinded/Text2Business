@@ -1,0 +1,6 @@
+{
+  "name": "Text2Business AI Dispatcher",
+  "description": "AI-powered service request dispatcher architecture with deterministic core, LLM perception, SLA calculations, and live tool tracing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

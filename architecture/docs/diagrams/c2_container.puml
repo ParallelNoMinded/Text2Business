@@ -1,0 +1,25 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_TOP_DOWN()
+
+title C2 — Container: Text2Business AI-Диспетчер
+
+Person(dispatcher, "Диспетчер (HITL)", "Контролирует заявки")
+
+System_Boundary(app, "AI-Диспетчер") {
+  Container(frontend, "React SPA UI", "React 19 + TypeScript + Tailwind CSS", "Консоль Диспетчера, Настройка Каналов, Инспектор БД, Архитектура")
+  Container(server, "Express / Go Backend", "Node.js / Express / Go", "Webhook handlers, LLM Fact Extractor, 1C OData Sync, Mock DB")
+  ContainerDb(db, "In-Memory / PostgreSQL 18", "PostgreSQL / JSON Store", "Открытые заявки, журналы аудита, справочники клиентов")
+}
+
+System_Ext(github_models, "GitHub Models API", "gpt-4o, qwen3.6-27b, gemma4:e4b, deepseek")
+System_Ext(erp_1c, "1C:ERP OData Service", "1С Предприятие OData Interface")
+
+Rel(dispatcher, frontend, "Использует интерфейс", "HTTPS")
+Rel(frontend, server, "REST API / Webhooks", "HTTP/JSON")
+Rel(server, db, "CRUD оператора", "SQL / In-Memory")
+Rel(server, github_models, "Извлечение фактов (JSON Mode)", "HTTPS")
+Rel(server, erp_1c, "Проведение документов", "OData REST")
+
+SHOW_LEGEND()
+@enduml

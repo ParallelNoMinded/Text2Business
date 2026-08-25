@@ -1,0 +1,50 @@
+@startuml sequence_current
+title Sequence — Сквозной цикл обработки обращения (As-Is)
+
+autonumber
+actor "B2B Клиент" as client
+participant "Telegram Bot API" as tg_api
+participant "Express Router\n(server.ts)" as server
+participant "LLM Perception Core" as llm_service
+participant "GitHub Models API\n(JSON Mode)" as github
+participant "Deterministic Engine\n(dispatcherEngine.ts)" as engine
+database "In-Memory Store\n(mockDb.ts)" as db
+participant "React HITL Console" as ui
+participant "1С:ERP OData Adapter" as erp
+
+client -> tg_api: "Снова 17-я: температура +8°C..."
+tg_api -> server: Long Polling / POST /api/webhooks/telegram
+
+group 1. Извлечение фактов (LLM Perception)
+    server -> llm_service: extractFactsWithGemini(text)
+    llm_service -> github: POST /chat/completions (json_object)
+    github --> llm_service: JSON ExtractedFacts
+    llm_service --> server: ExtractedFacts (Conf: 0.92)
+end
+
+group 2. Детерминированная диспетчеризация
+    server -> engine: runDeterministicDispatch(db, facts)
+    engine -> engine: checkGuardrails(text)
+    engine -> db: tool_find_customer_or_site()
+    db --> engine: Found S-MSK-01, S-EKB-02
+    engine -> db: tool_find_assets_and_open_tickets()
+    db --> engine: Found Open Ticket T-884
+    engine -> db: tool_get_contract_and_sla()
+    db --> engine: Gold SLA (60m)
+    engine --> server: ProcessingResult (UPDATE_TICKET T-884)
+end
+
+group 3. Исполнение и Отправка
+    server -> db: saveOrUpdateTicketInDb()
+    server -> tg_api: sendTelegramMessage()
+    tg_api --> client: "Заявка T-884 переведена в CRITICAL..."
+end
+
+group 4. HITL & 1C Sync
+    server -> ui: WebSocket/Polling Update
+    ui -> server: Диспетчер: "Утвердить в 1С"
+    server -> erp: GET/POST /api/1c/tickets
+    erp --> server: 200 OK (Document_ЗаявкаНаРемонт)
+end
+
+@enduml

@@ -1,0 +1,33 @@
+@startuml c3_component_current
+!include <C4/C4_Component.puml>
+LAYOUT_TOP_DOWN()
+
+title C3 — Component: Text2Business AI-Диспетчер (Детализация модулей As-Is)
+
+Container_Boundary(express_app, "Express Backend & Decision Engine (server.ts & dispatcherEngine.ts)") {
+  Component(ingress_router, "Ingress Webhook Router", "Express Router (server.ts)", "Маршрутизация /api/webhooks/*")
+  Component(telegram_poller, "Telegram Bot Manager", "Async Polling Loop", "Слушает getUpdates, откликивается на /start")
+  Component(llm_service, "LLM Perception Service", "Async Extractor", "Запросы к gpt-4o / qwen c JSON Schema")
+  Component(fallback_extractor, "Fallback Extractor", "Function (extractFactsFromText)", "Локальный эвристический парсер")
+  Component(guardrail_checker, "Guardrail Inspector", "Function (checkGuardrails)", "Проверка промпт-инъекций и атак")
+  Component(site_lookup, "Customer & Site Lookup Tool", "Function (tool_find_customer_or_site)", "Поиск контрагентов и складов")
+  Component(asset_disambiguator, "Asset Disambiguator", "Function (tool_find_assets_and_open_tickets)", "Разрешение конфликта ассетов по открытым тикетам")
+  Component(sla_calculator, "SLA & Penalty Calculator", "Function (tool_get_contract_and_sla)", "Расчет дедлайнов и штрафов")
+  Component(decision_matrix, "Decision Core Matrix", "Function (runDeterministicDispatch)", "Матрица бизнес-действий")
+  Component(odata_adapter, "1C:ERP OData Adapter", "Express Route (/api/1c/tickets)", "Экспорт в формат 1С")
+  ComponentDb(db_manager, "In-Memory Repository Manager", "State Manager (mockDb)", "CRUD операции с ОЗУ")
+}
+
+Rel(ingress_router, llm_service, "Извлечение фактов", "Async")
+Rel(telegram_poller, llm_service, "Извлечение фактов", "Async")
+Rel(llm_service, fallback_extractor, "Переключение при ошибке API", "Fallback")
+Rel(ingress_router, decision_matrix, "Запуск диспетчеризации", "Function Call")
+Rel(decision_matrix, guardrail_checker, "1. Проверка Guardrails", "In-Process")
+Rel(decision_matrix, site_lookup, "2. Поиск контрагента", "In-Process")
+Rel(decision_matrix, asset_disambiguator, "3. Поиск ассета и тикетов", "In-Process")
+Rel(decision_matrix, sla_calculator, "4. Расчет SLA", "In-Process")
+Rel(decision_matrix, db_manager, "5. Сохранение тикетов", "In-Memory")
+Rel(odata_adapter, db_manager, "Чтение для 1С", "In-Memory")
+
+SHOW_LEGEND()
+@enduml

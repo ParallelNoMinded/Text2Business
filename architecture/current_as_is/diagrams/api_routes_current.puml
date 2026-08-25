@@ -1,0 +1,22 @@
+@startuml api_routes_current
+!include <C4/C4_Component.puml>
+LAYOUT_TOP_DOWN()
+
+title API Architecture — Эндпоинты текущей системы (server.ts)
+
+Container_Boundary(express_app, "Express Server Endpoints (Port 3000)") {
+  Component(ep_health, "GET /api/health", "Healthcheck", "Проверка статуса сервера и компонентов")
+  Component(ep_dispatch, "POST & GET /api/webhooks/dispatch", "Swagger & Dispatch API", "Диспетчеризация обращений")
+  Component(ep_tg_webhook, "POST & GET /api/webhooks/telegram", "Telegram Webhook", "Прием апдейтов бота")
+  Component(ep_email_webhook, "POST & GET /api/webhooks/email", "Email Webhook", "Прием входящих писем")
+  Component(ep_voice_webhook, "POST & GET /api/webhooks/telephony", "Voice STT Webhook", "Прием транскриптов звонков")
+  Component(ep_tg_config, "POST /api/telegram/config", "Telegram Config", "Активация Long Polling")
+  Component(ep_llm_config, "POST & GET /api/llm/config", "LLM Config", "Переключение GITHUB_MODELS_TOKEN")
+  Component(ep_operator_reply, "POST /api/operator/reply", "HITL Reply", "Отправка ответов диспетчера в бот")
+  Component(ep_commit_ticket, "POST /api/commit-ticket", "Live Commit", "Сохранение заявки в БД")
+  Component(ep_database, "GET & POST /api/database & /reset", "Database CRUD", "Управление состоянием mockDb")
+  Component(ep_1c_odata, "GET & POST /api/1c/tickets", "1C OData Sync", "Экспорт в формат 1С")
+}
+
+SHOW_LEGEND()
+@enduml

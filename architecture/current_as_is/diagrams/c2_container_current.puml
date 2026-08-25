@@ -1,0 +1,36 @@
+@startuml c2_container_current
+!include <C4/C4_Container.puml>
+LAYOUT_TOP_DOWN()
+
+title C2 — Container: Text2Business AI-Диспетчер (Текущая реализация / As-Is)
+
+Person(client, "B2B Заявитель", "Email / Telegram / Voice")
+Person(operator, "Диспетчер (HITL)", "Оператор системы")
+
+System_Boundary(monolith_app, "Text2Business Full-Stack Container (Port 3000)") {
+  Container(frontend_spa, "React SPA UI", "React 19, TypeScript, Vite, Tailwind CSS", "Рабочее место HITL, Запуск пресетов, Инспектор БД, Логи/Трейсы")
+  Container(express_server, "Express Web Server & API Gateway", "Node.js 20, Express, TypeScript (server.ts)", "Прием Webhooks, Long Polling Telegram, HTTP роутинг, 1C OData эмулятор")
+  Container(llm_perception, "LLM Perception Core Module", "TypeScript (server.ts)", "Системный промпт, JSON Schema, вызов GitHub Models / Gemini API")
+  Container(dispatcher_engine, "Deterministic Dispatch Engine", "TypeScript (src/dispatcherEngine.ts)", "Guardrails, поиск контрагентов, дедупликация, расчет SLA")
+  ContainerDb(in_memory_db, "In-Memory DB Store", "TypeScript Data Schema (src/mockDb.ts)", "Реестры контрагентов, объектов, оборудования и тикетов")
+}
+
+System_Ext(github_models, "GitHub Models / Gemini API", "Inference API")
+System_Ext(telegram_api, "Telegram Bot API", "Bot Platform")
+System_Ext(erp_1c, "1C:ERP OData Service", "1C Enterprise OData")
+
+Rel(client, telegram_api, "Сообщение в бот", "HTTPS")
+Rel(telegram_api, express_server, "Long Polling getUpdates / Webhook", "HTTPS / JSON")
+Rel(client, express_server, "Прямые REST / Webhook запросы", "HTTP / JSON")
+Rel(operator, frontend_spa, "Управление и утверждение тикетов", "HTTPS / Browser")
+Rel(frontend_spa, express_server, "Внутренний REST API (/api/*)", "HTTP / JSON")
+Rel(express_server, llm_perception, "Передача неструктурированного текста", "In-Process")
+Rel(llm_perception, github_models, "Извлечение фактов (JSON Mode)", "HTTPS / POST")
+Rel(express_server, dispatcher_engine, "Запуск runDeterministicDispatch()", "In-Process")
+Rel(dispatcher_engine, in_memory_db, "Чтение справочников и поиск тикетов", "In-Memory")
+Rel(express_server, in_memory_db, "Сохранение / Обновление тикетов", "In-Memory Write")
+Rel(express_server, telegram_api, "Отправка ответа клиенту", "HTTPS / POST")
+Rel(express_server, erp_1c, "Экспорт ЗаявкиНаРемонт", "OData REST / JSON")
+
+SHOW_LEGEND()
+@enduml
