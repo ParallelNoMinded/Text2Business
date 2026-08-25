@@ -20,6 +20,16 @@ export function extractDigits(input: string | null | undefined): string {
   return input.replace(/[^0-9]/g, '');
 }
 
+/** True when two local codes refer to the same unit (ХУ-17 ≠ ХУ-17-БАК). */
+export function assetCodesMatch(
+  localCode: string | null | undefined,
+  query: string | null | undefined
+): boolean {
+  const a = cleanCode(localCode);
+  const q = cleanCode(query);
+  return Boolean(a && q && a === q);
+}
+
 // --- PII Masking (phones, INN, emails) ---
 const PII_PATTERNS: RegExp[] = [
   /\+?\d[\d\s\-()]{8,}\d/g, // phone numbers with separators
@@ -238,7 +248,11 @@ export function extractFactsFromText(
   let assetQuote: string | null = null;
   let assetConf = 0.0;
 
-  if (lower.includes('ху-18') || lower.includes('ху 18') || lower.includes('18-я')) {
+  if (/ху[-\s]?17[-\s]?бак/i.test(text)) {
+    assetVal = 'ХУ-17-БАК';
+    assetQuote = text.match(/ху[-\s]?17[-\s]?бак/i)?.[0] || 'ХУ-17-БАК';
+    assetConf = 0.96;
+  } else if (lower.includes('ху-18') || lower.includes('ху 18') || lower.includes('18-я')) {
     assetVal = 'ХУ-18';
     assetQuote = text.match(/ху-18|18-я/i)?.[0] || 'ХУ-18';
     assetConf = 0.95;
@@ -246,11 +260,10 @@ export function extractFactsFromText(
     lower.includes('ху-17') ||
     lower.includes('ху 17') ||
     lower.includes('17-я') ||
-    lower.includes('семнадцатой') ||
-    lower.includes('17')
+    lower.includes('семнадцатой')
   ) {
     assetVal = 'ХУ-17';
-    assetQuote = text.match(/ху-17|17-я|семнадцатой|17/i)?.[0] || '17-я';
+    assetQuote = text.match(/ху-17|17-я|семнадцатой/i)?.[0] || '17-я';
     assetConf = 0.91;
   } else if (lower.includes('чил-01') || lower.includes('чиллер')) {
     assetVal = 'ЧИЛ-01';
@@ -381,11 +394,7 @@ export function runDeterministicDispatch(
     return nameMatch || addrMatch || rawMatch;
   });
 
-  const matchedAssetsInDb = db.assets.filter((a) => {
-    const aDigits = extractDigits(a.local_code);
-    const targetDigits = extractDigits(facts.asset_code.value || rawText);
-    return targetDigits && targetDigits.length >= 2 && aDigits === targetDigits;
-  });
+  const matchedAssetsInDb = db.assets.filter((a) => assetCodesMatch(a.local_code, facts.asset_code.value));
 
   const isContractorOrAssetInDb =
     matchedSites.length > 0 || knownContractors.length > 0 || matchedAssetsInDb.length > 0;
@@ -405,7 +414,7 @@ export function runDeterministicDispatch(
   let matchingOpenTickets: Ticket[] = [];
   const reasoning: string[] = [];
 
-  const targetAssetDigits = extractDigits(facts.asset_code.value);
+  const targetAssetCode = facts.asset_code.value;
 
   const addressMatchedSites = db.sites.filter((s) => {
     const sAddr = s.address.toLowerCase();
@@ -427,7 +436,7 @@ export function runDeterministicDispatch(
     for (const site of matchedSites) {
       const candidateAssets = db.assets.filter((a) => a.site_id === site.site_id);
       for (const asset of candidateAssets) {
-        if (targetAssetDigits && extractDigits(asset.local_code) === targetAssetDigits) {
+        if (assetCodesMatch(asset.local_code, targetAssetCode)) {
           const tickets = db.open_tickets.filter((t) => t.asset_id === asset.asset_id);
           if (tickets.length > 0) {
             selectedSite = site;
@@ -449,7 +458,7 @@ export function runDeterministicDispatch(
   }
 
   // TC-02: resolve site through a recent open ticket when customer/address are absent
-  if (!selectedSite && targetAssetDigits) {
+  if (!selectedSite && targetAssetCode) {
     const incomingTs = new Date(incomingTimeIso).getTime();
     const recentOpen = db.open_tickets
       .map((t) => {
@@ -459,7 +468,7 @@ export function runDeterministicDispatch(
           !isNaN(created) && !isNaN(incomingTs) && incomingTs - created >= 0 && incomingTs - created <= 24 * 3600 * 1000;
         return { ticket: t, asset, withinWindow };
       })
-      .filter((r) => r.asset && extractDigits(r.asset.local_code) === targetAssetDigits && r.withinWindow);
+      .filter((r) => r.asset && assetCodesMatch(r.asset.local_code, targetAssetCode) && r.withinWindow);
 
     const distinctSiteIds = [...new Set(recentOpen.map((r) => r.asset!.site_id))];
     if (recentOpen.length >= 1 && distinctSiteIds.length === 1) {
@@ -484,11 +493,7 @@ export function runDeterministicDispatch(
   // Find asset if site resolved but asset not yet set
   if (selectedSite && !selectedAsset && facts.asset_code.value) {
     const siteAssets = db.assets.filter((a) => a.site_id === selectedSite!.site_id);
-    selectedAsset =
-      siteAssets.find((a) => {
-        const aDigits = extractDigits(a.local_code);
-        return targetAssetDigits ? aDigits === targetAssetDigits : false;
-      }) || null;
+    selectedAsset = siteAssets.find((a) => assetCodesMatch(a.local_code, targetAssetCode)) || null;
 
     if (selectedAsset) {
       reasoning.push(`Оборудование найдено в каталоге объекта: "${selectedAsset.name}" (${selectedAsset.local_code}).`);

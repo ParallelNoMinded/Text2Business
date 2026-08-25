@@ -111,3 +111,27 @@ test('dry_run флаг пробрасывается в результат', () =
   );
   assert.equal(r.is_dry_run, true);
 });
+
+test('ХУ-17-БАК не схлопывается в ХУ-17 и не цепляется к открытой T-884', () => {
+  const r = dispatch(
+    'ООО "СеверФуд", Дмитровское шоссе 100, не работает резервная ХУ-17-БАК',
+    'email',
+    '2026-08-13T16:40:00+03:00'
+  );
+  assert.equal(r.matched_asset?.asset_id, 'A-1002');
+  assert.equal(r.matched_asset?.local_code, 'ХУ-17-БАК');
+  assert.equal(r.recommended_action, 'CREATE_TICKET');
+  assert.equal(r.target_ticket_id, null);
+});
+
+test('время 17:00 не принимается за код установки ХУ-17', () => {
+  const r = dispatch(
+    'Это СеверФуд, можно приехать сегодня до 17:00?',
+    'email',
+    '2026-08-13T16:40:00+03:00'
+  );
+  assert.equal(r.extracted_facts.asset_code.value, null);
+  assert.equal(r.matched_asset, null);
+  assert.notEqual(r.target_ticket_id, 'T-884');
+  assert.equal(r.recommended_action, 'REQUEST_CLARIFICATION');
+});
