@@ -37,7 +37,7 @@ export const AntigravityHero: React.FC<AntigravityHeroProps> = ({
       <div
         className={`relative overflow-hidden rounded-3xl p-6 sm:p-8 transition-all border ${
           isDark
-            ? 'bg-[#06060e]/95 border-cyan-500/30 shadow-[0_20px_50px_rgba(0,0,0,0.9)] field-grid-dark text-white'
+            ? 'bg-[#222222]/95 border-cyan-500/30 shadow-[0_20px_50px_rgba(0,0,0,0.9)] field-grid-dark text-white'
             : 'bg-white border-slate-200 shadow-xl field-grid-light text-slate-900'
         }`}
       >
@@ -62,7 +62,7 @@ export const AntigravityHero: React.FC<AntigravityHeroProps> = ({
             <div
               className={`text-xs font-mono px-3 py-1 rounded-full border ${
                 isDark
-                  ? 'bg-[#020204] text-slate-400 border-white/10'
+                  ? 'bg-[#222222] text-slate-400 border-white/10'
                   : 'bg-slate-100 text-slate-600 border-slate-200'
               }`}
             >
@@ -93,7 +93,7 @@ export const AntigravityHero: React.FC<AntigravityHeroProps> = ({
             <div
               className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                 isDark
-                  ? 'bg-[#020204]/90 border-cyan-500/20 shadow-inner'
+                  ? 'bg-[#222222]/90 border-cyan-500/20 shadow-inner'
                   : 'bg-slate-50 border-slate-200 shadow-inner'
               }`}
             >
@@ -107,7 +107,7 @@ export const AntigravityHero: React.FC<AntigravityHeroProps> = ({
                 <div
                   className={`p-3 rounded-xl border flex flex-col justify-between ${
                     isDark
-                      ? 'bg-[#080812] border-white/10 text-slate-200'
+                      ? 'bg-[#222222] border-white/10 text-slate-200'
                       : 'bg-white border-slate-200 text-slate-800'
                   }`}
                 >
@@ -123,7 +123,7 @@ export const AntigravityHero: React.FC<AntigravityHeroProps> = ({
                 <div
                   className={`p-3 rounded-xl border flex flex-col justify-between ${
                     isDark
-                      ? 'bg-[#080812] border-cyan-500/30 text-slate-200'
+                      ? 'bg-[#222222] border-cyan-500/30 text-slate-200'
                       : 'bg-white border-cyan-200 text-slate-800'
                   }`}
                 >
@@ -139,7 +139,7 @@ export const AntigravityHero: React.FC<AntigravityHeroProps> = ({
                 <div
                   className={`p-3 rounded-xl border flex flex-col justify-between ${
                     isDark
-                      ? 'bg-[#080812] border-white/10 text-slate-200'
+                      ? 'bg-[#222222] border-white/10 text-slate-200'
                       : 'bg-white border-slate-200 text-slate-800'
                   }`}
                 >
@@ -155,7 +155,7 @@ export const AntigravityHero: React.FC<AntigravityHeroProps> = ({
                 <div
                   className={`p-3 rounded-xl border flex flex-col justify-between ${
                     isDark
-                      ? 'bg-[#080812] border-purple-500/30 text-slate-200'
+                      ? 'bg-[#222222] border-purple-500/30 text-slate-200'
                       : 'bg-white border-purple-200 text-slate-800'
                   }`}
                 >
@@ -208,7 +208,7 @@ export const AntigravityHero: React.FC<AntigravityHeroProps> = ({
             onClick={() => setActiveTab('customer')}
             className={`cursor-pointer p-5 rounded-2xl border transition-all duration-200 hover:scale-[1.02] flex flex-col justify-between group ${
               isDark
-                ? 'bg-[#06060e]/90 border-cyan-500/20 hover:border-cyan-500/50 shadow-lg'
+                ? 'bg-[#222222]/90 border-cyan-500/20 hover:border-cyan-500/50 shadow-lg'
                 : 'bg-white border-slate-200 hover:border-cyan-400 shadow-sm'
             }`}
           >
@@ -240,7 +240,7 @@ export const AntigravityHero: React.FC<AntigravityHeroProps> = ({
             onClick={() => setActiveTab('ai_engine')}
             className={`cursor-pointer p-5 rounded-2xl border transition-all duration-200 hover:scale-[1.02] flex flex-col justify-between group ${
               isDark
-                ? 'bg-[#06060e]/90 border-cyan-500/20 hover:border-cyan-500/50 shadow-lg'
+                ? 'bg-[#222222]/90 border-cyan-500/20 hover:border-cyan-500/50 shadow-lg'
                 : 'bg-white border-slate-200 hover:border-cyan-400 shadow-sm'
             }`}
           >
@@ -272,7 +272,7 @@ export const AntigravityHero: React.FC<AntigravityHeroProps> = ({
             onClick={() => setActiveTab('operator')}
             className={`cursor-pointer p-5 rounded-2xl border transition-all duration-200 hover:scale-[1.02] flex flex-col justify-between group ${
               isDark
-                ? 'bg-[#06060e]/90 border-cyan-500/20 hover:border-cyan-500/50 shadow-lg'
+                ? 'bg-[#222222]/90 border-cyan-500/20 hover:border-cyan-500/50 shadow-lg'
                 : 'bg-white border-slate-200 hover:border-cyan-400 shadow-sm'
             }`}
           >
@@ -304,7 +304,7 @@ export const AntigravityHero: React.FC<AntigravityHeroProps> = ({
             onClick={() => setActiveTab('tech_lead')}
             className={`cursor-pointer p-5 rounded-2xl border transition-all duration-200 hover:scale-[1.02] flex flex-col justify-between group ${
               isDark
-                ? 'bg-[#06060e]/90 border-cyan-500/20 hover:border-cyan-500/50 shadow-lg'
+                ? 'bg-[#222222]/90 border-cyan-500/20 hover:border-cyan-500/50 shadow-lg'
                 : 'bg-white border-slate-200 hover:border-cyan-400 shadow-sm'
             }`}
           >

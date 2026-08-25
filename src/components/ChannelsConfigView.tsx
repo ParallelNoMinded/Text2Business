@@ -294,7 +294,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
       <div
         className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
           isDark
-            ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
+            ? 'bg-[#222222]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
             : 'bg-white border-slate-300 text-slate-900 shadow-sm'
         }`}
       >
@@ -328,7 +328,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
         <div
           className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${
             isDark
-              ? 'bg-[#060612]/90 border-sky-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
+              ? 'bg-[#222222]/90 border-sky-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
               : 'bg-white border-slate-300 shadow-sm'
           }`}
         >
@@ -372,7 +372,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                     value={telegramToken}
                     onChange={(e) => setTelegramToken(e.target.value)}
                     className={`w-full p-2.5 pr-10 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-sky-500 ${
-                      isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
                     }`}
                   />
                   <button
@@ -432,7 +432,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
         <div
           className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${
             isDark
-              ? 'bg-[#060612]/90 border-amber-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
+              ? 'bg-[#222222]/90 border-amber-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
               : 'bg-white border-slate-300 shadow-sm'
           }`}
         >
@@ -471,7 +471,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   type="text"
                   value={emailHost}
                   onChange={(e) => setEmailHost(e.target.value)}
-                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                 />
               </div>
               <div>
@@ -480,7 +480,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   type="text"
                   value={emailPort}
                   onChange={(e) => setEmailPort(e.target.value)}
-                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                 />
               </div>
             </div>
@@ -492,7 +492,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   type="email"
                   value={emailAddress}
                   onChange={(e) => setEmailAddress(e.target.value)}
-                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                 />
               </div>
               <div>
@@ -502,7 +502,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                     type={showEmailPass ? 'text' : 'password'}
                     value={emailPassword}
                     onChange={(e) => setEmailPassword(e.target.value)}
-                    className={`w-full p-2 pr-9 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                    className={`w-full p-2 pr-9 rounded-lg border text-xs ${isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                   />
                   <button
                     type="button"
@@ -540,7 +540,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
         <div
           className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${
             isDark
-              ? 'bg-[#060612]/90 border-purple-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
+              ? 'bg-[#222222]/90 border-purple-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
               : 'bg-white border-slate-300 shadow-sm'
           }`}
         >
@@ -579,7 +579,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   type="text"
                   value={sttProvider}
                   onChange={(e) => setSttProvider(e.target.value)}
-                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                 />
               </div>
               <div>
@@ -588,7 +588,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   type="text"
                   value={sipTrunk}
                   onChange={(e) => setSipTrunk(e.target.value)}
-                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                 />
               </div>
               <div>
@@ -598,7 +598,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                     type={showTelephonySecret ? 'text' : 'password'}
                     value={telephonySecret}
                     onChange={(e) => setTelephonySecret(e.target.value)}
-                    className={`w-full p-2 pr-9 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                    className={`w-full p-2 pr-9 rounded-lg border text-xs ${isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                   />
                   <button
                     type="button"
@@ -632,7 +632,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
         <div
           className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${
             isDark
-              ? 'bg-[#060612]/90 border-emerald-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
+              ? 'bg-[#222222]/90 border-emerald-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
               : 'bg-white border-slate-300 shadow-sm'
           }`}
         >
@@ -666,7 +666,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   value={apiMethod}
                   onChange={(e: any) => setApiMethod(e.target.value)}
                   className={`p-2 rounded-lg border font-bold ${
-                    isDark ? 'bg-[#030712] border-slate-800 text-emerald-400' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    isDark ? 'bg-[#222222] border-slate-800 text-emerald-400' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 >
                   <option value="POST">POST</option>
@@ -732,7 +732,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                     }
                   }}
                   className={`w-full p-2 rounded-lg border font-bold ${
-                    isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 >
                   <option value="/api/webhooks/dispatch">POST /api/webhooks/dispatch (AI Dispatcher Webhook)</option>
@@ -753,7 +753,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   onChange={(e) => setApiRequestBody(e.target.value)}
                   placeholder={apiMethod === 'GET' ? '{"sender": "ООО СеверФуд", "text": "Срочный ремонт"}' : '{"text": "Заявка..."}'}
                   className={`w-full p-2 rounded-lg border text-[11px] font-mono leading-tight focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
-                    isDark ? 'bg-[#030712] border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    isDark ? 'bg-[#222222] border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 />
               </div>
@@ -789,7 +789,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
         <div
           className={`rounded-2xl p-5 border transition-all flex flex-col justify-between lg:col-span-2 ${
             isDark
-              ? 'bg-[#060612]/90 border-rose-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
+              ? 'bg-[#222222]/90 border-rose-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
               : 'bg-white border-slate-300 shadow-sm'
           }`}
         >
@@ -874,7 +874,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   onChange={(e) => setVoiceTranscript(e.target.value)}
                   placeholder="Произнесите фразу или введите текст для теста голосового канала..."
                   className={`w-full p-2.5 rounded-xl border text-xs font-sans leading-relaxed focus:outline-none focus:ring-1 focus:ring-rose-500 ${
-                    isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 />
               </div>
@@ -914,7 +914,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
         <div
           className={`p-5 rounded-2xl border transition-all ${
             isDark
-              ? 'bg-[#030712] border-emerald-500/40 text-emerald-300'
+              ? 'bg-[#222222] border-emerald-500/40 text-emerald-300'
               : 'bg-slate-900 border-slate-800 text-emerald-400'
           }`}
         >

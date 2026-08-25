@@ -76,7 +76,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
       <div
         className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
           isDark
-            ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
+            ? 'bg-[#222222]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
             : 'bg-white border-slate-300 text-slate-950 shadow-md'
         }`}
       >
@@ -146,25 +146,25 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
 
       {/* METRICS SUMMARY CARDS (по данным прототипа) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
+        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#222222]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
           <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Всего Заявок</div>
           <div className={`text-xl font-black ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>{totalRequests}</div>
           <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>открыто: {db?.open_tickets?.length || 0} • закрыто: {db?.closed_tickets?.length || 0}</div>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
+        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#222222]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
           <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Авто-Диспетчеризация</div>
           <div className={`text-xl font-black ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{autoRate}%</div>
           <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>SLA-дедлайн по контракту + бизнес-часам</div>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
+        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#222222]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
           <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Ожидают HITL</div>
           <div className={`text-xl font-black ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>{pendingHITL}</div>
           <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>требуют уточнения диспетчера</div>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
+        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#222222]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
           <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Средний Latency</div>
           <div className={`text-xl font-black ${isDark ? 'text-purple-400' : 'text-purple-900'}`}>{avgLatencyMs} ms</div>
           <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>по последним событиям логов</div>
@@ -176,7 +176,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
         <div
           className={`rounded-2xl p-5 border transition-all ${
             isDark
-              ? 'bg-[#030712] border-cyan-500/30 text-slate-200'
+              ? 'bg-[#222222] border-cyan-500/30 text-slate-200'
               : 'bg-slate-900 border-slate-800 text-slate-200'
           }`}
         >
@@ -264,7 +264,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
         <div
           className={`rounded-2xl p-5 border transition-all ${
             isDark
-              ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-md'
+              ? 'bg-[#222222]/90 border-cyan-500/30 text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
@@ -342,7 +342,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
         <div
           className={`rounded-2xl p-5 border transition-all ${
             isDark
-              ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-md'
+              ? 'bg-[#222222]/90 border-cyan-500/30 text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >

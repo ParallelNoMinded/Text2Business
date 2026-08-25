@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Header, TabType } from './components/Header';
+import { Header, TabType, UserRole } from './components/Header';
 import { LandingHome } from './components/LandingHome';
 import { ChannelsConfigView } from './components/ChannelsConfigView';
 import { OperatorConsoleView } from './components/OperatorConsoleView';
@@ -17,6 +17,7 @@ import { apiFetch } from './api';
 import { INITIAL_DATABASE, DatabaseSchema } from './mockDb';
 
 export default function App() {
+  const [userRole, setUserRole] = useState<UserRole>('admin');
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [geminiActive, setGeminiActive] = useState(true);
@@ -61,6 +62,7 @@ export default function App() {
   const [isRunningDispatch, setIsRunningDispatch] = useState<boolean>(false);
   const [isCommitting, setIsCommitting] = useState<boolean>(false);
   const [commitSuccessMsg, setCommitSuccessMsg] = useState<string | null>(null);
+  const [homeRoleSelection, setHomeRoleSelection] = useState<boolean>(false);
 
   const handleSelectPreset = (presetId: string) => {
     const preset = SCENARIO_PRESETS.find((p) => p.id === presetId);
@@ -192,17 +194,25 @@ export default function App() {
   ).length;
 
   const isDark = theme === 'dark';
+  const allowedDispatcherTabs: TabType[] = ['home', 'console', 'operator'];
+  const canAccessTab = (tab: TabType) => userRole === 'admin' || allowedDispatcherTabs.includes(tab);
+
+  const handleSetActiveTab = (tab: TabType) => {
+    if (!canAccessTab(tab)) return;
+    setActiveTab(tab);
+  };
 
   return (
     <div
       className={`min-h-screen flex flex-col justify-between font-sans antialiased transition-colors duration-200 ${
-        isDark ? 'bg-[#020204] text-slate-100' : 'bg-slate-100 text-slate-900'
+        isDark ? 'bg-[#141414] text-slate-100' : 'bg-slate-100 text-slate-900'
       }`}
     >
-      {/* Streamlined Header */}
-      <Header
+        <Header
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleSetActiveTab}
+        userRole={userRole}
+        setUserRole={setUserRole}
         theme={theme}
         setTheme={setTheme}
         geminiActive={geminiActive}
@@ -213,6 +223,8 @@ export default function App() {
         pendingOperatorCount={pendingOperatorCount}
         githubToken={githubToken}
         onOpenTokenModal={() => setIsTokenModalOpen(true)}
+        onNavigateHome={() => { setActiveTab('home'); setHomeRoleSelection(true); }}
+        setHomeRoleSelection={setHomeRoleSelection}
       />
 
       {/* GITHUB_MODELS_TOKEN Setup Modal */}
@@ -226,12 +238,16 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <main className={`flex-1 w-full ${activeTab === 'home' ? 'mx-0 max-w-none px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6'}`}>
         {/* TAB 0: LANDING HOME PAGE */}
         {activeTab === 'home' && (
           <LandingHome
-            setActiveTab={setActiveTab}
+            setActiveTab={handleSetActiveTab}
+            userRole={userRole}
+            setUserRole={setUserRole}
             theme={theme}
+            homeRoleSelection={homeRoleSelection}
+            setHomeRoleSelection={setHomeRoleSelection}
           />
         )}
 
@@ -239,7 +255,7 @@ export default function App() {
         {activeTab === 'channels' && (
           <ChannelsConfigView
             theme={theme}
-            onNavigateToConsole={() => setActiveTab('console')}
+            onNavigateToConsole={() => handleSetActiveTab('console')}
           />
         )}
 
@@ -249,7 +265,7 @@ export default function App() {
             <div
               className={`rounded-2xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                 isDark
-                  ? 'bg-[#060612]/90 border-cyan-500/30 text-white'
+                  ? 'bg-[#1C1B1B] border-[#2A2A2A] text-white'
                   : 'bg-white border-slate-300 text-slate-950 shadow-sm'
               }`}
             >
@@ -307,7 +323,7 @@ export default function App() {
             <div
               className={`rounded-2xl p-4 border text-xs font-mono ${
                 isDark
-                  ? 'bg-[#060612]/90 border-cyan-500/20 text-slate-400'
+                  ? 'bg-[#1C1B1B] border-[#2A2A2A] text-slate-400'
                   : 'bg-white border-slate-300 text-slate-700 font-medium shadow-sm'
               }`}
             >
@@ -350,27 +366,28 @@ export default function App() {
         )}
       </main>
 
-      {/* Antigravity Footer */}
-      <footer
-        className={`border-t mt-8 py-5 text-center text-xs font-mono transition-colors ${
-          isDark
-            ? 'border-white/10 bg-[#020204] text-slate-500'
-            : 'border-slate-300 bg-white text-slate-700'
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center space-x-2">
-            <span className={`h-2 w-2 rounded-full ${isDark ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-blue-900'}`}></span>
-            <span className={`font-bold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              Текстовый AI-Диспетчер для бизнеса
-            </span>
-            <span>/ Промышленная архитектура</span>
+      {activeTab !== 'home' && (
+        <footer
+          className={`border-t mt-8 py-5 text-center text-xs font-mono transition-colors ${
+            isDark
+              ? 'border-[#2A2A2A] bg-[#1C1B1B] text-slate-500'
+              : 'border-slate-300 bg-white text-slate-700'
+          }`}
+        >
+          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center space-x-2">
+              <span className={`h-2 w-2 rounded-full ${isDark ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-blue-900'}`}></span>
+              <span className={`font-bold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
+                Текстовый AI-Диспетчер для бизнеса
+              </span>
+              <span>/ Промышленная архитектура</span>
+            </div>
+            <p className="text-[11px]">
+              Архитектор AI-решений / Техлид AI-внедрений • Full-Stack контейнер Cloud Run
+            </p>
           </div>
-          <p className="text-[11px]">
-            Архитектор AI-решений / Техлид AI-внедрений • Full-Stack контейнер Cloud Run
-          </p>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }

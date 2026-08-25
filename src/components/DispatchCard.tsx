@@ -36,7 +36,7 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
       <div
         className={`rounded-2xl p-5 text-center text-xs font-mono border transition-all ${
           isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
+            ? 'bg-[#1C1B1B] border-[#2A2A2A] text-slate-500'
             : 'bg-white border-slate-300 text-slate-700 font-semibold shadow-sm'
         }`}
       >
@@ -141,7 +141,7 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
       id="dispatch-decision-card"
       className={`rounded-2xl p-4 sm:p-5 transition-all border space-y-4 ${
         isDark
-          ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
+          ? 'bg-[#1C1B1B] border-[#2A2A2A] shadow-[0_8px_24px_rgba(0,0,0,0.7)] text-white'
           : 'bg-white border-slate-300 shadow-sm text-slate-900'
       }`}
     >
@@ -163,12 +163,12 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
       </div>
 
       {/* Main Action & SLA Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Business Action Box */}
         <div
           className={`border rounded-xl p-3 flex flex-col justify-between shadow-inner ${
             isDark
-              ? 'bg-[#020204]/90 border-cyan-500/20'
+              ? 'bg-[#222222] border-[#2A2A2A]'
               : 'bg-slate-50 border-slate-300'
           }`}
         >
@@ -196,7 +196,7 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
         <div
           className={`border rounded-xl p-3 space-y-1.5 shadow-inner ${
             isDark
-              ? 'bg-[#020204]/90 border-cyan-500/20'
+              ? 'bg-[#222222] border-[#2A2A2A]'
               : 'bg-slate-50 border-slate-300'
           }`}
         >
@@ -228,7 +228,7 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
         <div
           className={`border rounded-xl p-3 space-y-1.5 shadow-inner ${
             isDark
-              ? 'bg-[#020204]/90 border-cyan-500/20'
+              ? 'bg-[#222222] border-[#2A2A2A]'
               : 'bg-slate-50 border-slate-300'
           }`}
         >
@@ -267,7 +267,7 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
       <div
         className={`border rounded-xl p-3 ${
           isDark
-            ? 'bg-[#020204]/80 border-cyan-500/20'
+            ? 'bg-[#222222] border-[#2A2A2A]'
             : 'bg-slate-50 border-slate-300'
         }`}
       >
@@ -289,7 +289,7 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
       <div
         className={`border rounded-xl p-3 ${
           isDark
-            ? 'bg-[#020204]/80 border-cyan-500/20'
+            ? 'bg-[#1C1B1B] border-[#2A2A2A]'
             : 'bg-slate-50 border-slate-300'
         }`}
       >
@@ -321,9 +321,9 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
           </button>
         </div>
         <div
-          className={`p-3 border rounded-lg text-xs font-sans leading-relaxed ${
+          className={`p-3 border rounded-lg text-sm font-sans leading-relaxed ${
             isDark
-              ? 'bg-[#080810] border-cyan-500/20 text-slate-200'
+              ? 'bg-[#222222] border-[#2A2A2A] text-slate-200'
               : 'bg-white border-slate-300 text-slate-900 font-medium'
           }`}
         >

@@ -894,7 +894,7 @@ end
       <div
         className={`p-6 rounded-2xl border backdrop-blur-md shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
           isDark
-            ? 'bg-gradient-to-r from-[#030712] via-[#09152a] to-[#030712] border-cyan-500/40 text-white shadow-[0_0_30px_rgba(34,211,238,0.15)]'
+            ? 'bg-gradient-to-r from-[#222222] via-[#09152a] to-[#222222] border-cyan-500/40 text-white shadow-[0_0_30px_rgba(34,211,238,0.15)]'
             : 'bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 border-blue-800 text-white shadow-xl'
         }`}
       >
@@ -919,7 +919,7 @@ end
         </div>
 
         {/* Primary Architecture Switcher: AS-IS vs TO-BE */}
-        <div className="flex items-center p-1 rounded-xl bg-[#010309] border border-cyan-500/40 shadow-inner font-mono text-xs">
+        <div className="flex items-center p-1 rounded-xl bg-[#222222] border border-cyan-500/40 shadow-inner font-mono text-xs">
           <button
             onClick={() => {
               setMainMode('as_is');
@@ -980,7 +980,7 @@ end
       {/* Sub-Navigation Tabs */}
       <div
         className={`flex items-center space-x-2 p-1.5 rounded-xl border overflow-x-auto no-scrollbar font-mono text-xs ${
-          isDark ? 'bg-[#060612] border-cyan-500/30' : 'bg-white border-slate-300 shadow-sm'
+          isDark ? 'bg-[#222222] border-cyan-500/30' : 'bg-white border-slate-300 shadow-sm'
         }`}
       >
         {mainMode === 'as_is' ? (
@@ -1119,7 +1119,7 @@ end
           {/* Controls Bar for Diagrams */}
           <div
             className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-mono text-xs ${
-              isDark ? 'bg-[#060612] border-slate-800' : 'bg-white border-slate-300'
+              isDark ? 'bg-[#222222] border-slate-800' : 'bg-white border-slate-300'
             }`}
           >
             {/* Diagram Switcher */}
@@ -1286,7 +1286,7 @@ end
             {/* View Mode Switcher: Code vs Visual SVG */}
             <div className="flex items-center space-x-2">
               <span className="text-slate-400 text-[11px]">Режим показа:</span>
-              <div className="flex items-center p-1 rounded-lg bg-[#010309] border border-slate-700">
+              <div className="flex items-center p-1 rounded-lg bg-[#222222] border border-slate-700">
                 <button
                   onClick={() => setPumlRenderMode('visual')}
                   className={`px-2.5 py-1 rounded text-[11px] font-bold ${
@@ -1328,7 +1328,7 @@ end
             {(pumlRenderMode === 'visual' || pumlRenderMode === 'both') && (
               <div
                 className={`p-6 rounded-2xl border shadow-xl relative overflow-hidden ${
-                  isDark ? 'bg-[#030712] border-cyan-500/40 text-cyan-300' : 'bg-slate-900 border-slate-700 text-cyan-300'
+                  isDark ? 'bg-[#222222] border-cyan-500/40 text-cyan-300' : 'bg-slate-900 border-slate-700 text-cyan-300'
                 }`}
               >
                 <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4 font-mono text-xs">
@@ -1349,7 +1349,7 @@ end
                   </a>
                 </div>
 
-                <div className="flex justify-center items-center min-h-[300px] bg-[#010309] rounded-xl border border-cyan-500/30 p-4 overflow-x-auto">
+                <div className="flex justify-center items-center min-h-[300px] bg-[#222222] rounded-xl border border-cyan-500/30 p-4 overflow-x-auto">
                   <img
                     src={getKrokiUrl(getActivePumlCode())}
                     alt="PlantUML Diagram Render"
@@ -1367,14 +1367,14 @@ end
             {(pumlRenderMode === 'code' || pumlRenderMode === 'both') && (
               <div
                 className={`p-6 rounded-2xl border font-mono space-y-3 ${
-                  isDark ? 'bg-[#060612] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
+                  isDark ? 'bg-[#222222] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
                 }`}
               >
                 <div className="flex items-center justify-between border-b border-slate-700 pb-2">
                   <span className="text-xs font-bold text-cyan-400">PlantUML Source Code (.puml)</span>
                   <span className="text-[10px] text-slate-400">Используйте java -jar plantuml.jar для сборки</span>
                 </div>
-                <pre className="p-4 rounded-xl bg-[#010309] border border-cyan-500/30 text-cyan-300 text-xs overflow-x-auto leading-relaxed">
+                <pre className="p-4 rounded-xl bg-[#222222] border border-cyan-500/30 text-cyan-300 text-xs overflow-x-auto leading-relaxed">
                   {getActivePumlCode()}
                 </pre>
               </div>
@@ -1388,7 +1388,7 @@ end
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
           <div
             className={`p-5 rounded-2xl border space-y-3 ${
-              isDark ? 'bg-[#060612] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+              isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
             <h3 className="text-sm font-bold text-amber-400 border-b pb-2 border-slate-700">1. Backend Gateway (`server.ts`)</h3>
@@ -1404,7 +1404,7 @@ end
 
           <div
             className={`p-5 rounded-2xl border space-y-3 ${
-              isDark ? 'bg-[#060612] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+              isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
             <h3 className="text-sm font-bold text-amber-400 border-b pb-2 border-slate-700">2. Deterministic Engine (`dispatcherEngine.ts`)</h3>
@@ -1424,11 +1424,11 @@ end
       {mainMode === 'as_is' && asIsSubTab === 'data_flow' && (
         <div
           className={`p-6 rounded-2xl border font-mono space-y-4 ${
-            isDark ? 'bg-[#060612] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
+            isDark ? 'bg-[#222222] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
           }`}
         >
           <h3 className="text-sm font-bold text-amber-400 border-b pb-2 border-slate-700">Пайплайн Обработки Обращения (As-Is MVP)</h3>
-          <pre className="p-4 rounded-xl bg-[#010309] border border-amber-500/30 text-amber-300 text-xs overflow-x-auto leading-relaxed">
+          <pre className="p-4 rounded-xl bg-[#222222] border border-amber-500/30 text-amber-300 text-xs overflow-x-auto leading-relaxed">
 {`[ Telegram / Email / Voice ]
              │
              ▼
@@ -1455,7 +1455,7 @@ end
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
           <div
             className={`p-5 rounded-2xl border space-y-3 ${
-              isDark ? 'bg-[#060612] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+              isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
             <div className="flex items-center space-x-2 text-cyan-400 font-bold border-b pb-2 border-slate-700">
@@ -1469,7 +1469,7 @@ end
 
           <div
             className={`p-5 rounded-2xl border space-y-3 ${
-              isDark ? 'bg-[#060612] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+              isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
             <div className="flex items-center space-x-2 text-cyan-400 font-bold border-b pb-2 border-slate-700">
@@ -1483,7 +1483,7 @@ end
 
           <div
             className={`p-5 rounded-2xl border space-y-3 ${
-              isDark ? 'bg-[#060612] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+              isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
             <div className="flex items-center space-x-2 text-cyan-400 font-bold border-b pb-2 border-slate-700">
@@ -1501,7 +1501,7 @@ end
       {mainMode === 'to_be' && toBeSubTab === 'migration' && (
         <div
           className={`p-6 rounded-2xl border font-mono space-y-6 ${
-            isDark ? 'bg-[#060612] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
+            isDark ? 'bg-[#222222] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
           }`}
         >
           <h3 className="text-sm font-bold text-cyan-400 border-b pb-2 border-slate-700">
@@ -1565,7 +1565,7 @@ end
               <div
                 key={adr.id}
                 className={`p-5 rounded-2xl border transition-all ${
-                  isDark ? 'bg-[#060612] border-slate-800 text-slate-300 hover:border-cyan-500/50' : 'bg-white border-slate-200 text-slate-800 shadow-md'
+                  isDark ? 'bg-[#222222] border-slate-800 text-slate-300 hover:border-cyan-500/50' : 'bg-white border-slate-200 text-slate-800 shadow-md'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -1593,7 +1593,7 @@ end
       {((mainMode === 'as_is' && asIsSubTab === 'openapi') || (mainMode === 'to_be' && toBeSubTab === 'openapi')) && (
         <div
           className={`p-6 rounded-2xl border font-mono space-y-4 ${
-            isDark ? 'bg-[#060612] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
+            isDark ? 'bg-[#222222] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
           }`}
         >
           <div className="flex items-center justify-between border-b border-slate-700 pb-3">
@@ -1602,7 +1602,7 @@ end
             </h3>
             <span className="text-xs text-emerald-400">REST & Webhook Spec</span>
           </div>
-          <pre className="p-4 rounded-xl bg-[#010309] border border-cyan-500/30 text-cyan-300 text-xs overflow-x-auto">
+          <pre className="p-4 rounded-xl bg-[#222222] border border-cyan-500/30 text-cyan-300 text-xs overflow-x-auto">
 {mainMode === 'as_is'
   ? `openapi: 3.0.3
 info:
@@ -1640,7 +1640,7 @@ paths:
       {((mainMode === 'as_is' && asIsSubTab === 'report') || (mainMode === 'to_be' && toBeSubTab === 'report')) && (
         <div
           className={`p-6 rounded-2xl border font-mono space-y-6 ${
-            isDark ? 'bg-[#060612] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
+            isDark ? 'bg-[#222222] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
           }`}
         >
           <h3 className="text-sm font-bold text-cyan-400 border-b pb-2 border-slate-700">

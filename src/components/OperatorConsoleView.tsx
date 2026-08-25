@@ -159,7 +159,7 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
       <div
         className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
           isDark
-            ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
+            ? 'bg-[#222222]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
             : 'bg-white border-slate-300 text-slate-950 shadow-md'
         }`}
       >
@@ -208,7 +208,7 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
         </h3>
 
         {pendingTickets.length === 0 ? (
-          <div className={`p-5 rounded-2xl border text-center text-xs font-mono ${isDark ? 'bg-[#030712] border-slate-800 text-slate-500' : 'bg-slate-100 border-slate-300 text-slate-900 font-semibold'}`}>
+          <div className={`p-5 rounded-2xl border text-center text-xs font-mono ${isDark ? 'bg-[#222222] border-slate-800 text-slate-500' : 'bg-slate-100 border-slate-300 text-slate-900 font-semibold'}`}>
             // Нет неполных обращений. AI-Диспетчер автоматически обработал 100% поступивших сообщений.
           </div>
         ) : (
@@ -219,7 +219,7 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
                 onClick={() => handleOpenTicketInspector(ticket)}
                 className={`p-4 rounded-2xl border transition-all cursor-pointer hover:scale-[1.01] ${
                   isDark
-                    ? 'bg-[#090814] border-red-500/40 hover:border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
+                    ? 'bg-[#222222] border-red-500/40 hover:border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
                     : 'bg-white border-red-400 hover:border-red-600 shadow-md text-slate-950'
                 }`}
               >
@@ -285,9 +285,9 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
           Все Укомплектованные Заявки в Работе ({activeTickets.length})
         </h3>
 
-        <div className={`rounded-2xl p-4 border overflow-x-auto ${isDark ? 'bg-[#060612]/90 border-cyan-500/20' : 'bg-white border-slate-300 shadow-sm'}`}>
+        <div className={`rounded-2xl p-4 border overflow-x-auto ${isDark ? 'bg-[#222222]/90 border-cyan-500/20' : 'bg-white border-slate-300 shadow-sm'}`}>
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-950'}`}>
-            <thead className={`font-mono uppercase text-[10px] border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-slate-200 text-slate-950 font-extrabold border-slate-300'}`}>
+            <thead className={`font-mono uppercase text-[10px] border-b ${isDark ? 'bg-[#222222] text-cyan-400 border-cyan-500/20' : 'bg-slate-200 text-slate-950 font-extrabold border-slate-300'}`}>
               <tr>
                 <th className="p-3">ID Заявки</th>
                 <th className="p-3">Объект / Ассет</th>

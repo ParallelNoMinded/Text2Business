@@ -79,7 +79,7 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
       <div
         className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl transition-all ${
           isDark
-            ? 'bg-[#060612] border-cyan-500/40 text-white shadow-[0_0_30px_rgba(34,211,238,0.2)]'
+            ? 'bg-[#222222] border-cyan-500/40 text-white shadow-[0_0_30px_rgba(34,211,238,0.2)]'
             : 'bg-white border-slate-300 text-slate-900 shadow-xl'
         }`}
       >
@@ -126,7 +126,7 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
                 placeholder="ghp_... или github_pat_..."
                 className={`w-full p-3 pr-10 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 ${
                   isDark
-                    ? 'bg-[#030712] border-slate-700 text-cyan-300 focus:ring-cyan-500/50'
+                    ? 'bg-[#222222] border-slate-700 text-cyan-300 focus:ring-cyan-500/50'
                     : 'bg-slate-50 border-slate-300 text-slate-900 focus:ring-blue-500'
                 }`}
               />
@@ -154,7 +154,7 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
               placeholder="dev-dispatch-token"
               className={`w-full p-3 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 ${
                 isDark
-                  ? 'bg-[#030712] border-slate-700 text-cyan-300 focus:ring-cyan-500/50'
+                  ? 'bg-[#222222] border-slate-700 text-cyan-300 focus:ring-cyan-500/50'
                   : 'bg-slate-50 border-slate-300 text-slate-900 focus:ring-blue-500'
               }`}
             />

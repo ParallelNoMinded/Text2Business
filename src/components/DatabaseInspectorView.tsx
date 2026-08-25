@@ -91,7 +91,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       <div
         className={`rounded-2xl p-5 text-center text-xs font-mono border transition-all ${
           isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
+            ? 'bg-[#222222]/80 border-cyan-500/20 text-slate-500'
             : 'bg-white border-slate-300 text-slate-700 font-semibold shadow-sm'
         }`}
       >
@@ -313,7 +313,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       <div
         className={`rounded-2xl p-4 sm:p-5 transition-all border flex flex-col md:flex-row md:items-center justify-between gap-4 ${
           isDark
-            ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
+            ? 'bg-[#222222]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
             : 'bg-white border-slate-300 shadow-sm text-slate-900'
         }`}
       >
@@ -338,7 +338,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
               onChange={(e) => setSearchTerm(e.target.value)}
               className={`w-full border rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none transition ${
                 isDark
-                  ? 'bg-[#020204]/90 border-cyan-500/30 text-white focus:border-cyan-400'
+                  ? 'bg-[#222222]/90 border-cyan-500/30 text-white focus:border-cyan-400'
                   : 'bg-slate-50 border-slate-300 text-blue-950 font-bold focus:border-blue-900'
               }`}
             />
@@ -373,7 +373,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
                   : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
+                ? 'bg-[#222222]/60 text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
             }`}
           >
@@ -389,7 +389,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
                   : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
+                ? 'bg-[#222222]/60 text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
             }`}
           >
@@ -405,7 +405,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
                   : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
+                ? 'bg-[#222222]/60 text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
             }`}
           >
@@ -421,7 +421,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
                   : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
+                ? 'bg-[#222222]/60 text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
             }`}
           >
@@ -437,7 +437,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
                   : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
+                ? 'bg-[#222222]/60 text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
             }`}
           >
@@ -525,12 +525,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         <div
           className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
             isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
+              ? 'bg-[#222222]/90 border-cyan-500/20 text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
+            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#222222] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
               <tr>
                 <th className="p-3">ID Контрагента</th>
                 <th className="p-3">Наименование</th>
@@ -571,12 +571,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         <div
           className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
             isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
+              ? 'bg-[#222222]/90 border-cyan-500/20 text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
+            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#222222] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
               <tr>
                 <th className="p-3">ID Объекта</th>
                 <th className="p-3">Клиент</th>
@@ -615,12 +615,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         <div
           className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
             isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
+              ? 'bg-[#222222]/90 border-cyan-500/20 text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
+            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#222222] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
               <tr>
                 <th className="p-3">ID Ассета</th>
                 <th className="p-3">Код Объекта</th>
@@ -669,12 +669,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         <div
           className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
             isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
+              ? 'bg-[#222222]/90 border-cyan-500/20 text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
+            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#222222] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
               <tr>
                 <th className="p-3">ID Заявки</th>
                 <th className="p-3">ID Ассета</th>
@@ -729,12 +729,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         <div
           className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
             isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
+              ? 'bg-[#222222]/90 border-cyan-500/20 text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
+            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#222222] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
               <tr>
                 <th className="p-3">ID Заявки</th>
                 <th className="p-3">ID Ассета</th>
@@ -779,7 +779,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       {/* MODAL DIALOGS FOR ADDING DATA */}
       {modalType && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className={`w-full max-w-lg rounded-2xl p-6 border shadow-2xl ${isDark ? 'bg-[#0a0a16] border-cyan-500/40 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
+          <div className={`w-full max-w-lg rounded-2xl p-6 border shadow-2xl ${isDark ? 'bg-[#222222] border-cyan-500/40 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
             <div className="flex items-center justify-between mb-4 border-b pb-3 border-slate-700/30">
               <h3 className="text-sm font-mono font-bold uppercase text-cyan-400">
                 {modalType === 'ADD_CONTRACTOR' && 'Добавить нового Контрагента'}

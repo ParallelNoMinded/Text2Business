@@ -19,7 +19,7 @@ export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({
       <div
         className={`rounded-2xl p-5 text-center text-xs font-mono border transition-all ${
           isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
+            ? 'bg-[#1C1B1B] border-[#2A2A2A] text-slate-500'
             : 'bg-white border-slate-300 text-slate-700 font-semibold shadow-sm'
         }`}
       >
@@ -39,7 +39,7 @@ export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({
       id="execution-trace-panel"
       className={`rounded-2xl p-4 sm:p-5 transition-all border space-y-4 ${
         isDark
-          ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
+          ? 'bg-[#1C1B1B] border-[#2A2A2A] shadow-[0_8px_24px_rgba(0,0,0,0.7)] text-white'
           : 'bg-white border-slate-300 shadow-sm text-slate-900'
       }`}
     >
@@ -76,10 +76,10 @@ export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({
             <div
               key={step.id || idx}
               className={`border rounded-xl overflow-hidden transition-all shadow-inner ${
-                isDark
-                  ? 'bg-[#020204]/90 border-cyan-500/20'
-                  : 'bg-slate-50 border-slate-300'
-              }`}
+                  isDark
+                    ? 'bg-[#222222] border-[#2A2A2A]'
+                    : 'bg-slate-50 border-slate-300'
+                }`}
             >
               {/* Step Summary Bar */}
               <button
@@ -114,7 +114,7 @@ export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({
                   <span
                     className={`font-mono text-[11px] px-2 py-0.5 rounded border font-extrabold ${
                       isDark
-                        ? 'text-cyan-300 bg-[#080810] border-white/10'
+                        ? 'text-cyan-300 bg-[#222222] border-[#2A2A2A]'
                         : 'text-blue-950 bg-white border-slate-300'
                     }`}
                   >
@@ -133,7 +133,7 @@ export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({
                 <div
                   className={`p-3 border-t text-xs font-mono overflow-x-auto ${
                     isDark
-                      ? 'bg-[#05050c] border-cyan-500/20 text-cyan-300/90'
+                      ? 'bg-[#222222] border-[#2A2A2A] text-cyan-300/90'
                       : 'bg-white border-slate-300 text-slate-900 font-medium'
                   }`}
                 >

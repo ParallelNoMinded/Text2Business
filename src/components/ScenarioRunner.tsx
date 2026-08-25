@@ -71,7 +71,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
       id="scenario-runner-panel"
       className={`rounded-2xl p-4 sm:p-5 transition-all border ${
         isDark
-          ? 'bg-[#06060e]/95 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
+          ? 'bg-[#1C1B1B] border-[#2A2A2A] shadow-[0_8px_24px_rgba(0,0,0,0.7)] text-white'
           : 'bg-white border-slate-300 shadow-sm text-slate-900'
       }`}
     >
@@ -84,11 +84,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
               Обращение
             </h2>
           </div>
-          <p
-            className={`text-xs mt-0.5 font-sans ${
-              isDark ? 'text-slate-400' : 'text-slate-700 font-medium'
-            }`}
-          >
+          <p className={`text-xs mt-0.5 font-sans ${isDark ? 'text-slate-400' : 'text-slate-700 font-medium'}`}>
             Выберите пресет быстрой загрузки или введите сообщение
           </p>
         </div>
@@ -99,10 +95,10 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           type="button"
           onClick={onResetInput}
           className={`flex items-center space-x-1 px-2.5 py-1 text-[11px] font-mono border rounded-lg transition ${
-            isDark
-              ? 'text-slate-400 hover:text-white bg-[#080810] hover:bg-white/10 border-white/10'
-              : 'text-slate-700 hover:text-blue-950 bg-slate-100 hover:bg-slate-200 border-slate-300 font-bold'
-          }`}
+              isDark
+                ? 'text-slate-300 bg-[#222222] border-[#2A2A2A] hover:border-cyan-500/30 hover:text-white'
+                : 'text-slate-700 hover:text-blue-950 bg-slate-100 hover:bg-slate-200 border-slate-300 font-bold'
+            }`}
           title="Сбросить введенные данные к значениям пресета"
         >
           <RotateCcw className="h-3 w-3" />
@@ -119,7 +115,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
         >
           Быстрые кейсы
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {SCENARIO_PRESETS.map((preset) => {
             const isSelected = selectedPresetId === preset.id;
             return (
@@ -133,7 +129,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                       ? 'bg-cyan-950/60 border-cyan-500/80 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.2)] ring-1 ring-cyan-500/40'
                       : 'bg-blue-900 border-blue-950 text-white font-extrabold ring-1 ring-blue-900 shadow-sm'
                     : isDark
-                    ? 'bg-[#05050a]/80 border-white/10 text-slate-400 hover:border-cyan-500/40 hover:text-slate-200'
+                    ? 'bg-[#1C1B1B] border-[#2A2A2A] text-slate-300 hover:border-cyan-500/40 hover:text-slate-200'
                     : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-blue-900 hover:bg-slate-100 font-semibold'
                 }`}
               >
@@ -167,7 +163,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
       </div>
 
       {/* Inputs Form */}
-      <div className="space-y-3">
+        <div className="space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label
@@ -184,7 +180,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                 onChange={(e) => setChannel(e.target.value)}
                 className={`w-full border rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none appearance-none pr-8 ${
                   isDark
-                    ? 'bg-[#080810] border-cyan-500/30 text-white focus:border-cyan-400'
+                    ? 'bg-[#1C1B1B] border-[#2A2A2A] text-white focus:border-cyan-400'
                     : 'bg-slate-50 border-slate-300 text-blue-950 font-bold focus:border-blue-900'
                 }`}
               >
@@ -217,7 +213,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                 onChange={(e) => setIncomingTime(e.target.value)}
                 className={`w-full border rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none pr-8 ${
                   isDark
-                    ? 'bg-[#080810] border-cyan-500/30 text-white focus:border-cyan-400'
+                    ? 'bg-[#1C1B1B] border-[#2A2A2A] text-white focus:border-cyan-400'
                     : 'bg-slate-50 border-slate-300 text-blue-950 font-bold focus:border-blue-900'
                 }`}
               />
@@ -246,14 +242,14 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           </div>
           <textarea
             id="raw-text-input"
-            rows={5}
+            rows={6}
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Введите неструктурированный текст обращения..."
-            className={`w-full border rounded-xl p-3 text-xs placeholder-slate-400 focus:outline-none font-sans leading-relaxed shadow-inner resize-none ${
+            className={`w-full border rounded-xl p-4 text-sm placeholder-slate-400 focus:outline-none font-sans leading-relaxed shadow-inner resize-none ${
               isDark
-                ? 'bg-[#080810] border-cyan-500/30 text-slate-100 focus:border-cyan-400'
+                ? 'bg-[#1C1B1B] border-[#2A2A2A] text-slate-100 focus:border-cyan-400'
                 : 'bg-slate-50 border-slate-300 text-slate-900 font-semibold focus:border-blue-900'
             }`}
           />
@@ -265,9 +261,9 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           type="button"
           onClick={onRunDispatch}
           disabled={isLoading || !rawText.trim()}
-          className={`w-full font-extrabold py-3 px-4 rounded-xl shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-[0.99] ${
+          className={`w-full font-extrabold py-4 px-4 rounded-xl shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-[0.99] ${
             isDark
-              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-cyan-500/10'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-[0_10px_40px_rgba(34,211,238,0.12)]'
               : 'bg-blue-900 hover:bg-blue-950 text-white shadow-blue-900/20'
           } ${isLoading || !rawText.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
         >

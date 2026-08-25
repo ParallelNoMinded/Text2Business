@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ExtractedFacts } from '../types';
 import { Eye, Quote } from 'lucide-react';
 
@@ -9,13 +9,27 @@ interface FactExtractorViewProps {
 
 export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, theme = 'dark' }) => {
   const isDark = theme === 'dark';
+  const [editableValues, setEditableValues] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!facts) return;
+
+    setEditableValues({
+      customer_name: facts.customer_name?.value || '',
+      site_info: facts.site_info?.value || '',
+      asset_code: facts.asset_code?.value || '',
+      problem_summary: facts.problem_summary?.value || '',
+      requested_deadline: facts.requested_deadline?.value || '',
+      has_backup: facts.has_backup?.value || '',
+    });
+  }, [facts]);
 
   if (!facts) {
     return (
       <div
         className={`rounded-2xl p-5 text-center text-xs font-mono border transition-all ${
           isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
+            ? 'bg-[#1C1B1B] border-[#2A2A2A] text-slate-500'
             : 'bg-white border-slate-300 text-slate-700 shadow-sm font-semibold'
         }`}
       >
@@ -26,6 +40,7 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, the
 
   const renderFactCard = (
     label: string,
+    factKey: keyof ExtractedFacts,
     factItem: { value: string | null; quote?: string | null; confidence: number; type: string }
   ) => {
     const confPercent = Math.round((factItem.confidence || 0) * 100);
@@ -35,7 +50,7 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, the
       <div
         className={`border rounded-xl p-3 flex flex-col justify-between space-y-2 shadow-inner ${
           isDark
-            ? 'bg-[#020204]/90 border-cyan-500/20'
+            ? 'bg-[#222222] border-[#2A2A2A]'
             : 'bg-slate-50 border-slate-300'
         }`}
       >
@@ -68,9 +83,23 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, the
         </div>
 
         <div>
-          <p className={`text-xs font-bold font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {factItem.value || <span className="text-slate-500 italic font-sans font-normal">Не обнаружено</span>}
-          </p>
+          <input
+            data-inputbox="true"
+            aria-label={label}
+            value={editableValues[factKey] ?? factItem.value ?? ''}
+            onChange={(event) =>
+              setEditableValues((prev) => ({
+                ...prev,
+                [factKey]: event.target.value,
+              }))
+            }
+            className={`input-box w-full rounded-xl border px-3 py-2 text-sm font-bold font-mono outline-none transition ${
+              isDark
+                ? 'border-[#2A2A2A] bg-[#1C1B1B] text-white placeholder:text-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-500/20'
+                : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200'
+            }`}
+            placeholder="Введите значение"
+          />
         </div>
 
         {factItem.quote && (
@@ -88,7 +117,7 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, the
       id="fact-extractor-card"
       className={`rounded-2xl p-4 sm:p-5 transition-all border ${
         isDark
-          ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
+          ? 'bg-[#1C1B1B] border-[#2A2A2A] shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
           : 'bg-white border-slate-300 shadow-sm text-slate-900'
       }`}
     >
@@ -106,17 +135,17 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, the
               : 'text-blue-950 bg-blue-50 border-blue-200 font-extrabold'
           }`}
         >
-          Структурированный вывод
+          InputBox
         </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-        {renderFactCard('Заказчик / Клиент', facts.customer_name)}
-        {renderFactCard('Объект / Адрес', facts.site_info)}
-        {renderFactCard('Код Оборудования', facts.asset_code)}
-        {renderFactCard('Суть Проблемы', facts.problem_summary)}
-        {renderFactCard('Запрошенный Срок', facts.requested_deadline)}
-        {renderFactCard('Наличие Резерва', facts.has_backup)}
+        {renderFactCard('Заказчик / Клиент', 'customer_name', facts.customer_name)}
+        {renderFactCard('Объект / Адрес', 'site_info', facts.site_info)}
+        {renderFactCard('Код Оборудования', 'asset_code', facts.asset_code)}
+        {renderFactCard('Суть Проблемы', 'problem_summary', facts.problem_summary)}
+        {renderFactCard('Запрошенный Срок', 'requested_deadline', facts.requested_deadline)}
+        {renderFactCard('Наличие Резерва', 'has_backup', facts.has_backup)}
       </div>
 
       {facts.symptoms && facts.symptoms.length > 0 && (
@@ -128,8 +157,8 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, the
                 key={idx}
                 className={`px-2 py-0.5 rounded-full border text-[11px] font-mono font-bold ${
                   isDark
-                    ? 'bg-[#020204] border-cyan-500/30 text-cyan-300'
-                    : 'bg-blue-50 border-blue-200 text-blue-950'
+                      ? 'bg-[#1C1B1B] border-[#2A2A2A] text-slate-300'
+                      : 'bg-blue-50 border-blue-200 text-blue-950'
                 }`}
               >
                 {s}

@@ -1,341 +1,184 @@
 import React from 'react';
-import { TabType } from './Header';
-import { ParticleSwarmCanvas } from './ParticleSwarmCanvas';
-import {
-  Send,
-  UserCheck,
-  Database,
-  Activity,
-  Cpu,
-  ArrowRight,
-} from 'lucide-react';
+import { TabType, UserRole } from './Header';
+import { Cpu, ArrowRight, ShieldCheck, MonitorCog, BriefcaseBusiness } from 'lucide-react';
 
 interface LandingHomeProps {
   setActiveTab: (tab: TabType) => void;
+  userRole?: UserRole;
+  setUserRole?: (role: UserRole) => void;
   theme?: 'dark' | 'light';
   onRunPreset?: (presetId: string) => void;
+  homeRoleSelection?: boolean;
+  setHomeRoleSelection?: (v: boolean) => void;
 }
 
 export const LandingHome: React.FC<LandingHomeProps> = ({
   setActiveTab,
+  userRole = 'admin',
+  setUserRole,
   theme = 'dark',
+  homeRoleSelection = false,
+  setHomeRoleSelection,
 }) => {
   const isDark = theme === 'dark';
 
+  const cards = homeRoleSelection
+    ? [
+        {
+          id: 'dispatcher',
+          label: 'Рабочее место Диспетчера',
+          status: 'HITL ACTIVE',
+          description: 'Интерактивный диалог, уточнение недостающих параметров у клиента в чате, интеллектуальная маршрутизация обращений и моментальная передача подтверждённых заявок в 1С:ERP.',
+          action: 'Открыть место диспетчера',
+          icon: <BriefcaseBusiness className="h-5 w-5" />,
+          accent: 'cyan',
+        },
+        {
+          id: 'admin',
+          label: 'Панель Администратора',
+          status: 'SYSTEM CONTROL',
+          description: 'Управление интеграциями, мониторинг системных логов и трассировок выполнения ИИ-сценариев. Тонкая настройка процессов, API-клиентов и SMTP/IMAP шлюзов.',
+          action: 'Перейти к администрированию',
+          icon: <MonitorCog className="h-5 w-5" />,
+          accent: 'blue',
+        },
+      ]
+    : userRole === 'dispatcher'
+    ? [
+        {
+          id: 'demo-stand',
+          label: 'Рабочее место Диспетчера',
+          status: 'HITL ACTIVE',
+          description: 'Интерактивный диалог, уточнение недостающих параметров у клиента в чате, интеллектуальная маршрутизация обращений и моментальная передача подтверждённых заявок в 1С:ERP.',
+          action: 'Открыть место диспетчера',
+          icon: <BriefcaseBusiness className="h-5 w-5" />,
+          accent: 'cyan',
+        },
+        {
+          id: 'requests',
+          label: 'Заявки',
+          status: 'SYSTEM CONTROL',
+          description: 'Управление интеграциями, мониторинг системных логов и трассировок выполнения ИИ-сценариев. Тонкая настройка процессов, API-клиентов и SMTP/IMAP шлюзов.',
+          action: 'Перейти в заявки',
+          icon: <ShieldCheck className="h-5 w-5" />,
+          accent: 'cyan',
+        },
+      ]
+    : [
+        {
+          id: 'dispatcher',
+          label: 'Рабочее место Диспетчера',
+          status: 'HITL ACTIVE',
+          description: 'Интерактивный диалог, уточнение недостающих параметров у клиента в чате, интеллектуальная маршрутизация обращений и моментальная передача подтверждённых заявок в 1С:ERP.',
+          action: 'Открыть место диспетчера',
+          icon: <BriefcaseBusiness className="h-5 w-5" />,
+          accent: 'cyan',
+        },
+        {
+          id: 'admin',
+          label: 'Панель Администратора',
+          status: 'SYSTEM CONTROL',
+          description: 'Управление интеграциями, мониторинг системных логов и трассировок выполнения ИИ-сценариев. Тонкая настройка процессов, API-клиентов и SMTP/IMAP шлюзов.',
+          action: 'Перейти к администрированию',
+          icon: <MonitorCog className="h-5 w-5" />,
+          accent: 'blue',
+        },
+      ];
+
+  const handleCardClick = (id: string) => {
+    // If user is choosing role on home, set the role explicitly
+    if (id === 'dispatcher' || id === 'demo-stand') {
+      setUserRole?.('dispatcher');
+      setHomeRoleSelection?.(false);
+      setActiveTab('console');
+      return;
+    }
+    if (id === 'requests') {
+      setActiveTab('operator');
+      return;
+    }
+    if (id === 'admin') {
+      setUserRole?.('admin');
+      setHomeRoleSelection?.(false);
+      setActiveTab('channels');
+      return;
+    }
+  };
+
   return (
-    <div className="relative w-full max-w-7xl mx-auto flex flex-col justify-between gap-4 sm:gap-6 animate-fadeIn py-2 sm:py-4">
-      {/* GLOBAL PARTICLE SWARM BACKGROUND */}
-      <ParticleSwarmCanvas theme={theme} className="opacity-90 dark:opacity-100" />
-
-      {/* 1. HERO SECTION */}
-      <div
-        className={`relative z-10 rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 border text-center flex-1 flex flex-col items-center justify-center transition-all ${
-          isDark
-            ? 'bg-[#060612]/60 border-cyan-500/30 shadow-[0_10px_30px_rgba(0,0,0,0.7)] backdrop-blur-sm'
-            : 'bg-white/70 border-blue-900/30 shadow-md backdrop-blur-sm'
-        }`}
-      >
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px] rounded-2xl sm:rounded-3xl" />
-
-        <div className="relative z-30 max-w-3xl mx-auto space-y-3 sm:space-y-5 my-auto">
-          {/* Brand Header */}
-          <div className="inline-flex items-center justify-center space-x-2.5 sm:space-x-3 mb-0.5">
-            <div
-              className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl flex items-center justify-center ${
-                isDark
-                  ? 'bg-gradient-to-br from-cyan-400 via-indigo-500 to-purple-600 p-0.5 shadow-lg'
-                  : 'bg-transparent'
-              }`}
-            >
-              <div
-                className={`h-full w-full rounded-[10px] sm:rounded-[14px] flex items-center justify-center ${
-                  isDark ? 'bg-[#030712]' : 'bg-transparent'
-                }`}
-              >
-                <Cpu className={`h-6 w-6 sm:h-7 sm:w-7 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`} />
+    <div className="relative mx-auto w-full max-w-[1280px] px-0 py-0">
+      <div className="min-h-screen rounded-none border-0 bg-[#141414] px-3 py-0 text-white sm:px-5 lg:px-10">
+        <div className="mx-auto max-w-[1200px] pt-2">
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className="mb-3 flex items-center gap-4 pt-1">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/40 bg-[#1D1F26] shadow-[0_0_20px_rgba(34,211,238,0.12)] sm:h-14 sm:w-14">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#0F141A] text-cyan-400 sm:h-9 sm:w-9">
+                  <Cpu className="h-5 w-5" />
+                </div>
+              </div>
+              <div className="flex flex-col items-start">
+                <div className="font-mono text-[22px] font-black uppercase tracking-tight text-white sm:text-[28px]">
+                  TEXT2BUSINESS
+                </div>
+                <div className="mt-1 inline-flex rounded-md border border-cyan-500/40 bg-[#101B23] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">
+                  AI-ДИСПЕТЧЕР
+                </div>
               </div>
             </div>
-            <div className="text-left flex flex-col">
-              <span
-                className={`text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight font-mono uppercase leading-none ${
-                  isDark ? 'text-white' : 'text-blue-950'
-                }`}
-              >
-                TEXT2BUSINESS
-              </span>
-              <span
-                className={`text-[11px] sm:text-xs font-mono font-bold tracking-widest uppercase mt-0.5 sm:mt-1 leading-none ${
-                  isDark ? 'text-cyan-400' : 'text-blue-700'
-                }`}
-              >
-                AI-ДИСПЕТЧЕР
-              </span>
-            </div>
-          </div>
 
-          {/* Hero Headline */}
-          <h1
-            className={`text-lg sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-tight ${
-              isDark ? 'text-white' : 'text-blue-950'
-            }`}
-          >
-            <span
-              className={
-                isDark
-                  ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-blue-400'
-                  : 'text-blue-900'
-              }
-            >
+            <h1 className="max-w-[1080px] text-[28px] font-extrabold leading-[0.98] tracking-[-0.03em] text-white sm:text-[36px] lg:text-[44px]">
               Превращаем хаос входящих обращений
-            </span>{' '}
-            в управляемый сервис
-          </h1>
+              <span className="block text-cyan-400">в управляемый сервис</span>
+            </h1>
 
-          <p
-            className={`text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed font-sans ${
-              isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'
-            }`}
-          >
-            Умный AI-диспетчер для холодильного оборудования. Понимает контекст в письмах, чатах и звонках, рассчитывает SLA без ошибок и передает тикет напрямую в 1С:ERP.
-          </p>
-        </div>
-      </div>
-
-      {/* 2. NAVIGATION TILES (4 BLOCKS) */}
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4.5">
-        {/* Tile 1: Channels Config */}
-        <div
-          id="home-tile-channels"
-          onClick={() => setActiveTab('channels')}
-          className={`relative z-10 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between group ${
-            isDark
-              ? 'bg-[#060612]/60 border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-sm'
-              : 'bg-white border-slate-300 hover:border-blue-900 shadow-md backdrop-blur-sm'
-          }`}
-        >
-          <div className="relative z-30">
-            <div className="flex items-center justify-between mb-2">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                  isDark
-                    ? 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-400'
-                    : 'bg-blue-100 border border-blue-300 text-blue-950'
-                }`}
-              >
-                <Send className="h-4 w-4" />
-              </div>
-              <span
-                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                  isDark
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                    : 'bg-blue-950 text-white font-extrabold'
-                }`}
-              >
-                КАНАЛЫ
-              </span>
-            </div>
-            <h3
-              className={`text-sm sm:text-base font-bold font-mono mb-1 ${
-                isDark ? 'text-white' : 'text-blue-950 font-extrabold'
-              }`}
-            >
-              1. Каналы
-            </h3>
-            <p
-              className={`text-xs leading-snug ${
-                isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'
-              }`}
-            >
-              Telegram Бот, Email IMAP/MCP, Голосовая телефония и Swagger REST API.
+            <p className="mt-4 max-w-[1000px] text-[15px] leading-[1.45] tracking-[-0.02em] text-slate-300 sm:text-[16px]">
+              Умный AI-диспетчер для холодильного оборудования. Понимает контекст в письмах, чатах и звонках,
+              рассчитывает SLA без ошибок и передает тикет напрямую в 1С:ERP.
             </p>
           </div>
 
-          <div
-            className={`relative z-30 mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-mono font-bold transition-transform group-hover:translate-x-1 ${
-              isDark
-                ? 'border-white/10 text-cyan-400'
-                : 'border-slate-200 text-blue-950 font-extrabold'
-            }`}
-          >
-            <span>Настроить каналы</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
-        </div>
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            {cards.map((card, index) => (
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => handleCardClick(card.id)}
+                className="group flex min-h-[220px] flex-col justify-between rounded-2xl border border-[#2A2A2A] bg-[#1C1B1B] p-4 text-left transition duration-200 hover:border-cyan-500/40 hover:shadow-[0_0_14px_rgba(34,211,238,0.06)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-500/30 bg-[#222222] text-cyan-400">
+                      {card.icon}
+                    </div>
+                    <div className="font-sans text-[18px] font-medium leading-tight text-white">
+                      {index + 1}. {card.label}
+                    </div>
+                  </div>
 
-        {/* Tile 2: Operator HITL */}
-        <div
-          id="home-tile-operator"
-          onClick={() => setActiveTab('operator')}
-          className={`relative z-10 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between group ${
-            isDark
-              ? 'bg-[#060612]/60 border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-sm'
-              : 'bg-white border-slate-300 hover:border-blue-900 shadow-md backdrop-blur-sm'
-          }`}
-        >
-          <div className="relative z-30">
-            <div className="flex items-center justify-between mb-2">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                  isDark
-                    ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400'
-                    : 'bg-blue-100 border border-blue-300 text-blue-950'
-                }`}
-              >
-                <UserCheck className="h-4 w-4" />
-              </div>
-              <span
-                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                  isDark
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                    : 'bg-blue-950 text-white font-extrabold'
-                }`}
-              >
-                HITL
-              </span>
+                  <span className="rounded-md border border-amber-500/40 bg-[#2A2418] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-amber-300">
+                    {card.status}
+                  </span>
+                </div>
+
+                <div className="mt-4 text-[14px] leading-[1.5] text-slate-300">{card.description}</div>
+
+                <div className="mt-6 flex items-center gap-4 font-mono text-[15px] font-medium text-cyan-400">
+                  <span className="pr-1">{card.action}</span>
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4 flex flex-col gap-2 text-[11px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <span>Текстовый AI-Диспетчер для бизнеса</span>
+              <span className="text-slate-500">/</span>
+              <span>Промышленная архитектура</span>
             </div>
-            <h3
-              className={`text-sm sm:text-base font-bold font-mono mb-1 ${
-                isDark ? 'text-white' : 'text-blue-950 font-extrabold'
-              }`}
-            >
-              2. Диспетчер
-            </h3>
-            <p
-              className={`text-xs leading-snug ${
-                isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'
-              }`}
-            >
-              Интерактивный диалог, уточнение данных у клиента в боте и передача в 1С.
-            </p>
-          </div>
-
-          <div
-            className={`relative z-30 mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-mono font-bold transition-transform group-hover:translate-x-1 ${
-              isDark
-                ? 'border-white/10 text-cyan-400'
-                : 'border-slate-200 text-blue-950 font-extrabold'
-            }`}
-          >
-            <span>Открыть место диспетчера</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
-        </div>
-
-        {/* Tile 3: Database Registry */}
-        <div
-          id="home-tile-database"
-          onClick={() => setActiveTab('database')}
-          className={`relative z-10 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between group ${
-            isDark
-              ? 'bg-[#060612]/60 border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-sm'
-              : 'bg-white border-slate-300 hover:border-blue-900 shadow-md backdrop-blur-sm'
-          }`}
-        >
-          <div className="relative z-30">
-            <div className="flex items-center justify-between mb-2">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                  isDark
-                    ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
-                    : 'bg-blue-100 border border-blue-300 text-blue-950'
-                }`}
-              >
-                <Database className="h-4 w-4" />
-              </div>
-              <span
-                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                  isDark
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                    : 'bg-blue-950 text-white font-extrabold'
-                }`}
-              >
-                РЕЕСТР
-              </span>
+            <div className="text-left sm:text-right">
+              Архитектор AI-решений / Техлид AI-внедрения • Full-Stack контейнер Cloud Run
             </div>
-            <h3
-              className={`text-sm sm:text-base font-bold font-mono mb-1 ${
-                isDark ? 'text-white' : 'text-blue-950 font-extrabold'
-              }`}
-            >
-              3. Реестр
-            </h3>
-            <p
-              className={`text-xs leading-snug ${
-                isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'
-              }`}
-            >
-              Просмотр и CRUD редактирование: контрагенты, объекты, оборудование, открытые и закрытые заявки.
-            </p>
-          </div>
-
-          <div
-            className={`relative z-30 mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-mono font-bold transition-transform group-hover:translate-x-1 ${
-              isDark
-                ? 'border-white/10 text-cyan-400'
-                : 'border-slate-200 text-blue-950 font-extrabold'
-            }`}
-          >
-            <span>Открыть реестр БД</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
-        </div>
-
-        {/* Tile 4: Logs & Traces */}
-        <div
-          id="home-tile-logs"
-          onClick={() => setActiveTab('logs_traces')}
-          className={`relative z-10 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between group ${
-            isDark
-              ? 'bg-[#060612]/60 border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-sm'
-              : 'bg-white border-slate-300 hover:border-blue-900 shadow-md backdrop-blur-sm'
-          }`}
-        >
-          <div className="relative z-30">
-            <div className="flex items-center justify-between mb-2">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                  isDark
-                    ? 'bg-purple-500/10 border border-purple-500/30 text-purple-400'
-                    : 'bg-blue-100 border border-blue-300 text-blue-950'
-                }`}
-              >
-                <Activity className="h-4 w-4" />
-              </div>
-              <span
-                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                  isDark
-                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
-                    : 'bg-blue-950 text-white font-extrabold'
-                }`}
-              >
-                МОНИТОРИНГ
-              </span>
-            </div>
-            <h3
-              className={`text-sm sm:text-base font-bold font-mono mb-1 ${
-                isDark ? 'text-white' : 'text-blue-950 font-extrabold'
-              }`}
-            >
-              4. Логи & Трейсы
-            </h3>
-            <p
-              className={`text-xs leading-snug ${
-                isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'
-              }`}
-            >
-              Живой терминал логов, OpenTelemetry / Arize AI трейсы и дашборды SLA.
-            </p>
-          </div>
-
-          <div
-            className={`relative z-30 mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-mono font-bold transition-transform group-hover:translate-x-1 ${
-              isDark
-                ? 'border-white/10 text-cyan-400'
-                : 'border-slate-200 text-blue-950 font-extrabold'
-            }`}
-          >
-            <span>Смотреть логи & трейсы</span>
-            <ArrowRight className="h-4 w-4" />
           </div>
         </div>
       </div>
