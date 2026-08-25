@@ -125,7 +125,7 @@ export const OperationsDashboard: React.FC<OperationsDashboardProps> = ({ db, se
   ];
 
   return (
-    <div className="space-y-4 max-w-[1600px] mx-auto">
+    <div className="space-y-5 max-w-[1600px] mx-auto">
       <PageHeader
         kicker="AI Dispatcher Control Center"
         title={`${greet}, Operator`}
@@ -137,7 +137,7 @@ export const OperationsDashboard: React.FC<OperationsDashboardProps> = ({ db, se
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <KpiCard label="Open Tickets" value={String(open.length || 127)} delta="+18% today" spark={[18, 22, 19, 28, 30, 34, 40]} />
         <KpiCard label="Critical Tickets" value={String(critical || 23)} delta="+8%" spark={[8, 9, 11, 10, 14, 16, 18]} />
         <KpiCard label="AI Automation" value={`${autoRate || 91}%`} delta="+5%" spark={[80, 82, 84, 86, 88, 90, 91]} />
@@ -145,7 +145,7 @@ export const OperationsDashboard: React.FC<OperationsDashboardProps> = ({ db, se
         <KpiCard label="SLA Compliance" value="96%" delta="+3%" spark={[88, 90, 91, 93, 94, 95, 96]} />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-3">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-4">
         <Card className="overflow-hidden">
           <div className="px-3 py-2.5 border-b border-oc-border flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
             <div className="text-[11px] font-mono uppercase tracking-wider text-oc-secondary">Live Dispatch Queue</div>

@@ -69,16 +69,16 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
   return (
     <div
       id="scenario-runner-panel"
-      className="oc-card p-4"
+      className="oc-card p-5"
     >
       {/* Header Bar */}
-      <div className="flex items-center justify-between pb-3 border-b border-oc-border">
+      <div className="flex items-center justify-between pb-4 border-b border-oc-border">
         <div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-oc-accent"></span>
-            <h2 className="text-xs font-mono uppercase tracking-wider text-oc-accent">Incoming Request</h2>
+            <h2 className="text-xs font-mono uppercase tracking-wider text-oc-accent font-medium">Incoming Request</h2>
           </div>
-          <p className="text-xs mt-0.5 text-oc-secondary">
+          <p className="text-xs mt-1 text-oc-secondary">
             Channel, timestamp, message. Preset or custom input.
           </p>
         </div>
@@ -87,7 +87,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           id="reset-input-btn"
           type="button"
           onClick={onResetInput}
-          className="flex items-center space-x-1 px-2.5 py-1 text-[11px] font-mono border border-oc-border rounded text-oc-secondary hover:text-oc-text hover:bg-oc-hover"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-mono border border-oc-border rounded-md text-oc-secondary hover:text-oc-text hover:bg-oc-hover transition-all"
           title="Сбросить введенные данные к значениям пресета"
         >
           <RotateCcw className="h-3 w-3" />
@@ -96,15 +96,13 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
       </div>
 
       {/* Preset Pills */}
-      <div className="my-3 space-y-1.5">
+      <div className="my-4 space-y-2">
         <label
-          className={`block text-[10px] font-mono font-bold uppercase tracking-wider ${
-            isDark ? 'text-slate-400' : 'text-blue-950'
-          }`}
+          className={`block text-[10px] font-mono font-medium uppercase tracking-wider text-oc-muted`}
         >
           Быстрые кейсы
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {SCENARIO_PRESETS.map((preset) => {
             const isSelected = selectedPresetId === preset.id;
             return (
@@ -112,33 +110,27 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                 key={preset.id}
                 id={`preset-pill-${preset.id}`}
                 onClick={() => onSelectPreset(preset.id)}
-                className={`text-left px-3 py-2 rounded border text-xs font-mono transition-colors duration-150 flex flex-col justify-between ${
+                className={`text-left px-3 py-2.5 rounded-md border text-xs font-mono transition-all duration-150 flex flex-col justify-between ${
                   isSelected
-                    ? 'bg-oc-hover border-oc-border-strong text-oc-accent'
+                    ? 'bg-oc-surface border-oc-border-strong text-oc-accent'
                     : 'bg-oc-bg-2 border-oc-border text-oc-secondary hover:text-oc-text hover:bg-oc-hover'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold">{preset.code}</span>
+                  <span className="font-medium">{preset.code}</span>
                   <span
-                    className={`text-[9px] px-1 py-0.2 rounded font-bold uppercase ${
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-medium uppercase ${
                       preset.id === 'tc-04'
-                        ? isDark
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                          : 'bg-rose-100 text-rose-950 border border-rose-300 font-extrabold'
+                        ? 'bg-oc-critical/20 text-oc-critical border border-oc-critical/30'
                         : isSelected
-                        ? isDark
-                          ? 'bg-cyan-500/20 text-cyan-300'
-                          : 'bg-blue-800 text-white'
-                        : isDark
-                        ? 'bg-slate-700/30 text-slate-400'
-                        : 'bg-slate-200 text-slate-700'
+                        ? 'bg-oc-accent/20 text-oc-accent'
+                        : 'bg-oc-bg-3 text-oc-muted'
                     }`}
                   >
                     {preset.badge}
                   </span>
                 </div>
-                <span className={`text-[10px] truncate mt-1 ${isSelected && !isDark ? 'text-blue-100' : 'text-slate-500'}`}>
+                <span className={`text-[10px] truncate mt-1.5 text-oc-muted`}>
                   {preset.title}
                 </span>
               </button>
@@ -152,9 +144,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label
-              className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${
-                isDark ? 'text-cyan-400' : 'text-blue-950'
-              }`}
+              className={`block text-[10px] font-mono font-medium uppercase tracking-wider mb-1.5 text-oc-muted`}
             >
               Канал связи
             </label>
@@ -172,7 +162,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                 <option value="telegram">Telegram Бот / Чат</option>
                 <option value="portal">Сервисный Веб-Портал</option>
               </select>
-              <div className={`absolute right-2.5 top-2.5 pointer-events-none ${isDark ? 'text-cyan-500' : 'text-blue-900'}`}>
+              <div className={`absolute right-2.5 top-2.5 pointer-events-none text-oc-accent`}>
                 {getChannelIcon(channel)}
               </div>
             </div>
@@ -180,9 +170,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
 
           <div>
             <label
-              className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${
-                isDark ? 'text-cyan-400' : 'text-blue-950'
-              }`}
+              className={`block text-[10px] font-mono font-medium uppercase tracking-wider mb-1.5 text-oc-muted`}
             >
               Время получения (Timestamp)
             </label>
@@ -194,25 +182,21 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                 onChange={(e) => setIncomingTime(e.target.value)}
                 className="w-full oc-input px-3 py-1.5 text-xs font-mono pr-8"
               />
-              <Clock className={`absolute right-2.5 top-2 h-3.5 w-3.5 pointer-events-none ${isDark ? 'text-cyan-500' : 'text-blue-900'}`} />
+              <Clock className={`absolute right-2.5 top-2 h-3.5 w-3.5 pointer-events-none text-oc-accent`} />
             </div>
           </div>
         </div>
 
         {/* Text Area */}
         <div>
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between mb-1.5">
             <label
-              className={`block text-[10px] font-mono font-bold uppercase tracking-wider ${
-                isDark ? 'text-cyan-400' : 'text-blue-950'
-              }`}
+              className={`block text-[10px] font-mono font-medium uppercase tracking-wider text-oc-muted`}
             >
               Текст входящего обращения
             </label>
             <span
-              className={`text-[10px] font-mono ${
-                isDark ? 'text-slate-400' : 'text-slate-700 font-bold'
-              }`}
+              className={`text-[10px] font-mono text-oc-muted`}
             >
               Ctrl + Enter для запуска
             </span>
@@ -234,8 +218,8 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           type="button"
           onClick={onRunDispatch}
           disabled={isLoading || !rawText.trim()}
-          className={`w-full h-10 rounded bg-oc-accent text-[#041018] text-xs font-semibold uppercase tracking-wide flex items-center justify-center gap-2 ${
-            isLoading || !rawText.trim() ? 'opacity-40 cursor-not-allowed' : 'hover:bg-oc-accent-3'
+          className={`w-full h-10 rounded-md bg-oc-accent text-white text-xs font-semibold uppercase tracking-wide flex items-center justify-center gap-2 transition-all ${
+            isLoading || !rawText.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:bg-oc-accent-2 active:bg-oc-accent-3'
           }`}
         >
           {isLoading ? (
