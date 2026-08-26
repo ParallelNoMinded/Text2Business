@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Zap } from 'lucide-react';
 import { Header, TabType } from './components/Header';
 import { LandingHome } from './components/LandingHome';
 import { ChannelsConfigView } from './components/ChannelsConfigView';
@@ -18,7 +19,7 @@ import { INITIAL_DATABASE, DatabaseSchema } from './mockDb';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('home');
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [geminiActive, setGeminiActive] = useState(true);
   const [selectedModel, setSelectedModel] = useState<string>('gpt-4o');
   const [isDryRun, setIsDryRun] = useState<boolean>(true);
@@ -226,12 +227,13 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <main className={`flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 ${(activeTab === 'home' || activeTab === 'operator' || activeTab === 'database' || activeTab === 'channels' || activeTab === 'console' || activeTab === 'logs_traces' || activeTab === 'architecture') ? 'lg:ml-[300px] lg:w-[calc(100%-300px)]' : 'max-w-7xl mx-auto'}`}>
         {/* TAB 0: LANDING HOME PAGE */}
         {activeTab === 'home' && (
           <LandingHome
             setActiveTab={setActiveTab}
             theme={theme}
+            db={db}
           />
         )}
 
@@ -243,78 +245,77 @@ export default function App() {
           />
         )}
 
-        {/* TAB 1.5: LIVE DISPATCH WORKBENCH (console) */}
+        {/* TAB 1.5: LIVE DISPATCH WORKBENCH (console / demo) */}
         {activeTab === 'console' && (
-          <div className="space-y-4">
-            <div
-              className={`rounded-2xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                isDark
-                  ? 'bg-[#060612]/90 border-cyan-500/30 text-white'
-                  : 'bg-white border-slate-300 text-slate-950 shadow-sm'
-              }`}
-            >
+          <div id="demo-stand-page" className="mx-auto w-full max-w-[1780px] pb-24 pt-2 sm:pt-4 lg:pb-8 font-sans">
+            {/* Page Header */}
+            <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className={`text-sm font-mono font-extrabold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-                  Демо-стенд AI-Диспетчера (4 сценария ТЗ)
-                </h2>
-                <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-800 font-medium'}`}>
-                  Обращение → извлечение фактов → решение движка → трассировка. Любое выполнение — dry-run;
-                  подтверждённый коммит в БД делает оператор (кнопка «Подтвердить»).
+                <h1 className="text-2xl font-black tracking-tight sm:text-[30px]">Демо-стенд AI-Диспетчера</h1>
+                <p className={`mt-1 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>
+                  Тестирование сценариев обработки обращений через различные каналы связи
                 </p>
               </div>
-              <span className={`text-[11px] font-mono px-3 py-1.5 rounded-lg border font-bold whitespace-nowrap ${
-                isDark ? 'bg-amber-500/10 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-950 border-amber-400'
-              }`}>
-                ⚠ ТЕСТОВЫЙ РЕЖИМ (dry-run)
-              </span>
             </div>
 
-            <ScenarioRunner
-              selectedPresetId={selectedPresetId}
-              onSelectPreset={handleSelectPreset}
-              rawText={rawText}
-              setRawText={setRawText}
-              channel={channel}
-              setChannel={setChannel}
-              incomingTime={incomingTime}
-              setIncomingTime={setIncomingTime}
-              isDryRun={isDryRun}
-              setIsDryRun={setIsDryRun}
-              onRunDispatch={handleRunDispatch}
-              isLoading={isRunningDispatch}
-              onResetInput={handleResetInput}
-              theme={theme}
-            />
+            {/* 2-Column Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Column: Scenario Input Panel (5 cols) */}
+              <div className="lg:col-span-5 space-y-4">
+                <ScenarioRunner
+                  selectedPresetId={selectedPresetId}
+                  onSelectPreset={handleSelectPreset}
+                  rawText={rawText}
+                  setRawText={setRawText}
+                  channel={channel}
+                  setChannel={setChannel}
+                  incomingTime={incomingTime}
+                  setIncomingTime={setIncomingTime}
+                  isDryRun={isDryRun}
+                  setIsDryRun={setIsDryRun}
+                  onRunDispatch={handleRunDispatch}
+                  isLoading={isRunningDispatch}
+                  onResetInput={handleResetInput}
+                  theme={theme}
+                />
+              </div>
 
-            <FactExtractorView
-              facts={result?.extracted_facts || null}
-              theme={theme}
-            />
+              {/* Right Column: Output Decision & Trace Panels (7 cols) */}
+              <div className="lg:col-span-7 space-y-4">
+                {!result && !isRunningDispatch ? (
+                  <div className={`flex flex-col items-center justify-center rounded-xl border p-12 text-center min-h-[420px] ${
+                    isDark ? 'border-slate-700 bg-[#242438]' : 'border-[#c8c8c8] bg-white'
+                  }`}>
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-500/10 text-[#2D7A7A] mb-4">
+                      <Zap className="h-8 w-8" />
+                    </div>
+                    <h2 className="text-base font-extrabold mb-1">Результат обработки появится здесь</h2>
+                    <p className={`text-xs max-w-md ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>
+                      Выберите сценарий из быстрых кейсов слева или введите текст обращения, затем нажмите «Запустить обработку».
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <DispatchCard
+                      result={result}
+                      onCommitLive={handleCommitLive}
+                      isCommitting={isCommitting}
+                      commitSuccessMsg={commitSuccessMsg}
+                      theme={theme}
+                    />
 
-            <DispatchCard
-              result={result}
-              onCommitLive={handleCommitLive}
-              isCommitting={isCommitting}
-              commitSuccessMsg={commitSuccessMsg}
-              theme={theme}
-            />
+                    <FactExtractorView
+                      facts={result?.extracted_facts || null}
+                      theme={theme}
+                    />
 
-            <ExecutionTraceTimeline
-              trace={result?.trace || []}
-              theme={theme}
-            />
-
-            <div
-              className={`rounded-2xl p-4 border text-xs font-mono ${
-                isDark
-                  ? 'bg-[#060612]/90 border-cyan-500/20 text-slate-400'
-                  : 'bg-white border-slate-300 text-slate-700 font-medium shadow-sm'
-              }`}
-            >
-              Ожидаемый результат пресета:{' '}
-              <span className={isDark ? 'text-cyan-300 font-bold' : 'text-blue-950 font-extrabold'}>
-                {SCENARIO_PRESETS.find((p) => p.id === selectedPresetId)?.expected_outcome}
-              </span>
+                    <ExecutionTraceTimeline
+                      trace={result?.trace || []}
+                      theme={theme}
+                    />
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -353,6 +354,8 @@ export default function App() {
       {/* Antigravity Footer */}
       <footer
         className={`border-t mt-8 py-5 text-center text-xs font-mono transition-colors ${
+          (activeTab === 'home' || activeTab === 'operator' || activeTab === 'database' || activeTab === 'channels' || activeTab === 'console' || activeTab === 'logs_traces' || activeTab === 'architecture') ? 'hidden' : ''
+        } ${
           isDark
             ? 'border-white/10 bg-[#020204] text-slate-500'
             : 'border-slate-300 bg-white text-slate-700'
@@ -360,13 +363,13 @@ export default function App() {
       >
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
-            <span className={`h-2 w-2 rounded-full ${isDark ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-blue-900'}`}></span>
-            <span className={`font-bold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
+            <span className="h-2 w-2 rounded-full bg-[#2D7A7A]"></span>
+            <span className="font-bold text-[#111827] dark:text-cyan-400">
               Текстовый AI-Диспетчер для бизнеса
             </span>
-            <span>/ Промышленная архитектура</span>
+            <span className="text-[#475569] dark:text-slate-400">/ Промышленная архитектура</span>
           </div>
-          <p className="text-[11px]">
+          <p className="text-[11px] text-[#475569] dark:text-slate-400">
             Архитектор AI-решений / Техлид AI-внедрений • Full-Stack контейнер Cloud Run
           </p>
         </div>

@@ -17,7 +17,7 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
   token,
   onSaveToken,
   selectedModel,
-  theme,
+  theme = 'light',
 }) => {
   const isDark = theme === 'dark';
   const [inputToken, setInputToken] = useState(token);

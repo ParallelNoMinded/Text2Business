@@ -1,19 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Terminal,
-  Activity,
-  Layers,
   Search,
-  Filter,
-  CheckCircle,
+  RotateCcw,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  Activity,
+  Terminal,
+  CheckCircle2,
   AlertTriangle,
-  Clock,
-  Cpu,
-  Shield,
-  Zap,
-  RefreshCw,
-  TrendingUp,
-  BarChart2,
+  XCircle,
 } from 'lucide-react';
 import { SystemLogEntry } from '../types';
 import { apiFetch } from '../api';
@@ -24,12 +21,14 @@ interface LogsTracesViewProps {
   db?: DatabaseSchema | null;
 }
 
-export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', db }) => {
+export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'light', db }) => {
   const isDark = theme === 'dark';
-  const [logFilter, setLogFilter] = useState<'ALL' | 'TELEGRAM' | 'EMAIL' | 'VOICE' | 'SYSTEM' | '1C' | 'REST'>('ALL');
+  const [logFilterChannel, setLogFilterChannel] = useState<string>('ALL');
+  const [logFilterLevel, setLogFilterLevel] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [logs, setLogs] = useState<SystemLogEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<'logs' | 'traces' | 'analytics'>('logs');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
 
   const fetchLogs = useCallback(async () => {
     try {
@@ -39,402 +38,275 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
         setLogs(data.logs || []);
       }
     } catch (err) {
-      // backend not available — keep current list
+      // fallback
     }
   }, []);
 
   useEffect(() => {
     fetchLogs();
-    const interval = setInterval(fetchLogs, 3000);
+    const interval = setInterval(fetchLogs, 4000);
     return () => clearInterval(interval);
   }, [fetchLogs]);
 
-  const filteredLogs = logs.filter((l) => {
-    const matchesChannel = logFilter === 'ALL' || l.channel === logFilter;
-    const matchesSearch =
-      l.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (l.channel || '').toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesChannel && matchesSearch;
-  });
-
-  const handleRefreshLogs = () => {
-    fetchLogs();
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setLogFilterChannel('ALL');
+    setLogFilterLevel('ALL');
+    setCurrentPage(1);
   };
 
-  const totalRequests = (db?.open_tickets?.length || 0) + (db?.closed_tickets?.length || 0);
-  const pendingHITL = (db?.open_tickets || []).filter(
-    (t) => t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0)
-  ).length;
-  const autoRate = totalRequests > 0 ? Math.round(((totalRequests - pendingHITL) / totalRequests) * 1000) / 10 : 100;
-  const avgLatencyMs = logs.length > 0
-    ? Math.round(logs.reduce((acc, l) => acc + (l.duration_ms || 0), 0) / logs.length)
-    : 0;
+  const filteredLogs = logs.filter((l) => {
+    const matchesChannel = logFilterChannel === 'ALL' || l.channel === logFilterChannel;
+    const matchesLevel = logFilterLevel === 'ALL' || l.level === logFilterLevel;
+    const matchesSearch =
+      l.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (l.channel || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (l.service || '').toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesChannel && matchesLevel && matchesSearch;
+  });
+
+  const totalItems = filteredLogs.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const pagedLogs = filteredLogs.slice(startIndex, endIndex);
+
+  const renderLevelBadge = (level: string) => {
+    switch (level) {
+      case 'INFO':
+        return (
+          <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-extrabold bg-[#10B981]/15 text-[#10B981]">
+            <CheckCircle2 className="h-3 w-3" />
+            INFO
+          </span>
+        );
+      case 'WARN':
+        return (
+          <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-extrabold bg-[#F59E0B]/15 text-[#D97706]">
+            <AlertTriangle className="h-3 w-3" />
+            WARN
+          </span>
+        );
+      case 'ERROR':
+        return (
+          <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-extrabold bg-rose-500/15 text-rose-600">
+            <XCircle className="h-3 w-3" />
+            ERROR
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-extrabold bg-slate-500/15 text-slate-600">
+            {level}
+          </span>
+        );
+    }
+  };
+
+  const handleExportLogs = () => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filteredLogs, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `system_logs_${Date.now()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
 
   return (
-    <div id="logs-traces-page" className="space-y-6">
-      {/* Top Banner */}
-      <div
-        className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-          isDark
-            ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
-            : 'bg-white border-slate-300 text-slate-950 shadow-md'
-        }`}
-      >
+    <div id="logs-traces-page" className="mx-auto w-full max-w-[1780px] pb-24 pt-2 sm:pt-4 lg:pb-8 font-sans">
+      {/* Page Header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center space-x-2">
-            <Activity className={`h-5 w-5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`} />
-            <h2 className={`text-sm font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950 font-extrabold'}`}>
-              Мониторинг, Логи и Трейсы Выполнения
-            </h2>
-          </div>
-          <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'}`}>
-            Сквозное логирование входящих запросов, трассировка OpenTelemetry / Arize AI и дашборды метрик работы AI-Диспетчера.
+          <h1 className="text-2xl font-black tracking-tight sm:text-[30px]">Логи и трейсы</h1>
+          <p className={`mt-1 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>
+            Журнал событий, входящих запросов и трассировка исполнения решений AI
           </p>
         </div>
 
-        {/* View Switcher Tabs */}
-        <div className="flex items-center space-x-2 font-mono text-xs">
-          <button
-            onClick={() => setActiveTab('logs')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
-              activeTab === 'logs'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <Terminal className="h-4 w-4" />
-            <span>Логи Системы</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('traces')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
-              activeTab === 'traces'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <Layers className="h-4 w-4" />
-            <span>OpenTelemetry Трейсы</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
-              activeTab === 'analytics'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <BarChart2 className="h-4 w-4" />
-            <span>Дашборды Метрик</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleExportLogs}
+          className="flex h-[44px] items-center gap-2 rounded-xl bg-[#2D7A7A] px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#236565] self-start sm:self-auto"
+        >
+          <Download className="h-4 w-4" />
+          <span>Экспорт логов</span>
+        </button>
       </div>
 
-      {/* METRICS SUMMARY CARDS (по данным прототипа) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Всего Заявок</div>
-          <div className={`text-xl font-black ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>{totalRequests}</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>открыто: {db?.open_tickets?.length || 0} • закрыто: {db?.closed_tickets?.length || 0}</div>
+      {/* Main Container */}
+      <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-slate-700 bg-[#242438]' : 'border-[#c8c8c8] bg-white'}`}>
+        {/* Filters Bar */}
+        <div className={`grid grid-cols-1 gap-3 border-b p-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.5fr_1fr_1fr_auto] ${isDark ? 'border-slate-700 bg-[#1c1a2e]' : 'border-[#e0e0e0] bg-white'}`}>
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Поиск по логам..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`w-full rounded-lg border py-2 pl-9 pr-3 text-xs font-bold outline-none ${
+                isDark ? 'border-slate-700 bg-[#242438] text-white' : 'border-[#c8c8c8] bg-white text-black'
+              }`}
+            />
+          </div>
+
+          <div>
+            <select
+              value={logFilterLevel}
+              onChange={(e) => {
+                setLogFilterLevel(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`w-full rounded-lg border px-3 py-2 text-xs font-bold outline-none ${
+                isDark ? 'border-slate-700 bg-[#242438] text-white' : 'border-[#c8c8c8] bg-white text-black'
+              }`}
+            >
+              <option value="ALL">Уровень: Все</option>
+              <option value="INFO">INFO</option>
+              <option value="WARN">WARN</option>
+              <option value="ERROR">ERROR</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={logFilterChannel}
+              onChange={(e) => {
+                setLogFilterChannel(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`w-full rounded-lg border px-3 py-2 text-xs font-bold outline-none ${
+                isDark ? 'border-slate-700 bg-[#242438] text-white' : 'border-[#c8c8c8] bg-white text-black'
+              }`}
+            >
+              <option value="ALL">Канал: Все</option>
+              <option value="TELEGRAM">Telegram</option>
+              <option value="EMAIL">Email</option>
+              <option value="VOICE">Голос</option>
+              <option value="SYSTEM">Система</option>
+              <option value="1C">1C OData</option>
+              <option value="REST">REST API</option>
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-extrabold transition ${
+              isDark ? 'border-slate-700 bg-[#242438] text-slate-300 hover:bg-white/5' : 'border-[#c8c8c8] bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span>Сбросить</span>
+          </button>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Авто-Диспетчеризация</div>
-          <div className={`text-xl font-black ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{autoRate}%</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>SLA-дедлайн по контракту + бизнес-часам</div>
+        {/* Logs Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className={`border-b text-[11px] font-bold ${isDark ? 'border-slate-700 bg-[#1c1a2e] text-slate-400' : 'border-[#e0e0e0] bg-[#fafafa] text-[#707070]'}`}>
+              <tr>
+                <th className="px-5 py-3">Время</th>
+                <th className="px-4 py-3 text-center">Уровень</th>
+                <th className="px-4 py-3">Канал</th>
+                <th className="px-4 py-3">Событие / Трассировка</th>
+                <th className="px-5 py-3 text-right">Длительность</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 font-medium dark:divide-slate-700">
+              {pagedLogs.map((log) => (
+                <tr key={log.id} className={`transition ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                  <td className="px-5 py-4 font-mono text-[11px] font-bold text-slate-400">
+                    {new Date(log.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </td>
+                  <td className="px-4 py-4 text-center">
+                    {renderLevelBadge(log.level)}
+                  </td>
+                  <td className="px-4 py-4 font-extrabold text-[#2d7a7a]">
+                    {log.channel || 'SYSTEM'}
+                  </td>
+                  <td className="px-4 py-4 font-bold leading-snug">
+                    <div className={isDark ? 'text-white' : 'text-black'}>{log.message}</div>
+                    {log.service && (
+                      <div className="text-[10px] text-slate-400 font-normal mt-0.5">{log.service}</div>
+                    )}
+                  </td>
+                  <td className="px-5 py-4 text-right font-mono text-xs font-bold text-[#2d7a7a]">
+                    {log.duration_ms ? `${log.duration_ms} мс` : '—'}
+                  </td>
+                </tr>
+              ))}
+              {pagedLogs.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-xs font-semibold text-slate-400">
+                    Нет записей логов по выбранным фильтрам
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Ожидают HITL</div>
-          <div className={`text-xl font-black ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>{pendingHITL}</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>требуют уточнения диспетчера</div>
-        </div>
+        {/* Table Pagination Footer */}
+        <div className={`flex flex-col gap-3 border-t px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 ${isDark ? 'border-slate-700 text-slate-400' : 'border-[#e0e0e0] text-[#707070]'}`}>
+          <span className="text-xs font-semibold">
+            Показано {totalItems > 0 ? `${startIndex + 1}-${endIndex}` : '0'} из {totalItems}
+          </span>
+          <div className="flex items-center gap-1.5 self-end text-xs font-bold sm:self-auto">
+            <button
+              type="button"
+              disabled={safeCurrentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className={`flex h-7 w-7 items-center justify-center rounded border transition ${
+                safeCurrentPage <= 1
+                  ? 'cursor-not-allowed border-slate-300 opacity-50 dark:border-slate-700'
+                  : isDark ? 'border-slate-700 hover:bg-white/10' : 'border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Средний Latency</div>
-          <div className={`text-xl font-black ${isDark ? 'text-purple-400' : 'text-purple-900'}`}>{avgLatencyMs} ms</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>по последним событиям логов</div>
+            {Array.from({ length: totalPages }).map((_, idx) => {
+              const pageNumber = idx + 1;
+              const isActive = pageNumber === safeCurrentPage;
+              return (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  onClick={() => setCurrentPage(pageNumber)}
+                  className={`flex h-7 min-w-7 items-center justify-center rounded border px-2 font-extrabold transition ${
+                    isActive
+                      ? 'border-[#2d7a7a] bg-[#2d7a7a]/10 text-[#2d7a7a]'
+                      : isDark
+                      ? 'border-slate-700 text-slate-300 hover:bg-white/10'
+                      : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              disabled={safeCurrentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className={`flex h-7 w-7 items-center justify-center rounded border transition ${
+                safeCurrentPage >= totalPages
+                  ? 'cursor-not-allowed border-slate-300 opacity-50 dark:border-slate-700'
+                  : isDark ? 'border-slate-700 hover:bg-white/10' : 'border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* TAB 1: REALTIME SYSTEM LOGS */}
-      {activeTab === 'logs' && (
-        <div
-          className={`rounded-2xl p-5 border transition-all ${
-            isDark
-              ? 'bg-[#030712] border-cyan-500/30 text-slate-200'
-              : 'bg-slate-900 border-slate-800 text-slate-200'
-          }`}
-        >
-          {/* Controls */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800 font-mono text-xs">
-            <div className="flex items-center space-x-2 w-full sm:w-auto">
-              <span className="text-slate-400 font-bold">Канал:</span>
-              <select
-                value={logFilter}
-                onChange={(e: any) => setLogFilter(e.target.value)}
-                className="bg-black/80 border border-slate-700 text-cyan-400 rounded-lg p-1.5 text-xs focus:outline-none"
-              >
-                <option value="ALL">Все Каналы</option>
-                <option value="TELEGRAM">Telegram</option>
-                <option value="EMAIL">Email</option>
-                <option value="VOICE">Телефония</option>
-                <option value="SYSTEM">Система / AI</option>
-                <option value="REST">REST / Диспетчер</option>
-                <option value="1C">1C:ERP</option>
-              </select>
-            </div>
-
-            <div className="flex items-center space-x-2 w-full sm:w-auto">
-              <div className="relative w-full sm:w-64">
-                <input
-                  type="text"
-                  placeholder="Поиск по логам..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-black/80 border border-slate-700 text-white rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none"
-                />
-                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
-              </div>
-
-              <button
-                onClick={handleRefreshLogs}
-                className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold whitespace-nowrap flex items-center space-x-1"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                <span>Обновить</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Terminal Console Stream */}
-          <div className="font-mono text-xs space-y-2 max-h-96 overflow-y-auto pr-2">
-            {filteredLogs.length === 0 && (
-              <div className="p-6 text-center text-slate-400 border border-dashed border-slate-700 rounded-xl">
-                Событий пока нет. Выполните обращение через демо-стенд (вкладка «Диспетчер») — логи появятся здесь из GET /api/logs.
-              </div>
-            )}
-            {filteredLogs.map((log) => (
-              <div
-                key={log.id}
-                className="p-2.5 rounded-xl bg-black/50 border border-slate-800/80 hover:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition"
-              >
-                <div className="flex items-center space-x-2.5">
-                  <span
-                    className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
-                      log.level === 'SUCCESS'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                        : log.level === 'WARN'
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                        : 'bg-sky-500/20 text-sky-400 border border-sky-500/40'
-                    }`}
-                  >
-                    {log.channel}
-                  </span>
-                  <span className="text-slate-400 text-[11px]">{new Date(log.timestamp).toLocaleTimeString('ru-RU')}</span>
-                  <span className="text-slate-200">{log.message}</span>
-                </div>
-                {log.duration_ms && (
-                  <span className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 whitespace-nowrap self-end sm:self-auto">
-                    {log.duration_ms} ms
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: OPENTELEMETRY TRACES */}
-      {activeTab === 'traces' && (
-        <div
-          className={`rounded-2xl p-5 border transition-all ${
-            isDark
-              ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-4 border-b pb-3 border-slate-700/30 font-mono">
-            <div className="flex items-center space-x-2">
-              <Layers className="h-5 w-5 text-cyan-400" />
-              <h3 className="text-sm font-bold uppercase text-cyan-400">
-                Trace ID: trace_ot_891823719_tg
-              </h3>
-            </div>
-            <span className="text-xs text-slate-400">Суммарно: 482 ms • 6 Spans</span>
-          </div>
-
-          <div className="space-y-3 font-mono text-xs">
-            {/* Span 1 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-sky-400">1. Inbound Webhook Ingress (Telegram)</span>
-                <span className="text-slate-400">12 ms</span>
-              </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-sky-400 h-full w-[5%]" />
-              </div>
-            </div>
-
-            {/* Span 2 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-amber-400">2. PII Sanitizer & Masking Guardrails</span>
-                <span className="text-slate-400">4 ms</span>
-              </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-amber-400 h-full w-[2%]" />
-              </div>
-            </div>
-
-            {/* Span 3 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-cyan-400">3. Gemini 3.6 Flash Structured Perception</span>
-                <span className="text-slate-400">435 ms</span>
-              </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-cyan-400 h-full w-[85%]" />
-              </div>
-            </div>
-
-            {/* Span 4 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-emerald-400">4. Deterministic Rule Match & SLA Evaluation</span>
-                <span className="text-slate-400">9 ms</span>
-              </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-emerald-400 h-full w-[4%]" />
-              </div>
-            </div>
-
-            {/* Span 5 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-purple-400">5. 1C:ERP Document Commit via OData REST</span>
-                <span className="text-slate-400">22 ms</span>
-              </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-purple-400 h-full w-[4%]" />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: ANALYTICS DASHBOARDS */}
-      {activeTab === 'analytics' && (
-        <div
-          className={`rounded-2xl p-5 border transition-all ${
-            isDark
-              ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <h3 className="text-sm font-mono font-bold uppercase text-cyan-400 mb-4">
-            Распределение Обращений по Каналам и Аналитика AI
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-mono text-xs">
-            <div className="p-4 rounded-xl bg-black/40 border border-slate-800 space-y-3">
-              <div className="font-bold text-slate-300">Распределение по Каналам</div>
-
-              <div className="space-y-2">
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Telegram Bot</span>
-                    <span className="text-sky-400 font-bold">48% (616 заявок)</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-sky-400 h-full w-[48%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Email IMAP / MCP</span>
-                    <span className="text-amber-400 font-bold">32% (410 заявок)</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-amber-400 h-full w-[32%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Голосовая Телефония</span>
-                    <span className="text-purple-400 font-bold">14% (180 заявок)</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-purple-400 h-full w-[14%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>REST Swagger API</span>
-                    <span className="text-emerald-400 font-bold">6% (78 заявок)</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-400 h-full w-[6%]" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-black/40 border border-slate-800 space-y-3">
-              <div className="font-bold text-slate-300">Точность Идентификации Фактов</div>
-
-              <div className="space-y-2">
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Код Оборудования (RAG BM25)</span>
-                    <span className="text-emerald-400 font-bold">98.4%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-400 h-full w-[98%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Объект / Контрагент</span>
-                    <span className="text-emerald-400 font-bold">99.1%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-400 h-full w-[99%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Оценка SLA Дедлайна</span>
-                    <span className="text-cyan-400 font-bold">100.0%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-cyan-400 h-full w-[100%]" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

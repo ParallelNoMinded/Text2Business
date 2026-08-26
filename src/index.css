@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@layer base {
+  html {
+    font-size: 19px;
+  }
+}
+
 @layer utilities {
   .glass-card-dark {
     background: rgba(10, 10, 20, 0.85);

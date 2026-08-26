@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Cpu,
   Database,
@@ -12,6 +12,8 @@ import {
   AlertTriangle,
   Key,
   BookOpen,
+  Headphones,
+  ChevronDown,
 } from 'lucide-react';
 
 export type TabType =
@@ -52,38 +54,153 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenTokenModal,
 }) => {
   const isDark = theme === 'dark';
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
 
-  if (activeTab === 'home') {
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
+        setIsModelDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const modelOptions = [
+    { value: 'qwen3.6-27b', label: 'qwen3.6' },
+    { value: 'gpt-4o', label: 'gpt-4o' },
+    { value: 'gemma4:e4b', label: 'gemma4' },
+    { value: 'deepseek-reasoner', label: 'deepseek' },
+    { value: 'nemotron-3-ultra-550b-a55b', label: 'nemotron' },
+  ];
+  const currentModelLabel = modelOptions.find((m) => m.value === selectedModel)?.label || selectedModel;
+
+  if (activeTab === 'home' || activeTab === 'operator' || activeTab === 'database' || activeTab === 'channels' || activeTab === 'console' || activeTab === 'logs_traces' || activeTab === 'architecture') {
     return (
-      <header className="sticky top-0 z-50 p-4 pointer-events-none">
-        <div className="max-w-7xl mx-auto flex justify-end items-center space-x-2">
-          <button
-            id="book-architecture-btn-home"
-            onClick={() => setActiveTab('architecture')}
-            className={`pointer-events-auto p-2.5 rounded-xl border transition-all flex items-center space-x-2 font-mono text-xs font-bold ${
-              isDark
-                ? 'bg-[#06060e]/90 hover:bg-cyan-500/20 border-cyan-500/40 text-cyan-300 backdrop-blur-md shadow-[0_0_15px_rgba(0,0,0,0.5)]'
-                : 'bg-white/90 hover:bg-slate-100 border-slate-300 text-blue-900 shadow-md backdrop-blur-md'
-            }`}
-            title="Открыть архитектурный отчёт и C4 схемы"
-          >
-            <BookOpen className="h-5 w-5 text-cyan-400" />
+      <>
+        <aside className={`fixed inset-y-0 left-0 z-50 hidden w-[300px] flex-col px-3 py-11 lg:flex ${isDark ? 'bg-[#29263d] text-white' : 'bg-[#29263d] text-white'}`}>
+          <button type="button" onClick={() => setActiveTab('home')} className="flex items-center gap-4 px-2 text-left">
+            <span className="relative flex h-12 w-12 rotate-45 items-center justify-center rounded-lg bg-[#4bc9cf]">
+              <span className="grid h-7 w-7 -rotate-45 grid-cols-3 gap-[2px] rounded-sm border-2 border-white p-[3px]">
+                {Array.from({ length: 9 }).map((_, index) => (
+                  <span key={index} className={`rounded-[1px] border border-white ${index === 7 ? 'bg-white' : ''}`} />
+                ))}
+              </span>
+            </span>
+            <span>
+              <span className="block text-xl font-black leading-none">TEXT2BUSINESS</span>
+              <span className="mt-1 block text-sm font-extrabold text-[#49ccd0]">AI-ДИСПЕТЧЕР</span>
+            </span>
           </button>
+          <nav className="mt-12 space-y-2 text-lg font-extrabold">
+            {[
+              { tab: 'home' as TabType, label: 'Главная', icon: Home },
+              { tab: 'operator' as TabType, label: 'Диспетчер', icon: Headphones },
+              { tab: 'database' as TabType, label: 'Реестр', icon: Database },
+              { tab: 'channels' as TabType, label: 'Каналы', icon: Send },
+              { tab: 'console' as TabType, label: 'Демо-стенд', icon: Zap },
+              { tab: 'logs_traces' as TabType, label: 'Логи и трейсы', icon: Activity },
+              { tab: 'architecture' as TabType, label: 'Архитектура', icon: BookOpen },
+            ].map(({ tab, label, icon: Icon }) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`flex h-14 w-full items-center gap-4 rounded-xl px-5 text-left transition ${
+                  activeTab === tab ? 'bg-[#2e7d7c] text-white' : 'text-white hover:bg-white/10'
+                }`}
+              >
+                <Icon className="h-6 w-6" />
+                <span>{label}</span>
+              </button>
+            ))}
+          </nav>
+        </aside>
+        <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-7 border-t border-white/10 bg-[#29263d] px-1 py-1 text-white shadow-2xl lg:hidden">
+          {[
+            { tab: 'home' as TabType, label: 'Главная', icon: Home },
+            { tab: 'operator' as TabType, label: 'Дисп.', icon: Headphones },
+            { tab: 'database' as TabType, label: 'Реестр', icon: Database },
+            { tab: 'channels' as TabType, label: 'Каналы', icon: Send },
+            { tab: 'console' as TabType, label: 'Демо', icon: Zap },
+            { tab: 'logs_traces' as TabType, label: 'Логи', icon: Activity },
+            { tab: 'architecture' as TabType, label: 'Арх.', icon: BookOpen },
+          ].map(({ tab, label, icon: Icon }) => (
+            <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`flex min-w-0 flex-col items-center gap-1 rounded-lg px-0.5 py-2 text-[9px] font-bold sm:text-[11px] ${activeTab === tab ? 'bg-[#2e7d7c]' : ''}`}>
+              <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="max-w-full truncate">{label}</span>
+            </button>
+          ))}
+        </nav>
+        <header className="sticky top-0 z-40 px-4 pt-4 pointer-events-none lg:ml-[300px] lg:px-10 lg:pt-10">
+        <div className="mx-auto flex max-w-[1780px] justify-end items-center space-x-2 sm:space-x-3">
+          <div className={`pointer-events-auto hidden min-h-13 min-w-[154px] items-center justify-center rounded-xl border px-3 text-center text-sm font-semibold leading-tight shadow-md sm:flex ${
+            isDark ? 'border-slate-700 bg-[#242438] text-white shadow-[0_0_15px_rgba(0,0,0,0.5)]' : 'border-[#c8c8c8] bg-white text-black'
+          }`}>
+            {new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}<br />
+            {new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+          </div>
 
           <button
             id="theme-toggle-btn"
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            className={`pointer-events-auto p-2.5 rounded-xl border transition-all ${
+            className={`pointer-events-auto p-3 rounded-xl border transition-all shadow-md ${
               isDark
-                ? 'bg-[#06060e]/90 hover:bg-white/10 border-cyan-500/30 text-amber-400 backdrop-blur-md shadow-[0_0_15px_rgba(0,0,0,0.5)]'
-                : 'bg-white/90 hover:bg-slate-100 border-slate-300 text-blue-900 shadow-md backdrop-blur-md'
+                ? 'bg-[#242438] hover:bg-white/10 border-slate-700 text-amber-400 shadow-[0_0_15px_rgba(0,0,0,0.5)]'
+                : 'bg-white hover:bg-slate-50 border-[#c8c8c8] text-amber-500'
             }`}
             title="Переключить тему оформления"
           >
             {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
+
+          {/* Animated Centered Model Dropdown */}
+          <div ref={modelDropdownRef} className="relative pointer-events-auto">
+            <button
+              type="button"
+              onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+              className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold shadow-md transition outline-none sm:min-h-13 ${
+                isDark ? 'border-slate-700 bg-[#242438] text-white shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:bg-white/5' : 'border-[#c8c8c8] bg-white text-black hover:bg-slate-50'
+              }`}
+              aria-label="Выбор AI-модели"
+            >
+              <span className="font-bold">{currentModelLabel}</span>
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 text-slate-400 ${isModelDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown list with animation */}
+            <div
+              className={`absolute right-0 mt-2 w-48 rounded-xl border p-1 shadow-2xl transition-all duration-200 z-50 origin-top-right ${
+                isModelDropdownOpen
+                  ? 'scale-100 opacity-100 pointer-events-auto'
+                  : 'scale-95 opacity-0 pointer-events-none'
+              } ${isDark ? 'border-slate-700 bg-[#242438] text-white' : 'border-[#c8c8c8] bg-white text-black'}`}
+            >
+              {modelOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    setSelectedModel?.(opt.value);
+                    setIsModelDropdownOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-center rounded-lg px-3 py-2 text-xs font-bold transition ${
+                    selectedModel === opt.value
+                      ? 'bg-[#2D7A7A] text-white'
+                      : isDark
+                      ? 'hover:bg-white/10 text-slate-200'
+                      : 'hover:bg-slate-100 text-slate-800'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </header>
+      </>
     );
   }
 

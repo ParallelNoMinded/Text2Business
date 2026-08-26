@@ -1,20 +1,14 @@
 import React, { useState } from 'react';
 import { DatabaseSchema } from '../mockDb';
 import {
-  Database,
   Search,
   RotateCcw,
-  Building,
-  Cpu,
-  FileText,
-  AlertCircle,
-  Users,
-  CheckCircle2,
   Plus,
   Trash2,
-  Edit,
   X,
-  Check,
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Site, Asset, Contract, Ticket, Contractor } from '../types';
 
@@ -30,7 +24,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
   db,
   onResetDatabase,
   isLoading,
-  theme = 'dark',
+  theme = 'light',
   onUpdateDb,
 }) => {
   const isDark = theme === 'dark';
@@ -38,6 +32,19 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
     'contractors' | 'sites' | 'assets' | 'contracts' | 'open_tickets' | 'closed_tickets'
   >('open_tickets');
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPriority, setFilterPriority] = useState('all');
+  const [filterGroup, setFilterGroup] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setFilterStatus('all');
+    setFilterPriority('all');
+    setFilterGroup('all');
+    setCurrentPage(1);
+  };
 
   // CRUD Modal State
   const [modalType, setModalType] = useState<
@@ -128,17 +135,28 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
   );
 
   const filteredOpenTickets = db.open_tickets.filter(
-    (t) =>
+    (t) => {
+      if (filterStatus !== 'all' && t.status !== filterStatus) return false;
+      if (filterPriority !== 'all' && t.priority.toLowerCase() !== filterPriority.toLowerCase()) return false;
+      if (filterGroup !== 'all' && !t.assigned_group.toLowerCase().includes(filterGroup.toLowerCase())) return false;
+      return (
       t.ticket_id.toLowerCase().includes(term) ||
       t.summary.toLowerCase().includes(term) ||
       t.asset_id.toLowerCase().includes(term)
+      );
+    }
   );
 
   const filteredClosedTickets = (db.closed_tickets || []).filter(
-    (t) =>
+    (t) => {
+      if (filterPriority !== 'all' && t.priority.toLowerCase() !== filterPriority.toLowerCase()) return false;
+      if (filterGroup !== 'all' && !t.assigned_group.toLowerCase().includes(filterGroup.toLowerCase())) return false;
+      return (
       t.ticket_id.toLowerCase().includes(term) ||
       t.summary.toLowerCase().includes(term) ||
       t.asset_id.toLowerCase().includes(term)
+      );
+    }
   );
 
   // Helper to commit DB update
@@ -307,474 +325,580 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
     setModalType(null);
   };
 
+  const renderPriorityBadge = (priority: string) => {
+    const p = priority.toLowerCase();
+    if (p === 'high' || p === 'critical') {
+      return (
+        <span className="inline-flex min-w-[88px] items-center justify-center rounded-lg bg-[#EF4444] px-3.5 py-1.5 text-sm font-bold text-white shadow-sm">
+          {p === 'critical' ? 'Критический' : 'Высокий'}
+        </span>
+      );
+    }
+    if (p === 'medium') {
+      return (
+        <span className="inline-flex min-w-[88px] items-center justify-center rounded-lg bg-[#F59E0B] px-3.5 py-1.5 text-sm font-bold text-white shadow-sm">
+          Средний
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex min-w-[88px] items-center justify-center rounded-lg bg-[#10B981] px-3.5 py-1.5 text-sm font-bold text-white shadow-sm">
+        Низкий
+      </span>
+    );
+  };
+
+  const renderStatusBadge = (status: string) => {
+    switch (status) {
+      case 'IN_PROGRESS':
+        return (
+          <span className="inline-flex min-w-[94px] items-center justify-center rounded-lg bg-[#3B82F6] px-3.5 py-1.5 text-sm font-bold text-white shadow-sm">
+            В работе
+          </span>
+        );
+      case 'WAITING_DISPATCHER':
+        return (
+          <span className="inline-flex min-w-[94px] items-center justify-center rounded-lg bg-[#6366F1] px-3.5 py-1.5 text-sm font-bold text-white shadow-sm">
+            Диспетчер
+          </span>
+        );
+      case 'WAITING_CLIENT':
+        return (
+          <span className="inline-flex min-w-[94px] items-center justify-center rounded-lg bg-[#8B5CF6] px-3.5 py-1.5 text-sm font-bold text-white shadow-sm">
+            Клиент
+          </span>
+        );
+      case 'NEW':
+        return (
+          <span className="inline-flex min-w-[94px] items-center justify-center rounded-lg bg-[#64748B] px-3.5 py-1.5 text-sm font-bold text-white shadow-sm">
+            Новая
+          </span>
+        );
+      case 'CLOSED':
+      case 'RESOLVED':
+        return (
+          <span className="inline-flex min-w-[94px] items-center justify-center rounded-lg bg-[#0D9488] px-3.5 py-1.5 text-sm font-bold text-white shadow-sm">
+            Закрыта
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex min-w-[94px] items-center justify-center rounded-lg bg-[#64748B] px-3.5 py-1.5 text-sm font-bold text-white shadow-sm">
+            {status}
+          </span>
+        );
+    }
+  };
+
+  const getCurrentTabTotal = () => {
+    switch (activeTab) {
+      case 'open_tickets':
+        return filteredOpenTickets.length;
+      case 'closed_tickets':
+        return filteredClosedTickets.length;
+      case 'contractors':
+        return filteredContractors.length;
+      case 'sites':
+        return filteredSites.length;
+      case 'assets':
+        return filteredAssets.length;
+      default:
+        return 0;
+    }
+  };
+
+  const totalItems = getCurrentTabTotal();
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+
+  const pagedOpenTickets = filteredOpenTickets.slice(startIndex, endIndex);
+  const pagedClosedTickets = filteredClosedTickets.slice(startIndex, endIndex);
+  const pagedContractors = filteredContractors.slice(startIndex, endIndex);
+  const pagedSites = filteredSites.slice(startIndex, endIndex);
+  const pagedAssets = filteredAssets.slice(startIndex, endIndex);
+
   return (
-    <div id="database-inspector-page" className="space-y-4 font-sans">
-      {/* Header & Controls */}
-      <div
-        className={`rounded-2xl p-4 sm:p-5 transition-all border flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-          isDark
-            ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
-            : 'bg-white border-slate-300 shadow-sm text-slate-900'
-        }`}
-      >
-        <div>
-          <div className="flex items-center space-x-2">
-            <Database className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              Реестр Базы Данных (CRUD & Заявки)
-            </h2>
+    <div id="database-inspector-page" className="mx-auto w-full max-w-[1780px] pb-24 pt-2 sm:pt-4 lg:pb-8">
+      {/* Page Header */}
+      <div className="mb-6 flex flex-col gap-2">
+        <h1 className="text-2xl font-black tracking-tight sm:text-[30px]">Реестр</h1>
+        <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>
+          Управление контрагентами, объектами, оборудованием и заявками.
+        </p>
+      </div>
+
+      {/* Main Registry Card */}
+      <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-slate-700 bg-[#242438]' : 'border-[#c8c8c8] bg-white'}`}>
+        {/* Top Tabs Bar */}
+        <div className={`flex flex-col gap-4 border-b px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between ${isDark ? 'border-slate-700' : 'border-[#e0e0e0]'}`}>
+          <div className="flex flex-wrap items-center gap-6 sm:gap-8">
+            {[
+              { key: 'open_tickets' as const, label: 'Открытые заявки' },
+              { key: 'closed_tickets' as const, label: 'Закрытые заявки' },
+              { key: 'contractors' as const, label: 'Контрагенты' },
+              { key: 'sites' as const, label: 'Объекты' },
+              { key: 'assets' as const, label: 'Оборудование' },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.key);
+                  setCurrentPage(1);
+                }}
+                className={`relative pb-1 text-sm font-extrabold transition ${
+                  activeTab === tab.key
+                    ? isDark ? 'text-white' : 'text-black'
+                    : isDark
+                    ? 'text-slate-400 hover:text-slate-200'
+                    : 'text-[#686868] hover:text-black'
+                }`}
+              >
+                <span>{tab.label}</span>
+                {activeTab === tab.key && (
+                  <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[#2d7a7a]" />
+                )}
+              </button>
+            ))}
           </div>
-          <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-700 font-medium'}`}>
-            Управление контрагентами, объектами, оборудованием, открытыми и закрытыми заявками в реальном времени.
-          </p>
+
+          <div className="flex items-center gap-2">
+            {activeTab === 'open_tickets' && (
+              <button
+                type="button"
+                onClick={() => setModalType('ADD_TICKET')}
+                className="flex items-center gap-1.5 rounded-lg bg-[#2d7a7a] px-4 py-2 text-xs font-extrabold text-white transition hover:bg-[#236565]"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Создать заявку</span>
+              </button>
+            )}
+            {activeTab === 'closed_tickets' && (
+              <button
+                type="button"
+                onClick={() => setModalType('ADD_CLOSED_TICKET')}
+                className="flex items-center gap-1.5 rounded-lg bg-[#2d7a7a] px-4 py-2 text-xs font-extrabold text-white transition hover:bg-[#236565]"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Добавить заявку</span>
+              </button>
+            )}
+            {activeTab === 'contractors' && (
+              <button
+                type="button"
+                onClick={() => setModalType('ADD_CONTRACTOR')}
+                className="flex items-center gap-1.5 rounded-lg bg-[#2d7a7a] px-4 py-2 text-xs font-extrabold text-white transition hover:bg-[#236565]"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Добавить контрагента</span>
+              </button>
+            )}
+            {activeTab === 'sites' && (
+              <button
+                type="button"
+                onClick={() => setModalType('ADD_SITE')}
+                className="flex items-center gap-1.5 rounded-lg bg-[#2d7a7a] px-4 py-2 text-xs font-extrabold text-white transition hover:bg-[#236565]"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Добавить объект</span>
+              </button>
+            )}
+            {activeTab === 'assets' && (
+              <button
+                type="button"
+                onClick={() => setModalType('ADD_ASSET')}
+                className="flex items-center gap-1.5 rounded-lg bg-[#2d7a7a] px-4 py-2 text-xs font-extrabold text-white transition hover:bg-[#236565]"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Добавить оборудование</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <div className="relative w-full md:w-64 font-mono">
+        {/* Filters Bar */}
+        <div className={`grid grid-cols-1 gap-3 border-b p-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.5fr_1fr_1fr_1fr_auto] ${isDark ? 'border-slate-700 bg-[#1c1a2e]' : 'border-[#e0e0e0] bg-white'}`}>
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Поиск по БД..."
+              placeholder="Поиск по реестру..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full border rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none transition ${
-                isDark
-                  ? 'bg-[#020204]/90 border-cyan-500/30 text-white focus:border-cyan-400'
-                  : 'bg-slate-50 border-slate-300 text-blue-950 font-bold focus:border-blue-900'
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`w-full rounded-lg border py-2 pl-9 pr-3 text-xs font-bold outline-none ${
+                isDark ? 'border-slate-700 bg-[#242438] text-white' : 'border-[#c8c8c8] bg-white text-black'
               }`}
             />
-            <Search className={`absolute left-2.5 top-2 h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
+          </div>
+
+          <div>
+            <select
+              value={filterStatus}
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`w-full rounded-lg border px-3 py-2 text-xs font-bold outline-none ${
+                isDark ? 'border-slate-700 bg-[#242438] text-white' : 'border-[#c8c8c8] bg-white text-black'
+              }`}
+            >
+              <option value="all">Статус: Все</option>
+              <option value="NEW">Статус: Новая</option>
+              <option value="IN_PROGRESS">Статус: В работе</option>
+              <option value="WAITING_DISPATCHER">Статус: Диспетчер</option>
+              <option value="WAITING_CLIENT">Статус: Клиент</option>
+              <option value="CLOSED">Статус: Закрыта</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={filterPriority}
+              onChange={(e) => {
+                setFilterPriority(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`w-full rounded-lg border px-3 py-2 text-xs font-bold outline-none ${
+                isDark ? 'border-slate-700 bg-[#242438] text-white' : 'border-[#c8c8c8] bg-white text-black'
+              }`}
+            >
+              <option value="all">Приоритет: Все</option>
+              <option value="critical">Приоритет: Критический</option>
+              <option value="high">Приоритет: Высокий</option>
+              <option value="medium">Приоритет: Средний</option>
+              <option value="low">Приоритет: Низкий</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={filterGroup}
+              onChange={(e) => {
+                setFilterGroup(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`w-full rounded-lg border px-3 py-2 text-xs font-bold outline-none ${
+                isDark ? 'border-slate-700 bg-[#242438] text-white' : 'border-[#c8c8c8] bg-white text-black'
+              }`}
+            >
+              <option value="all">Группа: Все</option>
+              <option value="Холод-МСК">Группа: Холод-МСК</option>
+              <option value="СПб Сервис">Группа: СПб Сервис</option>
+              <option value="Урал">Группа: Урал Сервис</option>
+            </select>
           </div>
 
           <button
-            id="reset-db-btn"
             type="button"
-            onClick={onResetDatabase}
-            disabled={isLoading}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-mono font-bold rounded-lg border transition ${
-              isDark
-                ? 'bg-white/5 hover:bg-white/10 text-slate-200 border-white/10'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+            onClick={handleResetFilters}
+            className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-extrabold transition ${
+              isDark ? 'border-slate-700 bg-[#242438] text-slate-300 hover:bg-white/5' : 'border-[#c8c8c8] bg-white text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <RotateCcw className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <span>Сбросить БД</span>
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span>Сбросить</span>
           </button>
+        </div>
+
+        {/* Open Tickets Table */}
+        {activeTab === 'open_tickets' && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className={`border-b text-[11px] font-bold ${isDark ? 'border-slate-700 bg-[#1c1a2e] text-slate-400' : 'border-[#e0e0e0] bg-[#fafafa] text-[#707070]'}`}>
+                <tr>
+                  <th className="px-5 py-3">ID заявки</th>
+                  <th className="px-4 py-3">ID актива</th>
+                  <th className="px-4 py-3">Суть обращения</th>
+                  <th className="px-4 py-3 text-center">Приоритет</th>
+                  <th className="px-4 py-3 text-center">Статус</th>
+                  <th className="px-4 py-3">Группа</th>
+                  <th className="px-4 py-3">Обновлено</th>
+                  <th className="px-5 py-3 text-right">Действия</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 font-medium dark:divide-slate-700">
+                {pagedOpenTickets.map((t) => (
+                  <tr key={t.ticket_id} className={`transition ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                    <td className="px-5 py-4 font-black">{t.ticket_id}</td>
+                    <td className="px-4 py-4 font-extrabold text-[#2d7a7a]">{t.asset_id}</td>
+                    <td className="px-4 py-4 font-extrabold leading-snug">{t.summary}</td>
+                    <td className="px-4 py-4 text-center">{renderPriorityBadge(t.priority)}</td>
+                    <td className="px-4 py-4 text-center">{renderStatusBadge(t.status)}</td>
+                    <td className={`px-4 py-4 font-semibold ${isDark ? 'text-slate-300' : 'text-[#505050]'}`}>
+                      <div>{t.assigned_group}</div>
+                    </td>
+                    <td className={`px-4 py-4 text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>
+                      <div>{new Date(t.created_at).toLocaleDateString('ru-RU')}</div>
+                      <div>{new Date(t.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</div>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleCloseTicket(t.ticket_id)}
+                          className={`rounded border px-2.5 py-1 text-xs font-extrabold transition ${
+                            isDark ? 'border-slate-700 bg-transparent text-slate-200 hover:bg-white/10' : 'border-[#c8c8c8] bg-white text-black hover:bg-slate-50'
+                          }`}
+                        >
+                          Закрыть
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOpenTicket(t.ticket_id)}
+                          className="p-1 text-slate-400 transition hover:text-red-500"
+                          title="Удалить"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {pagedOpenTickets.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-xs font-semibold text-slate-400">
+                      Нет заявок по заданным критериям
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Closed Tickets Table */}
+        {activeTab === 'closed_tickets' && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className={`border-b text-[11px] font-bold ${isDark ? 'border-slate-700 bg-[#1c1a2e] text-slate-400' : 'border-[#e0e0e0] bg-[#fafafa] text-[#707070]'}`}>
+                <tr>
+                  <th className="px-5 py-3">ID заявки</th>
+                  <th className="px-4 py-3">ID актива</th>
+                  <th className="px-4 py-3">Суть заявки</th>
+                  <th className="px-4 py-3 text-center">Приоритет</th>
+                  <th className="px-4 py-3 text-center">Статус</th>
+                  <th className="px-4 py-3">Группа</th>
+                  <th className="px-4 py-3">Дата закрытия</th>
+                  <th className="px-5 py-3 text-right">Действия</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 font-medium dark:divide-slate-700">
+                {pagedClosedTickets.map((t) => (
+                  <tr key={t.ticket_id} className={`transition ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                    <td className="px-5 py-4 font-black">{t.ticket_id}</td>
+                    <td className="px-4 py-4 font-extrabold text-[#2d7a7a]">{t.asset_id}</td>
+                    <td className="px-4 py-4 font-extrabold leading-snug">{t.summary}</td>
+                    <td className="px-4 py-4 text-center">{renderPriorityBadge(t.priority)}</td>
+                    <td className="px-4 py-4 text-center">{renderStatusBadge(t.status)}</td>
+                    <td className={`px-4 py-4 font-semibold ${isDark ? 'text-slate-300' : 'text-[#505050]'}`}>{t.assigned_group}</td>
+                    <td className={`px-4 py-4 text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>
+                      {t.updated_at ? new Date(t.updated_at).toLocaleDateString('ru-RU') : '—'}
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteClosedTicket(t.ticket_id)}
+                        className="p-1 text-slate-400 transition hover:text-red-500"
+                        title="Удалить"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {pagedClosedTickets.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-xs font-semibold text-slate-400">
+                      Нет закрытых заявок
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Contractors Table */}
+        {activeTab === 'contractors' && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className={`border-b text-[11px] font-bold ${isDark ? 'border-slate-700 bg-[#1c1a2e] text-slate-400' : 'border-[#e0e0e0] bg-[#fafafa] text-[#707070]'}`}>
+                <tr>
+                  <th className="px-5 py-3">ID Контрагента</th>
+                  <th className="px-4 py-3">Наименование</th>
+                  <th className="px-4 py-3">ИНН</th>
+                  <th className="px-4 py-3">Телефон</th>
+                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Договор</th>
+                  <th className="px-5 py-3 text-right">Действие</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 font-medium dark:divide-slate-700">
+                {pagedContractors.map((c) => (
+                  <tr key={c.customer_id} className={`transition ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                    <td className="px-5 py-4 font-black text-[#2d7a7a]">{c.customer_id}</td>
+                    <td className="px-4 py-4 font-extrabold">{c.name}</td>
+                    <td className="px-4 py-4 font-mono font-bold">{c.inn}</td>
+                    <td className={`px-4 py-4 ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>{c.contact_phone}</td>
+                    <td className={`px-4 py-4 ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>{c.contact_email}</td>
+                    <td className="px-4 py-4 font-bold text-[#d56600]">{c.contract_number}</td>
+                    <td className="px-5 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteContractor(c.customer_id)}
+                        className="p-1 text-slate-400 transition hover:text-red-500"
+                        title="Удалить"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Sites Table */}
+        {activeTab === 'sites' && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className={`border-b text-[11px] font-bold ${isDark ? 'border-slate-700 bg-[#1c1a2e] text-slate-400' : 'border-[#e0e0e0] bg-[#fafafa] text-[#707070]'}`}>
+                <tr>
+                  <th className="px-5 py-3">ID Объекта</th>
+                  <th className="px-4 py-3">Клиент</th>
+                  <th className="px-4 py-3">Адрес</th>
+                  <th className="px-4 py-3">Контактное лицо</th>
+                  <th className="px-4 py-3">Регион</th>
+                  <th className="px-5 py-3 text-right">Действие</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 font-medium dark:divide-slate-700">
+                {pagedSites.map((site) => (
+                  <tr key={site.site_id} className={`transition ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                    <td className="px-5 py-4 font-black text-[#2d7a7a]">{site.site_id}</td>
+                    <td className="px-4 py-4 font-extrabold">{site.customer_name}</td>
+                    <td className="px-4 py-4 font-medium">{site.address}</td>
+                    <td className={`px-4 py-4 ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>{site.contact_person}</td>
+                    <td className={`px-4 py-4 font-bold ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>{site.region}</td>
+                    <td className="px-5 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSite(site.site_id)}
+                        className="p-1 text-slate-400 transition hover:text-red-500"
+                        title="Удалить"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Assets Table */}
+        {activeTab === 'assets' && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+             <thead className={`border-b text-[11px] font-bold ${isDark ? 'border-slate-700 bg-[#1c1a2e] text-slate-400' : 'border-[#e0e0e0] bg-[#fafafa] text-[#707070]'}`}>
+                <tr>
+                  <th className="px-5 py-3">ID Ассета</th>
+                  <th className="px-4 py-3">Код объекта</th>
+                  <th className="px-4 py-3">Локальный код</th>
+                  <th className="px-4 py-3">Наименование оборудования</th>
+                  <th className="px-4 py-3 text-center">Критичность</th>
+                  <th className="px-4 py-3 text-center">Статус</th>
+                  <th className="px-5 py-3 text-right">Действие</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 font-medium dark:divide-slate-700">
+                {pagedAssets.map((asset) => (
+                  <tr key={asset.asset_id} className={`transition ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                    <td className="px-5 py-4 font-mono font-bold text-slate-400">{asset.asset_id}</td>
+                    <td className="px-4 py-4 font-black text-[#2d7a7a]">{asset.site_id}</td>
+                    <td className="px-4 py-4 font-black text-[#d56600]">{asset.local_code}</td>
+                    <td className="px-4 py-4 font-extrabold">{asset.name}</td>
+                    <td className="px-4 py-4 text-center">{renderPriorityBadge(asset.criticality)}</td>
+                    <td className="px-4 py-4 text-center">{renderStatusBadge(asset.status)}</td>
+                    <td className="px-5 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAsset(asset.asset_id)}
+                        className="p-1 text-slate-400 transition hover:text-red-500"
+                        title="Удалить"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Table Pagination Footer */}
+        <div className={`flex flex-col gap-3 border-t px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 ${isDark ? 'border-slate-700 text-slate-400' : 'border-[#e0e0e0] text-[#707070]'}`}>
+          <span className="text-xs font-semibold">
+            Показано 1-{activeTab === 'open_tickets' ? pagedOpenTickets.length : activeTab === 'closed_tickets' ? pagedClosedTickets.length : pagedContractors.length} из {totalItems}
+          </span>
+          <div className="flex items-center gap-1.5 self-end text-xs font-bold sm:self-auto">
+            <button
+              type="button"
+              disabled={safeCurrentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className={`flex h-7 w-7 items-center justify-center rounded border transition ${
+                safeCurrentPage <= 1
+                  ? 'cursor-not-allowed border-slate-300 opacity-50 dark:border-slate-700'
+                  : isDark ? 'border-slate-700 hover:bg-white/10' : 'border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+
+            {Array.from({ length: totalPages }).map((_, idx) => {
+              const pageNumber = idx + 1;
+              const isActive = pageNumber === safeCurrentPage;
+              return (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  onClick={() => setCurrentPage(pageNumber)}
+                  className={`flex h-7 min-w-7 items-center justify-center rounded border px-2 font-extrabold transition ${
+                    isActive
+                      ? 'border-[#2d7a7a] bg-[#2d7a7a]/10 text-[#2d7a7a]'
+                      : isDark
+                      ? 'border-slate-700 text-slate-300 hover:bg-white/10'
+                      : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              disabled={safeCurrentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className={`flex h-7 w-7 items-center justify-center rounded border transition ${
+                safeCurrentPage >= totalPages
+                  ? 'cursor-not-allowed border-slate-300 opacity-50 dark:border-slate-700'
+                  : isDark ? 'border-slate-700 hover:bg-white/10' : 'border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* Internal Nav Tabs with Add buttons */}
-      <div className={`flex items-center justify-between border-b pb-2 font-mono overflow-x-auto gap-2 ${isDark ? 'border-slate-700/30' : 'border-slate-300'}`}>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setActiveTab('open_tickets')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-              activeTab === 'open_tickets'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <AlertCircle className="h-3.5 w-3.5" />
-            <span>Открытые Заявки ({db.open_tickets.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('closed_tickets')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-              activeTab === 'closed_tickets'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            <span>Закрытые Заявки ({(db.closed_tickets || []).length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('contractors')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-              activeTab === 'contractors'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <Users className="h-3.5 w-3.5" />
-            <span>Контрагенты ({(db.contractors || []).length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('sites')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-              activeTab === 'sites'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <Building className="h-3.5 w-3.5" />
-            <span>Объекты ({db.sites.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('assets')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-              activeTab === 'assets'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <Cpu className="h-3.5 w-3.5" />
-            <span>Оборудование ({db.assets.length})</span>
-          </button>
-        </div>
-
-        {/* Action Button for Current Tab */}
-        <div>
-          {activeTab === 'contractors' && (
-            <button
-              onClick={() => setModalType('ADD_CONTRACTOR')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
-                isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
-              }`}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Добавить Контрагента</span>
-            </button>
-          )}
-
-          {activeTab === 'sites' && (
-            <button
-              onClick={() => setModalType('ADD_SITE')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
-                isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
-              }`}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Добавить Объект</span>
-            </button>
-          )}
-
-          {activeTab === 'assets' && (
-            <button
-              onClick={() => setModalType('ADD_ASSET')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
-                isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
-              }`}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Добавить Оборудование</span>
-            </button>
-          )}
-
-          {activeTab === 'open_tickets' && (
-            <button
-              onClick={() => setModalType('ADD_TICKET')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
-                isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
-              }`}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Создать Открытую Заявку</span>
-            </button>
-          )}
-
-          {activeTab === 'closed_tickets' && (
-            <button
-              onClick={() => setModalType('ADD_CLOSED_TICKET')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
-                isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
-              }`}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Добавить Закрытую Заявку</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* CONTRACTORS TABLE */}
-      {activeTab === 'contractors' && (
-        <div
-          className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
-            isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
-              <tr>
-                <th className="p-3">ID Контрагента</th>
-                <th className="p-3">Наименование</th>
-                <th className="p-3">ИНН</th>
-                <th className="p-3">Телефон</th>
-                <th className="p-3">Email</th>
-                <th className="p-3">Договор</th>
-                <th className="p-3 text-right">Действие</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/20 font-sans">
-              {filteredContractors.map((c) => (
-                <tr key={c.customer_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono font-bold text-sky-400">{c.customer_id}</td>
-                  <td className="p-3 font-bold">{c.name}</td>
-                  <td className="p-3 font-mono">{c.inn}</td>
-                  <td className="p-3 font-mono text-slate-400">{c.contact_phone}</td>
-                  <td className="p-3 font-mono text-slate-400">{c.contact_email}</td>
-                  <td className="p-3 font-mono text-amber-400">{c.contract_number}</td>
-                  <td className="p-3 text-right">
-                    <button
-                      onClick={() => handleDeleteContractor(c.customer_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
-                      title="Удалить"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* SITES TABLE */}
-      {activeTab === 'sites' && (
-        <div
-          className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
-            isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
-              <tr>
-                <th className="p-3">ID Объекта</th>
-                <th className="p-3">Клиент</th>
-                <th className="p-3">Адрес</th>
-                <th className="p-3">Контактное Лицо</th>
-                <th className="p-3">Регион</th>
-                <th className="p-3 text-right">Действие</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/20 font-sans">
-              {filteredSites.map((site) => (
-                <tr key={site.site_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono font-bold text-cyan-400">{site.site_id}</td>
-                  <td className="p-3 font-bold">{site.customer_name}</td>
-                  <td className="p-3">{site.address}</td>
-                  <td className="p-3 font-mono text-slate-400">{site.contact_person}</td>
-                  <td className="p-3 font-mono text-slate-400">{site.region}</td>
-                  <td className="p-3 text-right">
-                    <button
-                      onClick={() => handleDeleteSite(site.site_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
-                      title="Удалить"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* ASSETS TABLE */}
-      {activeTab === 'assets' && (
-        <div
-          className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
-            isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
-              <tr>
-                <th className="p-3">ID Ассета</th>
-                <th className="p-3">Код Объекта</th>
-                <th className="p-3">Локальный Код</th>
-                <th className="p-3">Наименование Оборудования</th>
-                <th className="p-3">Критичность</th>
-                <th className="p-3">Статус</th>
-                <th className="p-3 text-right">Действие</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/20 font-sans">
-              {filteredAssets.map((asset) => (
-                <tr key={asset.asset_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono text-slate-400">{asset.asset_id}</td>
-                  <td className="p-3 font-mono font-bold text-cyan-400">{asset.site_id}</td>
-                  <td className="p-3 font-mono font-bold text-amber-400">{asset.local_code}</td>
-                  <td className="p-3 font-semibold">{asset.name}</td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 rounded font-mono font-bold text-[10px] border bg-red-950/80 text-red-300 border-red-500/40">
-                      {asset.criticality}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold border bg-emerald-950/80 text-emerald-300 border-emerald-500/40">
-                      {asset.status}
-                    </span>
-                  </td>
-                  <td className="p-3 text-right">
-                    <button
-                      onClick={() => handleDeleteAsset(asset.asset_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
-                      title="Удалить"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* OPEN TICKETS TABLE */}
-      {activeTab === 'open_tickets' && (
-        <div
-          className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
-            isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
-              <tr>
-                <th className="p-3">ID Заявки</th>
-                <th className="p-3">ID Ассета</th>
-                <th className="p-3">Суть Инцидента</th>
-                <th className="p-3">Приоритет</th>
-                <th className="p-3">Статус</th>
-                <th className="p-3">Группа</th>
-                <th className="p-3 text-right">Действия</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/20 font-sans">
-              {filteredOpenTickets.map((t) => (
-                <tr key={t.ticket_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono font-bold text-amber-400">{t.ticket_id}</td>
-                  <td className="p-3 font-mono font-bold text-cyan-400">{t.asset_id}</td>
-                  <td className="p-3 font-semibold">{t.summary}</td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 rounded border font-mono font-bold text-[10px] bg-red-950/80 text-red-300 border-red-500/40">
-                      {t.priority.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="p-3 font-mono text-cyan-300 font-bold">{t.status}</td>
-                  <td className="p-3 font-mono text-slate-400">{t.assigned_group}</td>
-                  <td className="p-3 text-right flex items-center justify-end space-x-1">
-                    <button
-                      onClick={() => handleCloseTicket(t.ticket_id)}
-                      className={`px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 font-mono text-[10px] flex items-center space-x-1 ${
-                        isDark ? 'text-emerald-300 font-bold' : 'text-emerald-950 font-extrabold'
-                      }`}
-                      title="Завершить и перенести в архив"
-                    >
-                      <Check className="h-3 w-3" />
-                      <span>Завершить</span>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteOpenTicket(t.ticket_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
-                      title="Удалить"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* CLOSED TICKETS TABLE */}
-      {activeTab === 'closed_tickets' && (
-        <div
-          className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
-            isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
-              <tr>
-                <th className="p-3">ID Заявки</th>
-                <th className="p-3">ID Ассета</th>
-                <th className="p-3">Суть Заявки</th>
-                <th className="p-3">Приоритет</th>
-                <th className="p-3">Дата Завершения</th>
-                <th className="p-3">Статус</th>
-                <th className="p-3 text-right">Действие</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/20 font-sans">
-              {filteredClosedTickets.map((t) => (
-                <tr key={t.ticket_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono font-bold text-emerald-400">{t.ticket_id}</td>
-                  <td className="p-3 font-mono text-slate-400">{t.asset_id}</td>
-                  <td className="p-3 font-semibold line-through text-slate-400">{t.summary}</td>
-                  <td className="p-3 font-mono text-slate-400">{t.priority}</td>
-                  <td className="p-3 font-mono text-slate-400">
-                    {t.updated_at ? new Date(t.updated_at).toLocaleDateString('ru-RU') : '—'}
-                  </td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 rounded border font-mono font-bold text-[10px] bg-emerald-950/80 text-emerald-300 border-emerald-500/40">
-                      CLOSED
-                    </span>
-                  </td>
-                  <td className="p-3 text-right">
-                    <button
-                      onClick={() => handleDeleteClosedTicket(t.ticket_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
-                      title="Удалить"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
 
       {/* MODAL DIALOGS FOR ADDING DATA */}
       {modalType && (

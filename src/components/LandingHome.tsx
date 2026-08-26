@@ -1,344 +1,183 @@
 import React from 'react';
 import { TabType } from './Header';
-import { ParticleSwarmCanvas } from './ParticleSwarmCanvas';
+import { DatabaseSchema } from '../mockDb';
 import {
-  Send,
-  UserCheck,
-  Database,
-  Activity,
-  Cpu,
   ArrowRight,
+  ChevronRight,
+  Headphones,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface LandingHomeProps {
   setActiveTab: (tab: TabType) => void;
   theme?: 'dark' | 'light';
   onRunPreset?: (presetId: string) => void;
+  db?: DatabaseSchema;
 }
 
 export const LandingHome: React.FC<LandingHomeProps> = ({
   setActiveTab,
-  theme = 'dark',
+  theme = 'light',
+  db,
 }) => {
   const isDark = theme === 'dark';
 
+  const surface = isDark
+    ? 'border-slate-700 bg-[#242438] text-slate-100'
+    : 'border-[#c8c8c8] bg-white text-black';
+  const muted = isDark ? 'text-slate-400' : 'text-[#686868]';
+  const attentionRequests = (db?.open_tickets || []).filter(
+    (ticket) => ticket.status === 'WAITING_DISPATCHER' || (ticket.missing_fields && ticket.missing_fields.length > 0)
+  );
+
+  // Real SLA calculation based on database tickets
+  const totalTickets = (db?.open_tickets?.length || 0) + (db?.closed_tickets?.length || 0);
+  const now = Date.now();
+  const breachedTickets = (db?.open_tickets || []).filter((t) => {
+    if (!t.sla_deadline) return false;
+    const deadlineMs = new Date(t.sla_deadline).getTime();
+    return !isNaN(deadlineMs) && deadlineMs < now;
+  }).length;
+  
+  const inSlaCount = Math.max(0, totalTickets - breachedTickets);
+  const slaPercentage = totalTickets > 0 ? Math.round((inSlaCount / totalTickets) * 100) : 100;
+
   return (
-    <div className="relative w-full max-w-7xl mx-auto flex flex-col justify-between gap-4 sm:gap-6 animate-fadeIn py-2 sm:py-4">
-      {/* GLOBAL PARTICLE SWARM BACKGROUND */}
-      <ParticleSwarmCanvas theme={theme} className="opacity-90 dark:opacity-100" />
+    <div className="mx-auto w-full max-w-[1400px] text-[16px] pb-24 pt-3 sm:pt-8 lg:pb-8 lg:pt-12">
+      <section className="mb-7 sm:mb-8">
+        <h1 className="text-[34px] font-black leading-[1.06] tracking-[-0.035em] sm:text-[44px] lg:text-[52px]">
+          Добро пожаловать!
+        </h1>
+        <p className={`mt-2 text-lg font-light sm:text-[23px] ${muted}`}>
+          AI-диспетчер для управления входящими обращениями
+        </p>
+      </section>
 
-      {/* 1. HERO SECTION */}
-      <div
-        className={`relative z-10 rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 border text-center flex-1 flex flex-col items-center justify-center transition-all ${
-          isDark
-            ? 'bg-[#060612]/60 border-cyan-500/30 shadow-[0_10px_30px_rgba(0,0,0,0.7)] backdrop-blur-sm'
-            : 'bg-white/70 border-blue-900/30 shadow-md backdrop-blur-sm'
-        }`}
+      <button
+        id="home-tile-operator"
+        type="button"
+        onClick={() => setActiveTab('operator')}
+        className={`group flex w-full flex-col items-stretch gap-5 rounded-xl border px-5 py-6 text-left transition hover:-translate-y-0.5 hover:border-[#2d7a7a] hover:shadow-lg sm:flex-row sm:items-center sm:px-9 sm:py-10 ${surface}`}
       >
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px] rounded-2xl sm:rounded-3xl" />
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-[#2b7777] text-white">
+          <Headphones className="h-9 w-9" strokeWidth={2.2} />
+        </span>
+        <span className="min-w-0 flex-1 sm:pl-4">
+          <span className="block text-xl font-extrabold sm:text-[26px]">Перейти к обращениям</span>
+          <span className={`mt-1 block text-base font-light sm:text-xl ${muted}`}>
+            Открыть диспетчер и начать работу с заявками
+          </span>
+        </span>
+        <span className="flex min-h-13 items-center justify-center gap-3 rounded-md bg-[#2b7777] px-5 py-3 text-sm font-bold text-white transition group-hover:bg-[#236565] sm:px-6 sm:text-base">
+          Открыть диспетчер
+          <ArrowRight className="h-5 w-5" />
+        </span>
+      </button>
 
-        <div className="relative z-30 max-w-3xl mx-auto space-y-3 sm:space-y-5 my-auto">
-          {/* Brand Header */}
-          <div className="inline-flex items-center justify-center space-x-2.5 sm:space-x-3 mb-0.5">
-            <div
-              className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl flex items-center justify-center ${
-                isDark
-                  ? 'bg-gradient-to-br from-cyan-400 via-indigo-500 to-purple-600 p-0.5 shadow-lg'
-                  : 'bg-transparent'
-              }`}
-            >
-              <div
-                className={`h-full w-full rounded-[10px] sm:rounded-[14px] flex items-center justify-center ${
-                  isDark ? 'bg-[#030712]' : 'bg-transparent'
-                }`}
-              >
-                <Cpu className={`h-6 w-6 sm:h-7 sm:w-7 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`} />
-              </div>
-            </div>
-            <div className="text-left flex flex-col">
-              <span
-                className={`text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight font-mono uppercase leading-none ${
-                  isDark ? 'text-white' : 'text-blue-950'
-                }`}
-              >
-                TEXT2BUSINESS
-              </span>
-              <span
-                className={`text-[11px] sm:text-xs font-mono font-bold tracking-widest uppercase mt-0.5 sm:mt-1 leading-none ${
-                  isDark ? 'text-cyan-400' : 'text-blue-700'
-                }`}
-              >
-                AI-ДИСПЕТЧЕР
-              </span>
-            </div>
+      <section className={`mt-7 overflow-hidden rounded-xl border px-4 py-5 sm:mt-10 sm:px-6 sm:py-8 ${surface}`}>
+        <div className="flex flex-col gap-4 px-1 pb-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+          <div className="flex items-center gap-4">
+            <h2 className="text-xl font-extrabold sm:text-[25px]">Требуют внимания</h2>
+            <span className="flex h-10 min-w-10 items-center justify-center rounded-full bg-red-600 px-3 text-lg font-extrabold text-white">
+              {attentionRequests.length}
+            </span>
           </div>
-
-          {/* Hero Headline */}
-          <h1
-            className={`text-lg sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-tight ${
-              isDark ? 'text-white' : 'text-blue-950'
-            }`}
+          <button
+            type="button"
+            onClick={() => setActiveTab('operator')}
+            className="flex items-center gap-6 self-start py-1 text-base font-extrabold text-[#06439b] transition hover:text-[#2b7777] sm:self-auto"
           >
-            <span
-              className={
-                isDark
-                  ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-blue-400'
-                  : 'text-blue-900'
-              }
-            >
-              Превращаем хаос входящих обращений
-            </span>{' '}
-            в управляемый сервис
-          </h1>
-
-          <p
-            className={`text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed font-sans ${
-              isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'
-            }`}
-          >
-            Умный AI-диспетчер для холодильного оборудования. Понимает контекст в письмах, чатах и звонках, рассчитывает SLA без ошибок и передает тикет напрямую в 1С:ERP.
-          </p>
-        </div>
-      </div>
-
-      {/* 2. NAVIGATION TILES (4 BLOCKS) */}
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4.5">
-        {/* Tile 1: Channels Config */}
-        <div
-          id="home-tile-channels"
-          onClick={() => setActiveTab('channels')}
-          className={`relative z-10 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between group ${
-            isDark
-              ? 'bg-[#060612]/60 border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-sm'
-              : 'bg-white border-slate-300 hover:border-blue-900 shadow-md backdrop-blur-sm'
-          }`}
-        >
-          <div className="relative z-30">
-            <div className="flex items-center justify-between mb-2">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                  isDark
-                    ? 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-400'
-                    : 'bg-blue-100 border border-blue-300 text-blue-950'
-                }`}
-              >
-                <Send className="h-4 w-4" />
-              </div>
-              <span
-                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                  isDark
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                    : 'bg-blue-950 text-white font-extrabold'
-                }`}
-              >
-                КАНАЛЫ
-              </span>
-            </div>
-            <h3
-              className={`text-sm sm:text-base font-bold font-mono mb-1 ${
-                isDark ? 'text-white' : 'text-blue-950 font-extrabold'
-              }`}
-            >
-              1. Каналы
-            </h3>
-            <p
-              className={`text-xs leading-snug ${
-                isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'
-              }`}
-            >
-              Telegram Бот, Email IMAP/MCP, Голосовая телефония и Swagger REST API.
-            </p>
-          </div>
-
-          <div
-            className={`relative z-30 mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-mono font-bold transition-transform group-hover:translate-x-1 ${
-              isDark
-                ? 'border-white/10 text-cyan-400'
-                : 'border-slate-200 text-blue-950 font-extrabold'
-            }`}
-          >
-            <span>Настроить каналы</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
+            Открыть список
+            <ArrowRight className="h-6 w-6" />
+          </button>
         </div>
 
-        {/* Tile 2: Operator HITL */}
-        <div
-          id="home-tile-operator"
-          onClick={() => setActiveTab('operator')}
-          className={`relative z-10 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between group ${
-            isDark
-              ? 'bg-[#060612]/60 border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-sm'
-              : 'bg-white border-slate-300 hover:border-blue-900 shadow-md backdrop-blur-sm'
-          }`}
-        >
-          <div className="relative z-30">
-            <div className="flex items-center justify-between mb-2">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                  isDark
-                    ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400'
-                    : 'bg-blue-100 border border-blue-300 text-blue-950'
-                }`}
-              >
-                <UserCheck className="h-4 w-4" />
-              </div>
-              <span
-                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                  isDark
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                    : 'bg-blue-950 text-white font-extrabold'
-                }`}
-              >
-                HITL
+        <div className={`border-t ${isDark ? 'border-slate-600' : 'border-[#bcbcbc]'}`}>
+          {attentionRequests.map((request) => {
+            const contractor = db?.contractors.find((item) => item.customer_id === request.customer_id);
+            const priorityClass = request.priority === 'critical' || request.priority === 'high'
+              ? 'border-red-300 bg-red-100 text-red-600'
+              : request.priority === 'medium'
+              ? 'border-orange-300 bg-orange-100 text-orange-600'
+              : 'border-emerald-300 bg-emerald-100 text-emerald-700';
+            const priorityLabel = request.priority === 'critical'
+              ? 'Критический'
+              : request.priority === 'high'
+              ? 'Высокий'
+              : request.priority === 'medium'
+              ? 'Средний'
+              : 'Низкий';
+            return (
+            <button
+              key={request.ticket_id}
+              type="button"
+              onClick={() => setActiveTab('operator')}
+              className={`grid w-full grid-cols-[68px_minmax(0,1fr)_auto] items-center gap-x-3 border-b px-0 py-3 text-left transition last:border-b-0 hover:bg-[#2b7777]/5 sm:grid-cols-[104px_minmax(0,1fr)_112px_150px_20px] sm:gap-x-4 sm:px-4 lg:grid-cols-[130px_minmax(240px,1fr)_132px_185px_24px] lg:px-8 ${
+                isDark ? 'border-slate-600' : 'border-[#c8c8c8]'
+              }`}
+            >
+              <span className="text-center">
+                <span className="block text-base font-black sm:text-xl lg:text-2xl">{request.ticket_id}</span>
+                <span className={`block text-xs font-bold sm:text-base lg:text-lg ${muted}`}>
+                  {new Date(request.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                </span>
               </span>
-            </div>
-            <h3
-              className={`text-sm sm:text-base font-bold font-mono mb-1 ${
-                isDark ? 'text-white' : 'text-blue-950 font-extrabold'
-              }`}
-            >
-              2. Диспетчер
-            </h3>
-            <p
-              className={`text-xs leading-snug ${
-                isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'
-              }`}
-            >
-              Интерактивный диалог, уточнение данных у клиента в боте и передача в 1С.
-            </p>
-          </div>
-
-          <div
-            className={`relative z-30 mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-mono font-bold transition-transform group-hover:translate-x-1 ${
-              isDark
-                ? 'border-white/10 text-cyan-400'
-                : 'border-slate-200 text-blue-950 font-extrabold'
-            }`}
-          >
-            <span>Открыть место диспетчера</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
-        </div>
-
-        {/* Tile 3: Database Registry */}
-        <div
-          id="home-tile-database"
-          onClick={() => setActiveTab('database')}
-          className={`relative z-10 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between group ${
-            isDark
-              ? 'bg-[#060612]/60 border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-sm'
-              : 'bg-white border-slate-300 hover:border-blue-900 shadow-md backdrop-blur-sm'
-          }`}
-        >
-          <div className="relative z-30">
-            <div className="flex items-center justify-between mb-2">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                  isDark
-                    ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
-                    : 'bg-blue-100 border border-blue-300 text-blue-950'
-                }`}
-              >
-                <Database className="h-4 w-4" />
-              </div>
-              <span
-                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                  isDark
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                    : 'bg-blue-950 text-white font-extrabold'
-                }`}
-              >
-                РЕЕСТР
+              <span className="min-w-0">
+                <span className="block truncate text-base font-extrabold sm:text-lg lg:text-[23px]">{contractor?.name || request.customer_id}</span>
+                <span className={`block truncate text-xs font-bold sm:text-sm lg:text-lg ${muted}`}>{request.summary}</span>
               </span>
-            </div>
-            <h3
-              className={`text-sm sm:text-base font-bold font-mono mb-1 ${
-                isDark ? 'text-white' : 'text-blue-950 font-extrabold'
-              }`}
-            >
-              3. Реестр
-            </h3>
-            <p
-              className={`text-xs leading-snug ${
-                isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'
-              }`}
-            >
-              Просмотр и CRUD редактирование: контрагенты, объекты, оборудование, открытые и закрытые заявки.
-            </p>
-          </div>
-
-          <div
-            className={`relative z-30 mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-mono font-bold transition-transform group-hover:translate-x-1 ${
-              isDark
-                ? 'border-white/10 text-cyan-400'
-                : 'border-slate-200 text-blue-950 font-extrabold'
-            }`}
-          >
-            <span>Открыть реестр БД</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
-        </div>
-
-        {/* Tile 4: Logs & Traces */}
-        <div
-          id="home-tile-logs"
-          onClick={() => setActiveTab('logs_traces')}
-          className={`relative z-10 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between group ${
-            isDark
-              ? 'bg-[#060612]/60 border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-sm'
-              : 'bg-white border-slate-300 hover:border-blue-900 shadow-md backdrop-blur-sm'
-          }`}
-        >
-          <div className="relative z-30">
-            <div className="flex items-center justify-between mb-2">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                  isDark
-                    ? 'bg-purple-500/10 border border-purple-500/30 text-purple-400'
-                    : 'bg-blue-100 border border-blue-300 text-blue-950'
-                }`}
-              >
-                <Activity className="h-4 w-4" />
-              </div>
-              <span
-                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                  isDark
-                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
-                    : 'bg-blue-950 text-white font-extrabold'
-                }`}
-              >
-                МОНИТОРИНГ
+              <ChevronRight className="h-5 w-5 sm:hidden" />
+              <span className={`hidden w-fit rounded-xl border px-3 py-2 text-sm font-extrabold sm:inline-flex lg:px-5 lg:text-base ${priorityClass}`}>
+                {priorityLabel}
               </span>
+              <span className="hidden text-sm font-extrabold text-[#d56600] sm:block lg:text-base">Ожидает уточнения</span>
+              <ChevronRight className="hidden h-6 w-6 sm:block" />
+              <span className="col-span-2 mt-2 flex gap-2 sm:hidden">
+                <span className={`rounded-lg border px-3 py-1 text-xs font-extrabold ${priorityClass}`}>{priorityLabel}</span>
+                <span className="px-2 py-1 text-xs font-extrabold text-[#d56600]">Ожидает уточнения</span>
+              </span>
+            </button>
+            );
+          })}
+          {attentionRequests.length === 0 && (
+            <div className={`px-4 py-8 text-center text-sm font-semibold ${muted}`}>
+              Нет обращений, требующих внимания
             </div>
-            <h3
-              className={`text-sm sm:text-base font-bold font-mono mb-1 ${
-                isDark ? 'text-white' : 'text-blue-950 font-extrabold'
-              }`}
-            >
-              4. Логи & Трейсы
-            </h3>
-            <p
-              className={`text-xs leading-snug ${
-                isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'
-              }`}
-            >
-              Живой терминал логов, OpenTelemetry / Arize AI трейсы и дашборды SLA.
-            </p>
-          </div>
-
-          <div
-            className={`relative z-30 mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-mono font-bold transition-transform group-hover:translate-x-1 ${
-              isDark
-                ? 'border-white/10 text-cyan-400'
-                : 'border-slate-200 text-blue-950 font-extrabold'
-            }`}
-          >
-            <span>Смотреть логи & трейсы</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
+          )}
         </div>
-      </div>
+      </section>
+
+      <button
+        id="home-tile-logs"
+        type="button"
+        onClick={() => setActiveTab('logs_traces')}
+        className={`group mt-10 flex w-full items-center gap-5 rounded-xl border px-5 py-6 text-left transition hover:-translate-y-0.5 hover:border-[#2b7777] hover:shadow-lg sm:px-12 sm:py-7 ${surface}`}
+      >
+        <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-md ${
+          slaPercentage >= 90
+            ? 'bg-[#d7eaea] text-[#2b7777]'
+            : slaPercentage >= 70
+            ? 'bg-amber-100 text-amber-700'
+            : 'bg-red-100 text-red-700'
+        }`}>
+          <ShieldCheck className="h-10 w-10" strokeWidth={2.1} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className={`block text-base font-extrabold uppercase tracking-wide sm:text-lg ${
+            slaPercentage >= 90
+              ? 'text-[#2b7777]'
+              : slaPercentage >= 70
+              ? 'text-amber-600'
+              : 'text-red-600'
+          }`}>
+            {slaPercentage >= 90 ? 'SLA в норме' : slaPercentage >= 70 ? 'SLA требует внимания' : 'SLA нарушен'}
+          </span>
+          <span className={`mt-1 block text-sm font-bold sm:text-xl ${muted}`}>
+            {slaPercentage}% обращений обрабатываются в рамках соглашения ({inSlaCount} из {totalTickets})
+          </span>
+        </span>
+        <ArrowRight className="h-7 w-7 shrink-0 text-[#2b7777] transition group-hover:translate-x-1" />
+      </button>
     </div>
   );
 };
