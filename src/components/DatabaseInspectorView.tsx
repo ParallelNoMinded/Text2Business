@@ -1,22 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DatabaseSchema } from '../mockDb';
+import { Asset, Contractor, Site, Ticket } from '../types';
+import { PageSection } from './layout/PageSection';
+import { StatusBadge } from './ui/StatusBadge';
 import {
-  Database,
-  Search,
-  RotateCcw,
-  Building,
-  Cpu,
-  FileText,
-  AlertCircle,
-  Users,
-  CheckCircle2,
-  Plus,
-  Trash2,
-  Edit,
-  X,
-  Check,
-} from 'lucide-react';
-import { Site, Asset, Contract, Ticket, Contractor } from '../types';
+  customerName,
+  formatSla,
+  priorityTone,
+  slaBucket,
+  statusLabel,
+  wasAutoDispatched,
+} from '../opsDashboard';
+import { ruPriority, ruTicketStatus, ruAssetStatus } from '../uiRu';
+import { Search, RotateCcw, Plus, X } from 'lucide-react';
 
 interface DatabaseInspectorViewProps {
   db: DatabaseSchema | null;
@@ -24,27 +20,77 @@ interface DatabaseInspectorViewProps {
   isLoading: boolean;
   theme?: 'dark' | 'light';
   onUpdateDb?: (updatedDb: DatabaseSchema) => void;
+  canResetDatabase?: boolean;
+  ticketsOnly?: boolean;
+}
+
+type RegistryTab = 'open_tickets' | 'closed_tickets' | 'contractors' | 'sites' | 'assets';
+type ModalType = 'ADD_CONTRACTOR' | 'ADD_SITE' | 'ADD_ASSET' | 'ADD_TICKET' | 'ADD_CLOSED_TICKET' | null;
+type SortKey = 'updated' | 'priority' | 'sla' | 'id';
+
+const PAGE_SIZE = 12;
+const inputCls =
+  'h-7 w-full rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] px-2 text-xs';
+const btnCls =
+  'rounded-md border border-[var(--oc-border)] px-2 py-1 text-[11px] hover:bg-[var(--oc-surface-2)] disabled:opacity-50';
+const PRIORITY_RANK: Record<Ticket['priority'], number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
+function fmtTime(iso?: string) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
   db,
   onResetDatabase,
   isLoading,
-  theme = 'dark',
   onUpdateDb,
+  canResetDatabase = true,
+  ticketsOnly = false,
 }) => {
-  const isDark = theme === 'dark';
-  const [activeTab, setActiveTab] = useState<
-    'contractors' | 'sites' | 'assets' | 'contracts' | 'open_tickets' | 'closed_tickets'
-  >('open_tickets');
+  const [activeTab, setActiveTab] = useState<RegistryTab>('open_tickets');
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [sortKey, setSortKey] = useState<SortKey>('updated');
+  const [page, setPage] = useState(0);
+  const [modalType, setModalType] = useState<ModalType>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<{ kind: string; id: string; label: string } | null>(null);
+  const [slaMinutes, setSlaMinutes] = useState(120);
 
-  // CRUD Modal State
-  const [modalType, setModalType] = useState<
-    'ADD_CONTRACTOR' | 'ADD_SITE' | 'ADD_ASSET' | 'ADD_TICKET' | 'ADD_CLOSED_TICKET' | null
-  >(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (confirm) {
+        setConfirm(null);
+        return;
+      }
+      if (modalType) {
+        setModalType(null);
+        setEditingId(null);
+        return;
+      }
+      setDetailId(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [confirm, modalType]);
 
-  // Form States
+  useEffect(() => {
+    if (ticketsOnly && activeTab !== 'open_tickets' && activeTab !== 'closed_tickets') {
+      setActiveTab('open_tickets');
+    }
+  }, [ticketsOnly, activeTab]);
+
   const [contractorForm, setContractorForm] = useState<Partial<Contractor>>({
     customer_id: '',
     name: '',
@@ -54,7 +100,6 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
     contract_number: '',
     status: 'ACTIVE',
   });
-
   const [siteForm, setSiteForm] = useState<Partial<Site>>({
     site_id: '',
     customer_id: 'C-101',
@@ -64,7 +109,6 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
     region: 'Москва и МО',
     timezone: 'Europe/Moscow',
   });
-
   const [assetForm, setAssetForm] = useState<Partial<Asset>>({
     asset_id: '',
     site_id: 'S-MSK-01',
@@ -73,7 +117,6 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
     criticality: 'HIGH',
     status: 'OK',
   });
-
   const [ticketForm, setTicketForm] = useState<Partial<Ticket>>({
     ticket_id: '',
     customer_id: 'C-101',
@@ -84,18 +127,13 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
     description: '',
     assigned_group: 'Дежурная служба',
     status: 'NEW',
+    channel: 'rest',
   });
 
   if (!db) {
     return (
-      <div
-        className={`rounded-2xl p-5 text-center text-xs font-mono border transition-all ${
-          isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
-            : 'bg-white border-slate-300 text-slate-700 font-semibold shadow-sm'
-        }`}
-      >
-        // Загрузка базы данных...
+      <div id="database-inspector-page" className="oc-card px-4 py-8 text-center text-xs text-[var(--oc-muted)]">
+        Загрузка реестра…
       </div>
     );
   }
@@ -108,14 +146,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       c.inn.includes(term) ||
       c.customer_id.toLowerCase().includes(term)
   );
-
   const filteredSites = db.sites.filter(
     (s) =>
       s.customer_name.toLowerCase().includes(term) ||
       s.address.toLowerCase().includes(term) ||
       s.site_id.toLowerCase().includes(term)
   );
-
   const filteredAssets = db.assets.filter(
     (a) =>
       a.local_code.toLowerCase().includes(term) ||
@@ -123,36 +159,52 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       a.asset_id.toLowerCase().includes(term)
   );
 
-  const filteredContracts = db.contracts.filter(
-    (c) => c.site_id.toLowerCase().includes(term) || c.plan.toLowerCase().includes(term)
-  );
+  const matchTicket = (t: Ticket) =>
+    t.ticket_id.toLowerCase().includes(term) ||
+    t.summary.toLowerCase().includes(term) ||
+    t.asset_id.toLowerCase().includes(term) ||
+    customerName(db, t.customer_id).toLowerCase().includes(term) ||
+    (t.description || '').toLowerCase().includes(term);
 
-  const filteredOpenTickets = db.open_tickets.filter(
-    (t) =>
-      t.ticket_id.toLowerCase().includes(term) ||
-      t.summary.toLowerCase().includes(term) ||
-      t.asset_id.toLowerCase().includes(term)
-  );
-
-  const filteredClosedTickets = (db.closed_tickets || []).filter(
-    (t) =>
-      t.ticket_id.toLowerCase().includes(term) ||
-      t.summary.toLowerCase().includes(term) ||
-      t.asset_id.toLowerCase().includes(term)
-  );
-
-  // Helper to commit DB update
-  const commitDbChange = (newDb: DatabaseSchema) => {
-    if (onUpdateDb) {
-      onUpdateDb(newDb);
-    }
+  const filterTickets = (list: Ticket[]) => {
+    let rows = list.filter(matchTicket);
+    if (statusFilter !== 'all') rows = rows.filter((t) => t.status === statusFilter);
+    if (priorityFilter !== 'all') rows = rows.filter((t) => t.priority === priorityFilter);
+    rows = [...rows].sort((a, b) => {
+      if (sortKey === 'priority') return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+      if (sortKey === 'sla') return new Date(a.sla_deadline).getTime() - new Date(b.sla_deadline).getTime();
+      if (sortKey === 'id') return a.ticket_id.localeCompare(b.ticket_id);
+      const ua = new Date(a.updated_at || a.created_at).getTime();
+      const ub = new Date(b.updated_at || b.created_at).getTime();
+      return ub - ua;
+    });
+    return rows;
   };
 
-  // Close Ticket Handler
+  const filteredOpenTickets = filterTickets(db.open_tickets);
+  const filteredClosedTickets = filterTickets(db.closed_tickets || []);
+
+  const ticketRows = activeTab === 'closed_tickets' ? filteredClosedTickets : filteredOpenTickets;
+  const pagedTickets = ticketRows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  const pageCount = Math.max(1, Math.ceil(ticketRows.length / PAGE_SIZE));
+
+  const allTickets = [...db.open_tickets, ...(db.closed_tickets || [])];
+  const detailTicket = allTickets.find((t) => t.ticket_id === detailId) || null;
+  const related = detailTicket
+    ? allTickets.filter(
+        (t) =>
+          t.ticket_id !== detailTicket.ticket_id &&
+          (t.customer_id === detailTicket.customer_id || t.site_id === detailTicket.site_id)
+      )
+    : [];
+
+  const commitDbChange = (newDb: DatabaseSchema) => {
+    if (onUpdateDb) onUpdateDb(newDb);
+  };
+
   const handleCloseTicket = (ticketId: string) => {
     const ticketToClose = db.open_tickets.find((t) => t.ticket_id === ticketId);
     if (!ticketToClose) return;
-
     const updatedTicket: Ticket = {
       ...ticketToClose,
       status: 'CLOSED',
@@ -166,53 +218,33 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         },
       ],
     };
-
-    const newDb: DatabaseSchema = {
+    commitDbChange({
       ...db,
       open_tickets: db.open_tickets.filter((t) => t.ticket_id !== ticketId),
       closed_tickets: [updatedTicket, ...(db.closed_tickets || [])],
-    };
-
-    commitDbChange(newDb);
+    });
+    setConfirm(null);
+    if (detailId === ticketId) setDetailId(ticketId);
   };
 
-  // Delete Item Handlers
   const handleDeleteContractor = (id: string) => {
-    commitDbChange({
-      ...db,
-      contractors: db.contractors.filter((c) => c.customer_id !== id),
-    });
+    commitDbChange({ ...db, contractors: db.contractors.filter((c) => c.customer_id !== id) });
   };
-
   const handleDeleteSite = (id: string) => {
-    commitDbChange({
-      ...db,
-      sites: db.sites.filter((s) => s.site_id !== id),
-    });
+    commitDbChange({ ...db, sites: db.sites.filter((s) => s.site_id !== id) });
   };
-
   const handleDeleteAsset = (id: string) => {
-    commitDbChange({
-      ...db,
-      assets: db.assets.filter((a) => a.asset_id !== id),
-    });
+    commitDbChange({ ...db, assets: db.assets.filter((a) => a.asset_id !== id) });
   };
-
   const handleDeleteOpenTicket = (id: string) => {
-    commitDbChange({
-      ...db,
-      open_tickets: db.open_tickets.filter((t) => t.ticket_id !== id),
-    });
+    commitDbChange({ ...db, open_tickets: db.open_tickets.filter((t) => t.ticket_id !== id) });
+    if (detailId === id) setDetailId(null);
   };
-
   const handleDeleteClosedTicket = (id: string) => {
-    commitDbChange({
-      ...db,
-      closed_tickets: db.closed_tickets.filter((t) => t.ticket_id !== id),
-    });
+    commitDbChange({ ...db, closed_tickets: db.closed_tickets.filter((t) => t.ticket_id !== id) });
+    if (detailId === id) setDetailId(null);
   };
 
-  // Add Item Handlers
   const handleSaveContractor = () => {
     if (!contractorForm.name || !contractorForm.inn) return;
     const newContractor: Contractor = {
@@ -224,11 +256,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       contract_number: contractorForm.contract_number || `ДОГ-${Date.now().toString().slice(-4)}`,
       status: 'ACTIVE',
     };
-
-    commitDbChange({
-      ...db,
-      contractors: [newContractor, ...(db.contractors || [])],
-    });
+    commitDbChange({ ...db, contractors: [newContractor, ...(db.contractors || [])] });
     setModalType(null);
   };
 
@@ -243,11 +271,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       timezone: siteForm.timezone || 'Europe/Moscow',
       region: siteForm.region || 'Москва и МО',
     };
-
-    commitDbChange({
-      ...db,
-      sites: [newSite, ...db.sites],
-    });
+    commitDbChange({ ...db, sites: [newSite, ...db.sites] });
     setModalType(null);
   };
 
@@ -261,16 +285,13 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       criticality: assetForm.criticality || 'HIGH',
       status: assetForm.status || 'OK',
     };
-
-    commitDbChange({
-      ...db,
-      assets: [newAsset, ...db.assets],
-    });
+    commitDbChange({ ...db, assets: [newAsset, ...db.assets] });
     setModalType(null);
   };
 
   const handleSaveTicket = (isClosed = false) => {
-    if (!ticketForm.summary) return;
+    const desc = ticketForm.description || ticketForm.summary;
+    if (!desc) return;
     const id = ticketForm.ticket_id || `T-${Math.floor(Math.random() * 800 + 100)}`;
     const newTicket: Ticket = {
       ticket_id: id,
@@ -278,12 +299,13 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       site_id: ticketForm.site_id || 'S-MSK-01',
       asset_id: ticketForm.asset_id || 'A-1001',
       priority: ticketForm.priority || 'high',
-      summary: ticketForm.summary,
-      description: ticketForm.description || 'Создано вручную через Реестр БД.',
-      sla_deadline: new Date(Date.now() + 7200000).toISOString(),
+      summary: ticketForm.summary || desc.slice(0, 80),
+      description: desc,
+      sla_deadline: new Date(Date.now() + slaMinutes * 60000).toISOString(),
       assigned_group: ticketForm.assigned_group || 'Дежурная служба',
       status: isClosed ? 'CLOSED' : 'NEW',
       created_at: new Date().toISOString(),
+      channel: ticketForm.channel,
       history: [
         {
           timestamp: new Date().toISOString(),
@@ -292,647 +314,796 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         },
       ],
     };
-
     if (isClosed) {
-      commitDbChange({
-        ...db,
-        closed_tickets: [newTicket, ...(db.closed_tickets || [])],
-      });
+      commitDbChange({ ...db, closed_tickets: [newTicket, ...(db.closed_tickets || [])] });
     } else {
-      commitDbChange({
-        ...db,
-        open_tickets: [newTicket, ...db.open_tickets],
-      });
+      commitDbChange({ ...db, open_tickets: [newTicket, ...db.open_tickets] });
     }
+    setModalType(null);
+    setDetailId(id);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingId) return;
+    const desc = ticketForm.description || ticketForm.summary;
+    if (!desc) return;
+    const patch = (t: Ticket): Ticket =>
+      t.ticket_id !== editingId
+        ? t
+        : {
+            ...t,
+            customer_id: ticketForm.customer_id || t.customer_id,
+            site_id: ticketForm.site_id || t.site_id,
+            asset_id: ticketForm.asset_id || t.asset_id,
+            priority: ticketForm.priority || t.priority,
+            summary: ticketForm.summary || desc.slice(0, 80),
+            description: desc,
+            assigned_group: ticketForm.assigned_group || t.assigned_group,
+            status: ticketForm.status || t.status,
+            channel: ticketForm.channel || t.channel,
+            sla_deadline: new Date(Date.now() + slaMinutes * 60000).toISOString(),
+            updated_at: new Date().toISOString(),
+            history: [
+              ...(t.history || []),
+              { timestamp: new Date().toISOString(), note: 'Заявка отредактирована в реестре.', author: 'Диспетчер' },
+            ],
+          };
+    commitDbChange({
+      ...db,
+      open_tickets: db.open_tickets.map(patch),
+      closed_tickets: (db.closed_tickets || []).map(patch),
+    });
+    setEditingId(null);
     setModalType(null);
   };
 
+  const openCreate = (type: ModalType) => {
+    setTicketForm({
+      ticket_id: '',
+      customer_id: db.contractors[0]?.customer_id || 'C-101',
+      site_id: db.sites[0]?.site_id || 'S-MSK-01',
+      asset_id: db.assets[0]?.asset_id || 'A-1001',
+      priority: 'high',
+      summary: '',
+      description: '',
+      assigned_group: 'Дежурная служба',
+      status: 'NEW',
+      channel: 'rest',
+    });
+    setSlaMinutes(120);
+    setEditingId(null);
+    setModalType(type);
+  };
+
+  const openEdit = (t: Ticket) => {
+    setTicketForm({ ...t });
+    const due = new Date(t.sla_deadline).getTime();
+    const mins = Number.isNaN(due) ? 120 : Math.max(15, Math.round((due - Date.now()) / 60000));
+    setSlaMinutes(mins);
+    setEditingId(t.ticket_id);
+    setModalType('ADD_TICKET');
+  };
+
+  const runConfirm = () => {
+    if (!confirm) return;
+    if (confirm.kind === 'complete') handleCloseTicket(confirm.id);
+    if (confirm.kind === 'del-open') handleDeleteOpenTicket(confirm.id);
+    if (confirm.kind === 'del-closed') handleDeleteClosedTicket(confirm.id);
+    if (confirm.kind === 'del-customer') handleDeleteContractor(confirm.id);
+    if (confirm.kind === 'del-site') handleDeleteSite(confirm.id);
+    if (confirm.kind === 'del-asset') handleDeleteAsset(confirm.id);
+    setConfirm(null);
+  };
+
+  const changeTab = (tab: RegistryTab) => {
+    setActiveTab(tab);
+    setPage(0);
+    setStatusFilter('all');
+    setPriorityFilter('all');
+  };
+
+  const site = (id: string) => db.sites.find((s) => s.site_id === id);
+  const asset = (id: string) => db.assets.find((a) => a.asset_id === id);
+  const sitesForCustomer = db.sites.filter((s) => !ticketForm.customer_id || s.customer_id === ticketForm.customer_id);
+  const assetsForSite = db.assets.filter((a) => !ticketForm.site_id || a.site_id === ticketForm.site_id);
+
+  const allTabs: { id: RegistryTab; label: string; count: number }[] = [
+    { id: 'open_tickets', label: 'Открытые заявки', count: db.open_tickets.length },
+    { id: 'closed_tickets', label: 'Закрытые заявки', count: (db.closed_tickets || []).length },
+    { id: 'contractors', label: 'Клиенты', count: (db.contractors || []).length },
+    { id: 'sites', label: 'Объекты', count: db.sites.length },
+    { id: 'assets', label: 'Оборудование', count: db.assets.length },
+  ];
+  const tabs = ticketsOnly
+    ? allTabs.filter((t) => t.id === 'open_tickets' || t.id === 'closed_tickets')
+    : allTabs;
+
+  const addLabel =
+    activeTab === 'open_tickets'
+      ? 'Создать заявку'
+      : activeTab === 'closed_tickets'
+        ? 'Добавить закрытую'
+        : activeTab === 'contractors'
+          ? 'Добавить клиента'
+          : activeTab === 'sites'
+            ? 'Добавить объект'
+            : 'Добавить оборудование';
+
+  const onAdd = () => {
+    if (ticketsOnly && activeTab !== 'open_tickets' && activeTab !== 'closed_tickets') return;
+    if (activeTab === 'open_tickets') openCreate('ADD_TICKET');
+    else if (activeTab === 'closed_tickets') openCreate('ADD_CLOSED_TICKET');
+    else if (activeTab === 'contractors') setModalType('ADD_CONTRACTOR');
+    else if (activeTab === 'sites') setModalType('ADD_SITE');
+    else setModalType('ADD_ASSET');
+  };
+
   return (
-    <div id="database-inspector-page" className="space-y-4 font-sans">
-      {/* Header & Controls */}
-      <div
-        className={`rounded-2xl p-4 sm:p-5 transition-all border flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-          isDark
-            ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
-            : 'bg-white border-slate-300 shadow-sm text-slate-900'
-        }`}
-      >
-        <div>
-          <div className="flex items-center space-x-2">
-            <Database className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              Реестр Базы Данных (CRUD & Заявки)
-            </h2>
-          </div>
-          <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-700 font-medium'}`}>
-            Управление контрагентами, объектами, оборудованием, открытыми и закрытыми заявками в реальном времени.
-          </p>
-        </div>
+    <div id="database-inspector-page" className="grid gap-3">
+      <PageSection
+        title={ticketsOnly ? 'Заявки' : 'Расширенный реестр'}
+        description={
+          ticketsOnly
+            ? 'Рабочий список заявок: поиск, фильтры, статусы, приоритеты, SLA и история.'
+            : 'Клиенты, объекты, оборудование и заявки. Полный CRUD для администратора.'
+        }
+        status={{ tone: 'info', label: `${db.open_tickets.length} ОТКРЫТЫХ` }}
+        actions={
+          canResetDatabase ? (
+          <button id="reset-db-btn" type="button" className={btnCls} disabled={isLoading} onClick={onResetDatabase}>
+            <RotateCcw className="mr-1 inline h-3 w-3" />
+            Сброс БД
+          </button>
+          ) : undefined
+        }
+      />
 
-        <div className="flex items-center space-x-3">
-          <div className="relative w-full md:w-64 font-mono">
-            <input
-              type="text"
-              placeholder="Поиск по БД..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full border rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none transition ${
-                isDark
-                  ? 'bg-[#020204]/90 border-cyan-500/30 text-white focus:border-cyan-400'
-                  : 'bg-slate-50 border-slate-300 text-blue-950 font-bold focus:border-blue-900'
-              }`}
-            />
-            <Search className={`absolute left-2.5 top-2 h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-          </div>
-
+      <div className="flex flex-wrap items-center gap-1.5">
+        {tabs.map((t) => (
           <button
-            id="reset-db-btn"
+            key={t.id}
             type="button"
-            onClick={onResetDatabase}
-            disabled={isLoading}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-mono font-bold rounded-lg border transition ${
-              isDark
-                ? 'bg-white/5 hover:bg-white/10 text-slate-200 border-white/10'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+            onClick={() => changeTab(t.id)}
+            className={`rounded-md border px-2.5 py-1 text-[11px] ${
+              activeTab === t.id
+                ? 'border-[var(--oc-accent)] bg-[var(--oc-surface-2)] text-[var(--oc-text)]'
+                : 'border-[var(--oc-border)] text-[var(--oc-muted)] hover:bg-[var(--oc-surface-2)]'
             }`}
           >
-            <RotateCcw className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <span>Сбросить БД</span>
+            {t.label} <span className="font-mono">{t.count}</span>
           </button>
-        </div>
+        ))}
+        <button type="button" className={`${btnCls} ml-auto`} onClick={onAdd}>
+          <Plus className="mr-1 inline h-3 w-3" />
+          {addLabel}
+        </button>
       </div>
 
-      {/* Internal Nav Tabs with Add buttons */}
-      <div className={`flex items-center justify-between border-b pb-2 font-mono overflow-x-auto gap-2 ${isDark ? 'border-slate-700/30' : 'border-slate-300'}`}>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setActiveTab('open_tickets')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-              activeTab === 'open_tickets'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <AlertCircle className="h-3.5 w-3.5" />
-            <span>Открытые Заявки ({db.open_tickets.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('closed_tickets')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-              activeTab === 'closed_tickets'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            <span>Закрытые Заявки ({(db.closed_tickets || []).length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('contractors')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-              activeTab === 'contractors'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <Users className="h-3.5 w-3.5" />
-            <span>Контрагенты ({(db.contractors || []).length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('sites')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-              activeTab === 'sites'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <Building className="h-3.5 w-3.5" />
-            <span>Объекты ({db.sites.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('assets')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-              activeTab === 'assets'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <Cpu className="h-3.5 w-3.5" />
-            <span>Оборудование ({db.assets.length})</span>
-          </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="absolute left-2 top-1.5 h-3.5 w-3.5 text-[var(--oc-muted)]" />
+          <input
+            className={`${inputCls} pl-7`}
+            placeholder="Поиск…"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(0);
+            }}
+          />
         </div>
-
-        {/* Action Button for Current Tab */}
-        <div>
-          {activeTab === 'contractors' && (
-            <button
-              onClick={() => setModalType('ADD_CONTRACTOR')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
-                isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
-              }`}
+        {(activeTab === 'open_tickets' || activeTab === 'closed_tickets') && (
+          <>
+            <select
+              className={`${inputCls} w-auto`}
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(0);
+              }}
             >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Добавить Контрагента</span>
-            </button>
-          )}
-
-          {activeTab === 'sites' && (
-            <button
-              onClick={() => setModalType('ADD_SITE')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
-                isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
-              }`}
+              <option value="all">Статус: все</option>
+              <option value="NEW">{ruTicketStatus('NEW')}</option>
+              <option value="IN_PROGRESS">{ruTicketStatus('IN_PROGRESS')}</option>
+              <option value="WAITING_DISPATCHER">{ruTicketStatus('WAITING_DISPATCHER')}</option>
+              <option value="RESOLVED">{ruTicketStatus('RESOLVED')}</option>
+              <option value="CLOSED">{ruTicketStatus('CLOSED')}</option>
+            </select>
+            <select
+              className={`${inputCls} w-auto`}
+              value={priorityFilter}
+              onChange={(e) => {
+                setPriorityFilter(e.target.value);
+                setPage(0);
+              }}
             >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Добавить Объект</span>
-            </button>
-          )}
-
-          {activeTab === 'assets' && (
-            <button
-              onClick={() => setModalType('ADD_ASSET')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
-                isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
-              }`}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Добавить Оборудование</span>
-            </button>
-          )}
-
-          {activeTab === 'open_tickets' && (
-            <button
-              onClick={() => setModalType('ADD_TICKET')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
-                isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
-              }`}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Создать Открытую Заявку</span>
-            </button>
-          )}
-
-          {activeTab === 'closed_tickets' && (
-            <button
-              onClick={() => setModalType('ADD_CLOSED_TICKET')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
-                isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
-              }`}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Добавить Закрытую Заявку</span>
-            </button>
-          )}
-        </div>
+              <option value="all">Приоритет: все</option>
+              <option value="critical">{ruPriority('critical')}</option>
+              <option value="high">{ruPriority('high')}</option>
+              <option value="medium">{ruPriority('medium')}</option>
+              <option value="low">{ruPriority('low')}</option>
+            </select>
+            <select className={`${inputCls} w-auto`} value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
+              <option value="updated">Сортировка: обновлено</option>
+              <option value="priority">Сортировка: приоритет</option>
+              <option value="sla">Сортировка: SLA</option>
+              <option value="id">Сортировка: ID</option>
+            </select>
+          </>
+        )}
       </div>
 
-      {/* CONTRACTORS TABLE */}
-      {activeTab === 'contractors' && (
-        <div
-          className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
-            isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
-              <tr>
-                <th className="p-3">ID Контрагента</th>
-                <th className="p-3">Наименование</th>
-                <th className="p-3">ИНН</th>
-                <th className="p-3">Телефон</th>
-                <th className="p-3">Email</th>
-                <th className="p-3">Договор</th>
-                <th className="p-3 text-right">Действие</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/20 font-sans">
-              {filteredContractors.map((c) => (
-                <tr key={c.customer_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono font-bold text-sky-400">{c.customer_id}</td>
-                  <td className="p-3 font-bold">{c.name}</td>
-                  <td className="p-3 font-mono">{c.inn}</td>
-                  <td className="p-3 font-mono text-slate-400">{c.contact_phone}</td>
-                  <td className="p-3 font-mono text-slate-400">{c.contact_email}</td>
-                  <td className="p-3 font-mono text-amber-400">{c.contract_number}</td>
-                  <td className="p-3 text-right">
-                    <button
-                      onClick={() => handleDeleteContractor(c.customer_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
-                      title="Удалить"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className={`grid gap-3 ${detailTicket ? 'xl:grid-cols-[1fr_360px]' : ''}`}>
+        <section className="oc-card overflow-hidden">
+          <div className="table-scroll">
+            {(activeTab === 'open_tickets' || activeTab === 'closed_tickets') && (
+              <table className="oc-table min-w-[920px]">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Клиент</th>
+                    <th>Инцидент</th>
+                    <th>Приоритет</th>
+                    <th>Статус</th>
+                    <th>Группа</th>
+                    <th>SLA</th>
+                    <th>Обновлено</th>
+                    <th>Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedTickets.map((t) => {
+                    const st = statusLabel(t);
+                    const sla = slaBucket(t.sla_deadline);
+                    return (
+                      <tr
+                        key={t.ticket_id}
+                        className={t.priority === 'critical' || sla === 'breached' ? 'row-critical' : ''}
+                      >
+                        <td className="font-mono">{t.ticket_id}</td>
+                        <td>{customerName(db, t.customer_id)}</td>
+                        <td className="max-w-[220px] truncate" title={t.summary}>
+                          {t.summary}
+                        </td>
+                        <td>
+                          <StatusBadge tone={priorityTone(t.priority)} label={ruPriority(t.priority)} />
+                        </td>
+                        <td>
+                          <StatusBadge tone={st.tone} label={st.label} />
+                        </td>
+                        <td className="text-[var(--oc-muted)]">{t.assigned_group}</td>
+                        <td className="font-mono text-[11px]">{formatSla(t.sla_deadline)}</td>
+                        <td className="font-mono text-[11px] text-[var(--oc-muted)]">
+                          {fmtTime(t.updated_at || t.created_at)}
+                        </td>
+                        <td className="whitespace-nowrap">
+                          <button type="button" className="mr-1 text-[11px] text-[var(--oc-accent)]" onClick={() => setDetailId(t.ticket_id)}>
+                            Открыть
+                          </button>
+                          <button type="button" className="mr-1 text-[11px]" onClick={() => openEdit(t)}>
+                            Изменить
+                          </button>
+                          {activeTab === 'open_tickets' && (
+                            <button
+                              type="button"
+                              className="mr-1 text-[11px]"
+                              onClick={() => setConfirm({ kind: 'complete', id: t.ticket_id, label: `Закрыть ${t.ticket_id}?` })}
+                            >
+                              Завершить
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="text-[11px] text-[var(--status-danger)]"
+                            onClick={() =>
+                              setConfirm({
+                                kind: activeTab === 'open_tickets' ? 'del-open' : 'del-closed',
+                                id: t.ticket_id,
+                                label: `Удалить ${t.ticket_id}? Это действие нельзя отменить.`,
+                              })
+                            }
+                          >
+                            Удалить
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {pagedTickets.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="py-6 text-center text-[var(--oc-muted)]">
+                        Нет записей
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
 
-      {/* SITES TABLE */}
-      {activeTab === 'sites' && (
-        <div
-          className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
-            isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
-              <tr>
-                <th className="p-3">ID Объекта</th>
-                <th className="p-3">Клиент</th>
-                <th className="p-3">Адрес</th>
-                <th className="p-3">Контактное Лицо</th>
-                <th className="p-3">Регион</th>
-                <th className="p-3 text-right">Действие</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/20 font-sans">
-              {filteredSites.map((site) => (
-                <tr key={site.site_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono font-bold text-cyan-400">{site.site_id}</td>
-                  <td className="p-3 font-bold">{site.customer_name}</td>
-                  <td className="p-3">{site.address}</td>
-                  <td className="p-3 font-mono text-slate-400">{site.contact_person}</td>
-                  <td className="p-3 font-mono text-slate-400">{site.region}</td>
-                  <td className="p-3 text-right">
-                    <button
-                      onClick={() => handleDeleteSite(site.site_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
-                      title="Удалить"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            {activeTab === 'contractors' && !ticketsOnly && (
+              <table className="oc-table min-w-[720px]">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Клиент</th>
+                    <th>ИНН</th>
+                    <th>Телефон</th>
+                    <th>Email</th>
+                    <th>Договор</th>
+                    <th>Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredContractors.map((c) => (
+                    <tr key={c.customer_id}>
+                      <td className="font-mono">{c.customer_id}</td>
+                      <td>{c.name}</td>
+                      <td className="font-mono">{c.inn}</td>
+                      <td className="font-mono text-[var(--oc-muted)]">{c.contact_phone}</td>
+                      <td className="text-[var(--oc-muted)]">{c.contact_email}</td>
+                      <td className="font-mono">{c.contract_number}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="text-[11px] text-[var(--status-danger)]"
+                          onClick={() =>
+                            setConfirm({ kind: 'del-customer', id: c.customer_id, label: `Удалить клиента ${c.name}?` })
+                          }
+                        >
+                          Удалить
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
 
-      {/* ASSETS TABLE */}
-      {activeTab === 'assets' && (
-        <div
-          className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
-            isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
-              <tr>
-                <th className="p-3">ID Ассета</th>
-                <th className="p-3">Код Объекта</th>
-                <th className="p-3">Локальный Код</th>
-                <th className="p-3">Наименование Оборудования</th>
-                <th className="p-3">Критичность</th>
-                <th className="p-3">Статус</th>
-                <th className="p-3 text-right">Действие</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/20 font-sans">
-              {filteredAssets.map((asset) => (
-                <tr key={asset.asset_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono text-slate-400">{asset.asset_id}</td>
-                  <td className="p-3 font-mono font-bold text-cyan-400">{asset.site_id}</td>
-                  <td className="p-3 font-mono font-bold text-amber-400">{asset.local_code}</td>
-                  <td className="p-3 font-semibold">{asset.name}</td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 rounded font-mono font-bold text-[10px] border bg-red-950/80 text-red-300 border-red-500/40">
-                      {asset.criticality}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold border bg-emerald-950/80 text-emerald-300 border-emerald-500/40">
-                      {asset.status}
-                    </span>
-                  </td>
-                  <td className="p-3 text-right">
-                    <button
-                      onClick={() => handleDeleteAsset(asset.asset_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
-                      title="Удалить"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            {activeTab === 'sites' && !ticketsOnly && (
+              <table className="oc-table min-w-[720px]">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Клиент</th>
+                    <th>Адрес</th>
+                    <th>Контакт</th>
+                    <th>Регион</th>
+                    <th>Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSites.map((s) => (
+                    <tr key={s.site_id}>
+                      <td className="font-mono">{s.site_id}</td>
+                      <td>{s.customer_name}</td>
+                      <td>{s.address}</td>
+                      <td className="text-[var(--oc-muted)]">{s.contact_person}</td>
+                      <td className="text-[var(--oc-muted)]">{s.region}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="text-[11px] text-[var(--status-danger)]"
+                          onClick={() => setConfirm({ kind: 'del-site', id: s.site_id, label: `Удалить объект ${s.site_id}?` })}
+                        >
+                          Удалить
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
 
-      {/* OPEN TICKETS TABLE */}
-      {activeTab === 'open_tickets' && (
-        <div
-          className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
-            isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
-              <tr>
-                <th className="p-3">ID Заявки</th>
-                <th className="p-3">ID Ассета</th>
-                <th className="p-3">Суть Инцидента</th>
-                <th className="p-3">Приоритет</th>
-                <th className="p-3">Статус</th>
-                <th className="p-3">Группа</th>
-                <th className="p-3 text-right">Действия</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/20 font-sans">
-              {filteredOpenTickets.map((t) => (
-                <tr key={t.ticket_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono font-bold text-amber-400">{t.ticket_id}</td>
-                  <td className="p-3 font-mono font-bold text-cyan-400">{t.asset_id}</td>
-                  <td className="p-3 font-semibold">{t.summary}</td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 rounded border font-mono font-bold text-[10px] bg-red-950/80 text-red-300 border-red-500/40">
-                      {t.priority.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="p-3 font-mono text-cyan-300 font-bold">{t.status}</td>
-                  <td className="p-3 font-mono text-slate-400">{t.assigned_group}</td>
-                  <td className="p-3 text-right flex items-center justify-end space-x-1">
-                    <button
-                      onClick={() => handleCloseTicket(t.ticket_id)}
-                      className={`px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 font-mono text-[10px] flex items-center space-x-1 ${
-                        isDark ? 'text-emerald-300 font-bold' : 'text-emerald-950 font-extrabold'
-                      }`}
-                      title="Завершить и перенести в архив"
-                    >
-                      <Check className="h-3 w-3" />
-                      <span>Завершить</span>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteOpenTicket(t.ticket_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
-                      title="Удалить"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            {activeTab === 'assets' && !ticketsOnly && (
+              <table className="oc-table min-w-[720px]">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Объект</th>
+                    <th>Код</th>
+                    <th>Оборудование</th>
+                    <th>Приоритет</th>
+                    <th>Статус</th>
+                    <th>Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAssets.map((a) => (
+                    <tr key={a.asset_id}>
+                      <td className="font-mono">{a.asset_id}</td>
+                      <td className="font-mono">{a.site_id}</td>
+                      <td className="font-mono">{a.local_code}</td>
+                      <td>{a.name}</td>
+                      <td>
+                        <StatusBadge
+                          tone={priorityTone(a.criticality.toLowerCase() as Ticket['priority'])}
+                          label={ruPriority(a.criticality)}
+                        />
+                      </td>
+                      <td>
+                        <StatusBadge
+                          tone={a.status === 'OK' ? 'success' : a.status === 'WARNING' ? 'warning' : 'danger'}
+                          label={ruAssetStatus(a.status)}
+                        />
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="text-[11px] text-[var(--status-danger)]"
+                          onClick={() =>
+                            setConfirm({ kind: 'del-asset', id: a.asset_id, label: `Удалить оборудование ${a.local_code}?` })
+                          }
+                        >
+                          Удалить
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          {(activeTab === 'open_tickets' || activeTab === 'closed_tickets') && pageCount > 1 && (
+            <div className="flex items-center justify-between border-t border-[var(--oc-border)] px-3 py-1.5 text-[11px] text-[var(--oc-muted)]">
+              <span>
+                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, ticketRows.length)} из {ticketRows.length}
+              </span>
+              <div className="flex gap-1">
+                <button type="button" className={btnCls} disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+                  Назад
+                </button>
+                <button
+                  type="button"
+                  className={btnCls}
+                  disabled={page >= pageCount - 1}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Далее
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
 
-      {/* CLOSED TICKETS TABLE */}
-      {activeTab === 'closed_tickets' && (
-        <div
-          className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
-            isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
-              <tr>
-                <th className="p-3">ID Заявки</th>
-                <th className="p-3">ID Ассета</th>
-                <th className="p-3">Суть Заявки</th>
-                <th className="p-3">Приоритет</th>
-                <th className="p-3">Дата Завершения</th>
-                <th className="p-3">Статус</th>
-                <th className="p-3 text-right">Действие</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/20 font-sans">
-              {filteredClosedTickets.map((t) => (
-                <tr key={t.ticket_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono font-bold text-emerald-400">{t.ticket_id}</td>
-                  <td className="p-3 font-mono text-slate-400">{t.asset_id}</td>
-                  <td className="p-3 font-semibold line-through text-slate-400">{t.summary}</td>
-                  <td className="p-3 font-mono text-slate-400">{t.priority}</td>
-                  <td className="p-3 font-mono text-slate-400">
-                    {t.updated_at ? new Date(t.updated_at).toLocaleDateString('ru-RU') : '—'}
-                  </td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 rounded border font-mono font-bold text-[10px] bg-emerald-950/80 text-emerald-300 border-emerald-500/40">
-                      CLOSED
-                    </span>
-                  </td>
-                  <td className="p-3 text-right">
-                    <button
-                      onClick={() => handleDeleteClosedTicket(t.ticket_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
-                      title="Удалить"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+        {detailTicket && (
+          <aside className="oc-card flex max-h-[72vh] flex-col overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[var(--oc-border)] px-3 py-2">
+              <div>
+                <p className="font-mono text-xs">{detailTicket.ticket_id}</p>
+                <p className="oc-section-title text-[13px]">Обзор заявки</p>
+              </div>
+              <button type="button" className="text-[var(--oc-muted)]" onClick={() => setDetailId(null)}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 space-y-3 overflow-auto px-3 py-2 text-[11px]">
+              <p className="text-[13px] leading-snug text-[var(--oc-text)]">{detailTicket.summary}</p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                <Field label="Клиент" value={customerName(db, detailTicket.customer_id)} />
+                <Field label="Объект" value={site(detailTicket.site_id)?.address || detailTicket.site_id} />
+                <Field
+                  label="Оборудование"
+                  value={`${asset(detailTicket.asset_id)?.local_code || detailTicket.asset_id} · ${asset(detailTicket.asset_id)?.name || ''}`}
+                />
+                <Field label="Инцидент" value={detailTicket.description || detailTicket.summary} />
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Приоритет</p>
+                  <StatusBadge tone={priorityTone(detailTicket.priority)} label={ruPriority(detailTicket.priority)} />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Статус</p>
+                  <StatusBadge tone={statusLabel(detailTicket).tone} label={statusLabel(detailTicket).label} />
+                </div>
+                <Field label="SLA" value={`${formatSla(detailTicket.sla_deadline)} · ${fmtTime(detailTicket.sla_deadline)}`} />
+                <Field label="Канал" value={detailTicket.channel || '—'} />
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Решение ИИ</p>
+                <p className="rounded-md bg-[var(--oc-bg)] px-2 py-1.5">
+                  {wasAutoDispatched(detailTicket)
+                    ? 'AI Dispatcher участвовал в маршрутизации.'
+                    : (detailTicket.history || []).find((h) => /AI/i.test(h.note + h.author))?.note ||
+                      'Решение оператора / ручное создание.'}
+                </p>
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Хронология</p>
+                <ul className="space-y-1">
+                  {(detailTicket.history || []).slice().reverse().map((h, i) => (
+                    <li key={i} className="border-l border-[var(--oc-border)] pl-2">
+                      <span className="font-mono text-[10px] text-[var(--oc-muted)]">{fmtTime(h.timestamp)}</span>{' '}
+                      <span>{h.author}</span>
+                      <div>{h.note}</div>
+                    </li>
+                  ))}
+                  {!(detailTicket.history || []).length && <li className="text-[var(--oc-muted)]">Нет событий</li>}
+                </ul>
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Активность</p>
+                <ul className="space-y-1">
+                  {(detailTicket.messages || []).map((m) => (
+                    <li key={m.id} className="rounded bg-[var(--oc-bg)] px-2 py-1">
+                      <span className="text-[var(--oc-muted)]">{m.author_name}</span> · {m.text}
+                    </li>
+                  ))}
+                  {!(detailTicket.messages || []).length && <li className="text-[var(--oc-muted)]">Нет сообщений</li>}
+                </ul>
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Связанные заявки</p>
+                <ul className="space-y-0.5">
+                  {related.slice(0, 6).map((t) => (
+                    <li key={t.ticket_id}>
+                      <button type="button" className="text-[var(--oc-accent)]" onClick={() => setDetailId(t.ticket_id)}>
+                        {t.ticket_id}
+                      </button>{' '}
+                      <span className="text-[var(--oc-muted)]">{t.summary}</span>
+                    </li>
+                  ))}
+                  {!related.length && <li className="text-[var(--oc-muted)]">Нет связанных</li>}
+                </ul>
+              </div>
+            </div>
+            <div className="flex gap-1 border-t border-[var(--oc-border)] px-3 py-2">
+              <button type="button" className={btnCls} onClick={() => openEdit(detailTicket)}>
+                Изменить
+              </button>
+              {db.open_tickets.some((t) => t.ticket_id === detailTicket.ticket_id) && (
+                <button
+                  type="button"
+                  className={btnCls}
+                  onClick={() =>
+                    setConfirm({ kind: 'complete', id: detailTicket.ticket_id, label: `Закрыть ${detailTicket.ticket_id}?` })
+                  }
+                >
+                  Завершить
+                </button>
+              )}
+            </div>
+          </aside>
+        )}
+      </div>
 
-      {/* MODAL DIALOGS FOR ADDING DATA */}
       {modalType && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className={`w-full max-w-lg rounded-2xl p-6 border shadow-2xl ${isDark ? 'bg-[#0a0a16] border-cyan-500/40 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
-            <div className="flex items-center justify-between mb-4 border-b pb-3 border-slate-700/30">
-              <h3 className="text-sm font-mono font-bold uppercase text-cyan-400">
-                {modalType === 'ADD_CONTRACTOR' && 'Добавить нового Контрагента'}
-                {modalType === 'ADD_SITE' && 'Добавить новый Объект'}
-                {modalType === 'ADD_ASSET' && 'Добавить новое Оборудование'}
-                {modalType === 'ADD_TICKET' && 'Создать Открытую Заявку'}
-                {modalType === 'ADD_CLOSED_TICKET' && 'Добавить Завершенную Заявку'}
+        <div className="oc-dialog-backdrop justify-end sm:justify-center" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="registry-dialog-title"
+            className="h-full w-full max-w-md overflow-auto border border-[var(--oc-border)] bg-[var(--oc-surface)] p-4 shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 id="registry-dialog-title" className="oc-section-title text-[13px]">
+                {editingId
+                  ? `Изменить ${editingId}`
+                  : modalType === 'ADD_CONTRACTOR'
+                    ? 'Добавить клиента'
+                    : modalType === 'ADD_SITE'
+                      ? 'Добавить объект'
+                      : modalType === 'ADD_ASSET'
+                        ? 'Добавить оборудование'
+                        : modalType === 'ADD_CLOSED_TICKET'
+                          ? 'Добавить закрытую заявку'
+                          : 'Создать заявку'}
               </h3>
-              <button onClick={() => setModalType(null)} className="text-slate-400 hover:text-white">
-                <X className="h-5 w-5" />
+              <button type="button" onClick={() => { setModalType(null); setEditingId(null); }}>
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Contractor Form */}
             {modalType === 'ADD_CONTRACTOR' && (
-              <div className="space-y-3 font-mono text-xs">
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Наименование компании:</label>
-                  <input
-                    type="text"
-                    placeholder="ООO «СеверТранс»"
-                    value={contractorForm.name}
-                    onChange={(e) => setContractorForm({ ...contractorForm, name: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">ИНН Компании:</label>
-                  <input
-                    type="text"
-                    placeholder="7701998877"
-                    value={contractorForm.inn}
-                    onChange={(e) => setContractorForm({ ...contractorForm, inn: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Контактный телефон:</label>
-                  <input
-                    type="text"
-                    placeholder="+7 (495) 777-88-99"
-                    value={contractorForm.contact_phone}
-                    onChange={(e) => setContractorForm({ ...contractorForm, contact_phone: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
-                  />
-                </div>
-                <button
-                  onClick={handleSaveContractor}
-                  className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
-                >
-                  Сохранить Контрагента
+              <div className="grid gap-2 text-[11px]">
+                <label>
+                  Название
+                  <input className={inputCls} value={contractorForm.name || ''} onChange={(e) => setContractorForm({ ...contractorForm, name: e.target.value })} />
+                </label>
+                <label>
+                  ИНН
+                  <input className={inputCls} value={contractorForm.inn || ''} onChange={(e) => setContractorForm({ ...contractorForm, inn: e.target.value })} />
+                </label>
+                <label>
+                  Телефон
+                  <input className={inputCls} value={contractorForm.contact_phone || ''} onChange={(e) => setContractorForm({ ...contractorForm, contact_phone: e.target.value })} />
+                </label>
+                <button type="button" className={btnCls} onClick={handleSaveContractor}>
+                  Сохранить
                 </button>
               </div>
             )}
 
-            {/* Site Form */}
             {modalType === 'ADD_SITE' && (
-              <div className="space-y-3 font-mono text-xs">
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Адрес Объекта:</label>
-                  <input
-                    type="text"
-                    placeholder="г. Москва, ул. Ленина 45"
-                    value={siteForm.address}
-                    onChange={(e) => setSiteForm({ ...siteForm, address: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Контактное Лицо:</label>
-                  <input
-                    type="text"
-                    placeholder="Иван (главный энергетик)"
-                    value={siteForm.contact_person}
-                    onChange={(e) => setSiteForm({ ...siteForm, contact_person: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
-                  />
-                </div>
-                <button
-                  onClick={handleSaveSite}
-                  className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
-                >
-                  Сохранить Объект
+              <div className="grid gap-2 text-[11px]">
+                <label>
+                  Адрес
+                  <input className={inputCls} value={siteForm.address || ''} onChange={(e) => setSiteForm({ ...siteForm, address: e.target.value })} />
+                </label>
+                <label>
+                  Контакт
+                  <input className={inputCls} value={siteForm.contact_person || ''} onChange={(e) => setSiteForm({ ...siteForm, contact_person: e.target.value })} />
+                </label>
+                <button type="button" className={btnCls} onClick={handleSaveSite}>
+                  Сохранить
                 </button>
               </div>
             )}
 
-            {/* Asset Form */}
             {modalType === 'ADD_ASSET' && (
-              <div className="space-y-3 font-mono text-xs">
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Локальный Код (например ХУ-19):</label>
-                  <input
-                    type="text"
-                    placeholder="ХУ-19"
-                    value={assetForm.local_code}
-                    onChange={(e) => setAssetForm({ ...assetForm, local_code: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Наименование Оборудования:</label>
-                  <input
-                    type="text"
-                    placeholder="Компрессорная станция №4"
-                    value={assetForm.name}
-                    onChange={(e) => setAssetForm({ ...assetForm, name: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
-                  />
-                </div>
-                <button
-                  onClick={handleSaveAsset}
-                  className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
-                >
-                  Сохранить Оборудование
+              <div className="grid gap-2 text-[11px]">
+                <label>
+                  Код
+                  <input className={inputCls} value={assetForm.local_code || ''} onChange={(e) => setAssetForm({ ...assetForm, local_code: e.target.value })} />
+                </label>
+                <label>
+                  Название
+                  <input className={inputCls} value={assetForm.name || ''} onChange={(e) => setAssetForm({ ...assetForm, name: e.target.value })} />
+                </label>
+                <button type="button" className={btnCls} onClick={handleSaveAsset}>
+                  Сохранить
                 </button>
               </div>
             )}
 
-            {/* Ticket Form */}
             {(modalType === 'ADD_TICKET' || modalType === 'ADD_CLOSED_TICKET') && (
-              <div className="space-y-3 font-mono text-xs">
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Суть Инцидента:</label>
-                  <input
-                    type="text"
-                    placeholder="Утечка фреона на компрессоре ХУ-17"
-                    value={ticketForm.summary}
-                    onChange={(e) => setTicketForm({ ...ticketForm, summary: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
+              <div className="grid gap-2 text-[11px]">
+                <label>
+                  Клиент
+                  <select
+                    className={inputCls}
+                    value={ticketForm.customer_id}
+                    onChange={(e) => {
+                      const customer_id = e.target.value;
+                      const firstSite = db.sites.find((s) => s.customer_id === customer_id);
+                      setTicketForm({ ...ticketForm, customer_id, site_id: firstSite?.site_id || ticketForm.site_id });
+                    }}
+                  >
+                    {(db.contractors || []).map((c) => (
+                      <option key={c.customer_id} value={c.customer_id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Объект
+                  <select
+                    className={inputCls}
+                    value={ticketForm.site_id}
+                    onChange={(e) => {
+                      const site_id = e.target.value;
+                      const firstAsset = db.assets.find((a) => a.site_id === site_id);
+                      setTicketForm({ ...ticketForm, site_id, asset_id: firstAsset?.asset_id || ticketForm.asset_id });
+                    }}
+                  >
+                    {sitesForCustomer.map((s) => (
+                      <option key={s.site_id} value={s.site_id}>
+                        {s.address}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Оборудование
+                  <select
+                    className={inputCls}
+                    value={ticketForm.asset_id}
+                    onChange={(e) => setTicketForm({ ...ticketForm, asset_id: e.target.value })}
+                  >
+                    {assetsForSite.map((a) => (
+                      <option key={a.asset_id} value={a.asset_id}>
+                        {a.local_code} · {a.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Канал
+                  <select
+                    className={inputCls}
+                    value={ticketForm.channel || 'rest'}
+                    onChange={(e) => setTicketForm({ ...ticketForm, channel: e.target.value })}
+                  >
+                    <option value="telegram">telegram</option>
+                    <option value="email">email</option>
+                    <option value="voice">voice</option>
+                    <option value="rest">rest</option>
+                  </select>
+                </label>
+                <label>
+                  Описание
+                  <textarea
+                    rows={3}
+                    className="w-full rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] p-2 text-xs"
+                    value={ticketForm.description || ticketForm.summary || ''}
+                    onChange={(e) =>
+                      setTicketForm({ ...ticketForm, description: e.target.value, summary: e.target.value.slice(0, 80) })
+                    }
                   />
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label>
+                    Приоритет
+                    <select
+                      className={inputCls}
+                      value={ticketForm.priority}
+                      onChange={(e) => setTicketForm({ ...ticketForm, priority: e.target.value as Ticket['priority'] })}
+                    >
+                      <option value="critical">{ruPriority('critical')}</option>
+                      <option value="high">{ruPriority('high')}</option>
+                      <option value="medium">{ruPriority('medium')}</option>
+                      <option value="low">{ruPriority('low')}</option>
+                    </select>
+                  </label>
+                  <label>
+                    SLA (мин)
+                    <input
+                      type="number"
+                      className={inputCls}
+                      value={slaMinutes}
+                      onChange={(e) => setSlaMinutes(Number(e.target.value) || 60)}
+                    />
+                  </label>
                 </div>
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Группа Исполнителей:</label>
-                  <input
-                    type="text"
-                    placeholder="Группа №2 (Холод-МСК)"
-                    value={ticketForm.assigned_group}
-                    onChange={(e) => setTicketForm({ ...ticketForm, assigned_group: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
-                  />
-                </div>
+                {editingId && (
+                  <label>
+                    Статус
+                    <select
+                      className={inputCls}
+                      value={ticketForm.status}
+                      onChange={(e) => setTicketForm({ ...ticketForm, status: e.target.value as Ticket['status'] })}
+                    >
+                      <option value="NEW">{ruTicketStatus('NEW')}</option>
+                      <option value="IN_PROGRESS">{ruTicketStatus('IN_PROGRESS')}</option>
+                      <option value="WAITING_DISPATCHER">{ruTicketStatus('WAITING_DISPATCHER')}</option>
+                      <option value="RESOLVED">{ruTicketStatus('RESOLVED')}</option>
+                      <option value="CLOSED">{ruTicketStatus('CLOSED')}</option>
+                    </select>
+                  </label>
+                )}
                 <button
-                  onClick={() => handleSaveTicket(modalType === 'ADD_CLOSED_TICKET')}
-                  className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
+                  type="button"
+                  className={btnCls}
+                  onClick={() => (editingId ? handleSaveEdit() : handleSaveTicket(modalType === 'ADD_CLOSED_TICKET'))}
                 >
-                  {modalType === 'ADD_CLOSED_TICKET' ? 'Сохранить Закрытую Заявку' : 'Создать Открытую Заявку'}
+                  {editingId ? 'Сохранить изменения' : 'Создать'}
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {confirm && (
+        <div className="oc-dialog-backdrop z-[60]" role="presentation">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-dialog-title"
+            className="w-full max-w-sm rounded-lg border border-[var(--oc-border)] bg-[var(--oc-surface)] p-4"
+          >
+            <p id="confirm-dialog-title" className="text-sm">
+              {confirm.label}
+            </p>
+            <div className="mt-3 flex justify-end gap-2">
+              <button type="button" className={btnCls} onClick={() => setConfirm(null)}>
+                Отмена
+              </button>
+              <button type="button" className={`${btnCls} border-[var(--status-danger)]`} onClick={runConfirm}>
+                Подтвердить
+              </button>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 };
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">{label}</p>
+      <p className="leading-snug">{value}</p>
+    </div>
+  );
+}

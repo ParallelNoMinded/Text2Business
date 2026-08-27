@@ -1,35 +1,94 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Terminal,
-  Activity,
-  Layers,
-  Search,
-  Filter,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
-  Cpu,
-  Shield,
-  Zap,
-  RefreshCw,
-  TrendingUp,
-  BarChart2,
-} from 'lucide-react';
-import { SystemLogEntry } from '../types';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Search, RefreshCw } from 'lucide-react';
+import { ProcessingResult, SystemLogEntry } from '../types';
 import { apiFetch } from '../api';
 import { DatabaseSchema } from '../mockDb';
+import { PageSection } from './layout/PageSection';
+import { StatusBadge, StatusTone } from './ui/StatusBadge';
+import { ExecutionTraceTimeline } from './ExecutionTraceTimeline';
+import {
+  avgDurationMs,
+  displayLogLevel,
+  isWaitingTicket,
+  redactSafeMeta,
+  slaBucket,
+  wasAutoDispatched,
+} from '../opsDashboard';
+import { ruLogLevel, ruHealth } from '../uiRu';
 
 interface LogsTracesViewProps {
   theme?: 'dark' | 'light';
   db?: DatabaseSchema | null;
+  lastResult?: ProcessingResult | null;
+  apiHealthy?: boolean | null;
+  geminiActive?: boolean;
+  githubToken?: string;
 }
 
-export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', db }) => {
-  const isDark = theme === 'dark';
-  const [logFilter, setLogFilter] = useState<'ALL' | 'TELEGRAM' | 'EMAIL' | 'VOICE' | 'SYSTEM' | '1C' | 'REST'>('ALL');
+type TimeWindow = '15m' | '1h' | '6h' | '24h' | 'all';
+type HealthState = 'Operational' | 'Degraded' | 'Down';
+
+function levelTone(level: string): StatusTone {
+  if (level === 'SUCCESS') return 'success';
+  if (level === 'WARNING') return 'warning';
+  if (level === 'ERROR' || level === 'CRITICAL') return 'danger';
+  return 'info';
+}
+
+function healthTone(h: HealthState): StatusTone {
+  if (h === 'Operational') return 'success';
+  if (h === 'Degraded') return 'warning';
+  return 'danger';
+}
+
+function channelHealth(logs: SystemLogEntry[], channel: SystemLogEntry['channel']): HealthState {
+  const last = logs.find((l) => l.channel === channel);
+  if (!last) return 'Degraded';
+  if (last.level === 'ERROR') return 'Down';
+  if (last.level === 'WARN') return 'Degraded';
+  return 'Operational';
+}
+
+function windowMs(w: TimeWindow): number {
+  if (w === '15m') return 15 * 60 * 1000;
+  if (w === '1h') return 60 * 60 * 1000;
+  if (w === '6h') return 6 * 60 * 60 * 1000;
+  if (w === '24h') return 24 * 60 * 60 * 1000;
+  return 0;
+}
+
+function fmtTs(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+function traceIdFor(log: SystemLogEntry): string {
+  const tid = log.details?.ticket_id;
+  if (typeof tid === 'string' && tid) return tid;
+  return log.id;
+}
+
+export const LogsTracesView: React.FC<LogsTracesViewProps> = ({
+  db,
+  lastResult = null,
+  apiHealthy = null,
+  geminiActive = false,
+  githubToken = '',
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [levelFilter, setLevelFilter] = useState('ALL');
+  const [channelFilter, setChannelFilter] = useState('ALL');
+  const [timeFilter, setTimeFilter] = useState<TimeWindow>('all');
   const [logs, setLogs] = useState<SystemLogEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<'logs' | 'traces' | 'analytics'>('logs');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [health, setHealth] = useState<{ gemini_enabled?: boolean; telegram_bot_configured?: boolean } | null>(null);
 
   const fetchLogs = useCallback(async () => {
     try {
@@ -38,8 +97,8 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
         const data = await res.json();
         setLogs(data.logs || []);
       }
-    } catch (err) {
-      // backend not available — keep current list
+    } catch {
+      /* keep */
     }
   }, []);
 
@@ -49,392 +108,272 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
     return () => clearInterval(interval);
   }, [fetchLogs]);
 
-  const filteredLogs = logs.filter((l) => {
-    const matchesChannel = logFilter === 'ALL' || l.channel === logFilter;
-    const matchesSearch =
-      l.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (l.channel || '').toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesChannel && matchesSearch;
-  });
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setHealth(data);
+      })
+      .catch(() => {
+        if (!cancelled) setHealth(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiHealthy]);
 
-  const handleRefreshLogs = () => {
-    fetchLogs();
-  };
+  const tickets = [...(db?.open_tickets || []), ...(db?.closed_tickets || [])];
+  const totalTickets = tickets.length;
+  const waitingHitl = (db?.open_tickets || []).filter(isWaitingTicket).length;
+  const autoPct =
+    totalTickets > 0 ? Math.round((tickets.filter(wasAutoDispatched).length / totalTickets) * 1000) / 10 : 0;
+  const avgMs = avgDurationMs(logs, lastResult);
+  const errors = logs.filter((l) => l.level === 'ERROR').length;
+  const slaAtRisk = (db?.open_tickets || []).filter((t) => {
+    const b = slaBucket(t.sla_deadline);
+    return b === 'at_risk' || b === 'breached';
+  }).length;
 
-  const totalRequests = (db?.open_tickets?.length || 0) + (db?.closed_tickets?.length || 0);
-  const pendingHITL = (db?.open_tickets || []).filter(
-    (t) => t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0)
-  ).length;
-  const autoRate = totalRequests > 0 ? Math.round(((totalRequests - pendingHITL) / totalRequests) * 1000) / 10 : 100;
-  const avgLatencyMs = logs.length > 0
-    ? Math.round(logs.reduce((acc, l) => acc + (l.duration_ms || 0), 0) / logs.length)
-    : 0;
+  const filteredLogs = useMemo(() => {
+    const q = searchTerm.toLowerCase();
+    const since = windowMs(timeFilter);
+    const now = Date.now();
+    return logs.filter((l) => {
+      const shown = displayLogLevel(l.level, l.message);
+      if (levelFilter !== 'ALL' && shown !== levelFilter) return false;
+      if (channelFilter !== 'ALL' && l.channel !== channelFilter) return false;
+      if (since > 0) {
+        const ts = new Date(l.timestamp).getTime();
+        if (!Number.isNaN(ts) && now - ts > since) return false;
+      }
+      if (!q) return true;
+      return (
+        l.message.toLowerCase().includes(q) ||
+        l.channel.toLowerCase().includes(q) ||
+        l.id.toLowerCase().includes(q) ||
+        String(l.details?.ticket_id || '').toLowerCase().includes(q)
+      );
+    });
+  }, [logs, searchTerm, levelFilter, channelFilter, timeFilter]);
+
+  const selected = logs.find((l) => l.id === selectedId) || null;
+  const selectedMatchesLast = Boolean(
+    lastResult &&
+      selected &&
+      selected.details?.ticket_id &&
+      selected.details.ticket_id === lastResult.ticket_payload?.ticket_id
+  );
+
+  const aiHealth: HealthState =
+    apiHealthy === false ? 'Down' : health?.gemini_enabled || geminiActive || githubToken ? 'Operational' : 'Degraded';
+  const apiHealthState: HealthState = apiHealthy === false ? 'Down' : apiHealthy ? 'Operational' : 'Degraded';
+  const dbHealth: HealthState = db ? 'Operational' : 'Down';
+  const tgHealth: HealthState = health?.telegram_bot_configured
+    ? channelHealth(logs, 'TELEGRAM') === 'Down'
+      ? 'Down'
+      : 'Operational'
+    : channelHealth(logs, 'TELEGRAM');
+  const services: { name: string; state: HealthState }[] = [
+    { name: 'ИИ', state: aiHealth },
+    { name: 'API', state: apiHealthState },
+    { name: 'База данных', state: dbHealth },
+    { name: 'Telegram', state: tgHealth },
+    { name: 'Почта', state: channelHealth(logs, 'EMAIL') },
+    { name: 'Голос', state: channelHealth(logs, 'VOICE') },
+    { name: 'REST', state: apiHealthy === false ? 'Down' : channelHealth(logs, 'REST') === 'Down' ? 'Down' : 'Operational' },
+    { name: 'Вебхуки', state: apiHealthy === false ? 'Down' : 'Operational' },
+  ];
+
+  const kpis = [
+    { label: 'Всего заявок', value: String(totalTickets) },
+    { label: 'Авто-диспетчер %', value: `${autoPct}%` },
+    { label: 'Ждут оператора', value: String(waitingHitl) },
+    { label: 'Средняя задержка', value: avgMs != null ? `${avgMs} мс` : '—' },
+    { label: 'Ошибки', value: String(errors) },
+    { label: 'SLA под риском', value: String(slaAtRisk) },
+  ];
 
   return (
-    <div id="logs-traces-page" className="space-y-6">
-      {/* Top Banner */}
-      <div
-        className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-          isDark
-            ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
-            : 'bg-white border-slate-300 text-slate-950 shadow-md'
-        }`}
-      >
-        <div>
-          <div className="flex items-center space-x-2">
-            <Activity className={`h-5 w-5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`} />
-            <h2 className={`text-sm font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950 font-extrabold'}`}>
-              Мониторинг, Логи и Трейсы Выполнения
-            </h2>
+    <div id="logs-traces-page" className="grid gap-3">
+      <PageSection
+        title="Мониторинг системы"
+        description="Живой поток логов GET /api/logs и безопасный разбор пайплайна без секретов и скрытой цепочки рассуждений."
+        status={{
+          tone: apiHealthy === false ? 'danger' : errors > 0 ? 'warning' : 'success',
+          label: apiHealthy === false ? 'НЕДОСТУПЕН' : errors > 0 ? 'ОГРАНИЧЕН' : 'РАБОТАЕТ',
+        }}
+        actions={
+          <button type="button" className="oc-btn" onClick={fetchLogs} aria-label="Обновить логи">
+            <RefreshCw className="h-3 w-3" aria-hidden="true" />
+            Обновить
+          </button>
+        }
+      />
+
+      <div id="admin-monitoring" className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        {kpis.map((k) => (
+          <div key={k.label} className="oc-kpi">
+            <p className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">{k.label}</p>
+            <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums">{k.value}</p>
           </div>
-          <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'}`}>
-            Сквозное логирование входящих запросов, трассировка OpenTelemetry / Arize AI и дашборды метрик работы AI-Диспетчера.
-          </p>
-        </div>
-
-        {/* View Switcher Tabs */}
-        <div className="flex items-center space-x-2 font-mono text-xs">
-          <button
-            onClick={() => setActiveTab('logs')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
-              activeTab === 'logs'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <Terminal className="h-4 w-4" />
-            <span>Логи Системы</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('traces')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
-              activeTab === 'traces'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <Layers className="h-4 w-4" />
-            <span>OpenTelemetry Трейсы</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
-              activeTab === 'analytics'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
-            }`}
-          >
-            <BarChart2 className="h-4 w-4" />
-            <span>Дашборды Метрик</span>
-          </button>
-        </div>
+        ))}
       </div>
 
-      {/* METRICS SUMMARY CARDS (по данным прототипа) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Всего Заявок</div>
-          <div className={`text-xl font-black ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>{totalRequests}</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>открыто: {db?.open_tickets?.length || 0} • закрыто: {db?.closed_tickets?.length || 0}</div>
-        </div>
+      <section className="oc-card px-3 py-2" aria-label="Состояние сервисов">
+        <h2 className="oc-section-title mb-2">Состояние сервисов</h2>
+        <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:grid-cols-8">
+          {services.map((s) => (
+            <li key={s.name} className="flex items-center justify-between gap-1 rounded-md border border-[var(--oc-border)] px-2 py-1">
+              <span className="text-[11px]">{s.name}</span>
+              <StatusBadge tone={healthTone(s.state)} label={ruHealth(s.state)} />
+            </li>
+          ))}
+        </ul>
+      </section>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Авто-Диспетчеризация</div>
-          <div className={`text-xl font-black ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{autoRate}%</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>SLA-дедлайн по контракту + бизнес-часам</div>
-        </div>
-
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Ожидают HITL</div>
-          <div className={`text-xl font-black ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>{pendingHITL}</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>требуют уточнения диспетчера</div>
-        </div>
-
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Средний Latency</div>
-          <div className={`text-xl font-black ${isDark ? 'text-purple-400' : 'text-purple-900'}`}>{avgLatencyMs} ms</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>по последним событиям логов</div>
-        </div>
-      </div>
-
-      {/* TAB 1: REALTIME SYSTEM LOGS */}
-      {activeTab === 'logs' && (
-        <div
-          className={`rounded-2xl p-5 border transition-all ${
-            isDark
-              ? 'bg-[#030712] border-cyan-500/30 text-slate-200'
-              : 'bg-slate-900 border-slate-800 text-slate-200'
-          }`}
-        >
-          {/* Controls */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800 font-mono text-xs">
-            <div className="flex items-center space-x-2 w-full sm:w-auto">
-              <span className="text-slate-400 font-bold">Канал:</span>
-              <select
-                value={logFilter}
-                onChange={(e: any) => setLogFilter(e.target.value)}
-                className="bg-black/80 border border-slate-700 text-cyan-400 rounded-lg p-1.5 text-xs focus:outline-none"
-              >
-                <option value="ALL">Все Каналы</option>
-                <option value="TELEGRAM">Telegram</option>
-                <option value="EMAIL">Email</option>
-                <option value="VOICE">Телефония</option>
-                <option value="SYSTEM">Система / AI</option>
-                <option value="REST">REST / Диспетчер</option>
-                <option value="1C">1C:ERP</option>
-              </select>
+      <div className={`grid gap-3 ${selected ? 'xl:grid-cols-[minmax(0,1fr)_380px]' : ''}`}>
+        <section id="admin-logs-stream" className="oc-card overflow-hidden" aria-label="Поток логов">
+          <div className="flex flex-col gap-2 border-b border-[var(--oc-border)] px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <h2 className="oc-section-title mr-auto">Поток логов</h2>
+            <div className="relative min-w-[160px] flex-1">
+              <Search className="pointer-events-none absolute left-2 top-1.5 h-3.5 w-3.5 text-[var(--oc-muted)]" />
+              <input
+                className="oc-input pl-7"
+                placeholder="Поиск…"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Поиск по логам"
+              />
             </div>
+            <select
+              className="oc-input w-auto"
+              value={levelFilter}
+              onChange={(e) => setLevelFilter(e.target.value)}
+              aria-label="Фильтр по уровню"
+            >
+              <option value="ALL">Уровень: все</option>
+              <option value="INFO">ИНФО</option>
+              <option value="SUCCESS">УСПЕХ</option>
+              <option value="WARNING">ПРЕДУПР.</option>
+              <option value="ERROR">ОШИБКА</option>
+              <option value="CRITICAL">КРИТИЧ.</option>
+            </select>
+            <select
+              className="oc-input w-auto"
+              value={channelFilter}
+              onChange={(e) => setChannelFilter(e.target.value)}
+              aria-label="Фильтр по каналу"
+            >
+              <option value="ALL">Канал: все</option>
+              <option value="TELEGRAM">TELEGRAM</option>
+              <option value="EMAIL">EMAIL</option>
+              <option value="VOICE">VOICE</option>
+              <option value="REST">REST</option>
+              <option value="SYSTEM">SYSTEM</option>
+              <option value="1C">1C</option>
+            </select>
+            <select
+              className="oc-input w-auto"
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value as TimeWindow)}
+              aria-label="Фильтр по времени"
+            >
+              <option value="all">Время: всё</option>
+              <option value="15m">Последние 15 мин</option>
+              <option value="1h">Последний 1 ч</option>
+              <option value="6h">Последние 6 ч</option>
+              <option value="24h">Последние 24 ч</option>
+            </select>
+          </div>
+          <div className="table-scroll">
+            <table className="oc-table min-w-[780px]">
+              <thead>
+                <tr>
+                  <th>Время</th>
+                  <th>Уровень</th>
+                  <th>Источник</th>
+                  <th>Событие</th>
+                  <th>Длительность</th>
+                  <th>ID трейса</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLogs.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-[var(--oc-muted)]">
+                      Нет событий. Запустите сценарий на демо-стенде — записи появятся из GET /api/logs.
+                    </td>
+                  </tr>
+                )}
+                {filteredLogs.map((log) => {
+                  const shown = displayLogLevel(log.level, log.message);
+                  return (
+                    <tr
+                      key={log.id}
+                      className={shown === 'CRITICAL' || shown === 'ERROR' ? 'row-critical' : ''}
+                    >
+                      <td className="whitespace-nowrap font-mono text-[11px]">{fmtTs(log.timestamp)}</td>
+                      <td>
+                        <StatusBadge tone={levelTone(shown)} label={ruLogLevel(shown)} />
+                      </td>
+                      <td className="font-mono text-[11px]">{log.channel}</td>
+                      <td className="max-w-[280px] truncate" title={log.message}>
+                        <button
+                          type="button"
+                          className="text-left text-[var(--oc-accent)] hover:underline"
+                          onClick={() => setSelectedId(log.id)}
+                        >
+                          {log.message}
+                        </button>
+                      </td>
+                      <td className="font-mono text-[11px]">
+                        {log.duration_ms != null ? `${log.duration_ms} мс` : '—'}
+                      </td>
+                      <td className="font-mono text-[11px] text-[var(--oc-muted)]">{traceIdFor(log)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-            <div className="flex items-center space-x-2 w-full sm:w-auto">
-              <div className="relative w-full sm:w-64">
-                <input
-                  type="text"
-                  placeholder="Поиск по логам..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-black/80 border border-slate-700 text-white rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none"
-                />
-                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+        {selected && (
+          <aside className="oc-card flex max-h-[72vh] flex-col overflow-hidden" aria-label="Просмотр трейса">
+            <div className="flex items-start justify-between gap-2 border-b border-[var(--oc-border)] px-3 py-2">
+              <div>
+                <p className="oc-section-title">Просмотр трейса</p>
+                <p className="font-mono text-[11px] text-[var(--oc-muted)]">{traceIdFor(selected)}</p>
               </div>
-
-              <button
-                onClick={handleRefreshLogs}
-                className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold whitespace-nowrap flex items-center space-x-1"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                <span>Обновить</span>
+              <button type="button" className="oc-btn" onClick={() => setSelectedId(null)} aria-label="Закрыть трейс">
+                Закрыть
               </button>
             </div>
-          </div>
-
-          {/* Terminal Console Stream */}
-          <div className="font-mono text-xs space-y-2 max-h-96 overflow-y-auto pr-2">
-            {filteredLogs.length === 0 && (
-              <div className="p-6 text-center text-slate-400 border border-dashed border-slate-700 rounded-xl">
-                Событий пока нет. Выполните обращение через демо-стенд (вкладка «Диспетчер») — логи появятся здесь из GET /api/logs.
+            <div className="min-h-0 flex-1 overflow-auto">
+              <div className="border-b border-[var(--oc-border)] px-3 py-2 text-[11px]">
+                <p className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Запрос</p>
+                <p className="mt-0.5">{selected.message}</p>
+                <p className="mt-1 font-mono text-[var(--oc-muted)]">
+                  {fmtTs(selected.timestamp)} · {selected.channel} · {selected.duration_ms ?? '—'} мс
+                </p>
               </div>
-            )}
-            {filteredLogs.map((log) => (
-              <div
-                key={log.id}
-                className="p-2.5 rounded-xl bg-black/50 border border-slate-800/80 hover:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition"
-              >
-                <div className="flex items-center space-x-2.5">
-                  <span
-                    className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
-                      log.level === 'SUCCESS'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                        : log.level === 'WARN'
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                        : 'bg-sky-500/20 text-sky-400 border border-sky-500/40'
-                    }`}
-                  >
-                    {log.channel}
-                  </span>
-                  <span className="text-slate-400 text-[11px]">{new Date(log.timestamp).toLocaleTimeString('ru-RU')}</span>
-                  <span className="text-slate-200">{log.message}</span>
+              <ExecutionTraceTimeline
+                trace={selectedMatchesLast && lastResult?.trace ? lastResult.trace : []}
+                running={false}
+              />
+              {selected.details && (
+                <div className="border-t border-[var(--oc-border)] px-3 py-2">
+                  <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Безопасные метаданные</p>
+                  <pre className="max-h-40 overflow-auto rounded bg-[var(--oc-bg)] p-2 font-mono text-[10px] text-[var(--oc-muted)]">
+                    {JSON.stringify(redactSafeMeta(selected.details), null, 2)}
+                  </pre>
                 </div>
-                {log.duration_ms && (
-                  <span className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 whitespace-nowrap self-end sm:self-auto">
-                    {log.duration_ms} ms
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: OPENTELEMETRY TRACES */}
-      {activeTab === 'traces' && (
-        <div
-          className={`rounded-2xl p-5 border transition-all ${
-            isDark
-              ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-4 border-b pb-3 border-slate-700/30 font-mono">
-            <div className="flex items-center space-x-2">
-              <Layers className="h-5 w-5 text-cyan-400" />
-              <h3 className="text-sm font-bold uppercase text-cyan-400">
-                Trace ID: trace_ot_891823719_tg
-              </h3>
+              )}
             </div>
-            <span className="text-xs text-slate-400">Суммарно: 482 ms • 6 Spans</span>
-          </div>
-
-          <div className="space-y-3 font-mono text-xs">
-            {/* Span 1 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-sky-400">1. Inbound Webhook Ingress (Telegram)</span>
-                <span className="text-slate-400">12 ms</span>
-              </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-sky-400 h-full w-[5%]" />
-              </div>
-            </div>
-
-            {/* Span 2 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-amber-400">2. PII Sanitizer & Masking Guardrails</span>
-                <span className="text-slate-400">4 ms</span>
-              </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-amber-400 h-full w-[2%]" />
-              </div>
-            </div>
-
-            {/* Span 3 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-cyan-400">3. Gemini 3.6 Flash Structured Perception</span>
-                <span className="text-slate-400">435 ms</span>
-              </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-cyan-400 h-full w-[85%]" />
-              </div>
-            </div>
-
-            {/* Span 4 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-emerald-400">4. Deterministic Rule Match & SLA Evaluation</span>
-                <span className="text-slate-400">9 ms</span>
-              </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-emerald-400 h-full w-[4%]" />
-              </div>
-            </div>
-
-            {/* Span 5 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-purple-400">5. 1C:ERP Document Commit via OData REST</span>
-                <span className="text-slate-400">22 ms</span>
-              </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-purple-400 h-full w-[4%]" />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: ANALYTICS DASHBOARDS */}
-      {activeTab === 'analytics' && (
-        <div
-          className={`rounded-2xl p-5 border transition-all ${
-            isDark
-              ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <h3 className="text-sm font-mono font-bold uppercase text-cyan-400 mb-4">
-            Распределение Обращений по Каналам и Аналитика AI
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-mono text-xs">
-            <div className="p-4 rounded-xl bg-black/40 border border-slate-800 space-y-3">
-              <div className="font-bold text-slate-300">Распределение по Каналам</div>
-
-              <div className="space-y-2">
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Telegram Bot</span>
-                    <span className="text-sky-400 font-bold">48% (616 заявок)</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-sky-400 h-full w-[48%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Email IMAP / MCP</span>
-                    <span className="text-amber-400 font-bold">32% (410 заявок)</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-amber-400 h-full w-[32%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Голосовая Телефония</span>
-                    <span className="text-purple-400 font-bold">14% (180 заявок)</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-purple-400 h-full w-[14%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>REST Swagger API</span>
-                    <span className="text-emerald-400 font-bold">6% (78 заявок)</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-400 h-full w-[6%]" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-black/40 border border-slate-800 space-y-3">
-              <div className="font-bold text-slate-300">Точность Идентификации Фактов</div>
-
-              <div className="space-y-2">
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Код Оборудования (RAG BM25)</span>
-                    <span className="text-emerald-400 font-bold">98.4%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-400 h-full w-[98%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Объект / Контрагент</span>
-                    <span className="text-emerald-400 font-bold">99.1%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-400 h-full w-[99%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Оценка SLA Дедлайна</span>
-                    <span className="text-cyan-400 font-bold">100.0%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-cyan-400 h-full w-[100%]" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+          </aside>
+        )}
+      </div>
     </div>
   );
 };

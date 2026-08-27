@@ -13,11 +13,33 @@ import {
   extractFactsFromText,
   runDeterministicDispatch,
 } from './src/dispatcherEngine';
-import { ExtractedFacts, ExtractedFact, Ticket, SystemLogEntry } from './src/types';
+import { ExtractedFacts, ExtractedFact, Ticket, SystemLogEntry, PublicUser } from './src/types';
 import { maskPii } from './src/dispatcherEngine';
+import {
+  adminCreateUser,
+  adminPatchUser,
+  destroySession,
+  getUserBySession,
+  listActivity,
+  listUsers,
+  loginUser,
+  recordActivity,
+  registerDispatcher,
+  seedDefaultUsers,
+  updateOwnProfile,
+  validateRegisterInput,
+} from './src/authStore';
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
+
+seedDefaultUsers();
+
+declare module 'express-serve-static-core' {
+  interface Request {
+    authUser?: PublicUser;
+  }
+}
 
 app.use(express.json({ limit: '100kb' }));
 
@@ -26,6 +48,16 @@ app.use(express.json({ limit: '100kb' }));
 // авторизация + подпись webhook'ов (см. architecture/adr/adr-006-security-hardening.md).
 const dispatchToken: string = process.env.DISPATCH_TOKEN || 'dev-dispatch-token';
 
+function readSessionId(req: express.Request): string | undefined {
+  const header = req.headers['x-session-id'];
+  if (typeof header === 'string' && header.trim()) return header.trim();
+  const auth = req.headers.authorization;
+  if (typeof auth === 'string' && auth.toLowerCase().startsWith('bearer ')) {
+    return auth.slice(7).trim();
+  }
+  return undefined;
+}
+
 function requireDispatchToken(req: express.Request, res: express.Response, next: express.NextFunction) {
   const provided = req.headers['x-dispatch-token'];
   if (typeof provided === 'string' && provided.trim() !== '' && provided.trim() === dispatchToken) {
@@ -33,6 +65,42 @@ function requireDispatchToken(req: express.Request, res: express.Response, next:
   }
   return res.status(401).json({ error: 'Unauthorized: required header X-Dispatch-Token missing or invalid.' });
 }
+
+function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const sessionId = readSessionId(req);
+  if (sessionId) {
+    const sessionUser = getUserBySession(sessionId);
+    if (sessionUser) {
+      req.authUser = sessionUser;
+      return next();
+    }
+    // Нельзя «провалиться» на машинный токен при недействительной пользовательской сессии.
+    return res.status(401).json({ error: 'Сессия недействительна.' });
+  }
+  return requireDispatchToken(req, res, next);
+}
+
+function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (req.authUser?.role === 'admin') return next();
+  return res.status(403).json({ error: 'Недостаточно прав: нужна роль администратора.' });
+}
+
+function requireSessionUser(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (req.authUser) return next();
+  return res.status(401).json({ error: 'Требуется вход в систему.' });
+}
+
+function requireAdminOrMachine(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (req.authUser?.role === 'admin') return next();
+  if (!req.authUser) return next();
+  return res.status(403).json({ error: 'Недостаточно прав: нужна роль администратора.' });
+}
+
+let slaSettings: Record<'Gold' | 'Silver' | 'Standard', number> = {
+  Gold: 60,
+  Silver: 240,
+  Standard: 480,
+};
 
 const ALLOWED_CHANNELS = new Set(['email', 'telegram', 'voice', 'call_transcript', 'portal', 'rest']);
 const MAX_TEXT_LENGTH = 4000;
@@ -318,6 +386,130 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.post('/api/auth/register', (req, res) => {
+  const validationError = validateRegisterInput(req.body || {});
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+  // Роль из тела запроса игнорируется: регистрация всегда создаёт dispatcher.
+  const result = registerDispatcher({
+    firstName: String(req.body.firstName),
+    lastName: String(req.body.lastName),
+    email: String(req.body.email),
+    password: String(req.body.password),
+  });
+  if ('error' in result) {
+    return res.status(409).json({ error: result.error });
+  }
+  res.status(201).json({ user: result.user, sessionId: result.sessionId });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email : '';
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  const result = loginUser(email, password);
+  if ('error' in result) {
+    return res.status(401).json({ error: result.error });
+  }
+  res.json({ user: result.user, sessionId: result.sessionId });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  destroySession(readSessionId(req));
+  res.json({ success: true });
+});
+
+app.get('/api/auth/me', (req, res) => {
+  const user = getUserBySession(readSessionId(req));
+  if (!user) {
+    return res.status(401).json({ error: 'Сессия недействительна.' });
+  }
+  res.json({ user });
+});
+
+app.patch('/api/auth/profile', requireAuth, requireSessionUser, (req, res) => {
+  const result = updateOwnProfile(req.authUser!.id, {
+    firstName: req.body?.firstName,
+    lastName: req.body?.lastName,
+    password: req.body?.password,
+    role: req.body?.role,
+    status: req.body?.status,
+  });
+  if ('error' in result) return res.status(400).json({ error: result.error });
+  recordActivity(result.user, 'profile_update');
+  res.json({ user: result.user });
+});
+
+app.get('/api/admin/users', requireAuth, requireAdmin, (req, res) => {
+  const role = req.query.role === 'dispatcher' || req.query.role === 'admin' ? req.query.role : undefined;
+  res.json({ users: listUsers(role) });
+});
+
+app.post('/api/admin/users', requireAuth, requireAdmin, (req, res) => {
+  const result = adminCreateUser({
+    firstName: String(req.body?.firstName || ''),
+    lastName: String(req.body?.lastName || ''),
+    email: String(req.body?.email || ''),
+    password: String(req.body?.password || ''),
+    role: req.body?.role === 'admin' ? 'admin' : 'dispatcher',
+  });
+  if ('error' in result) return res.status(400).json({ error: result.error });
+  recordActivity(req.authUser!, 'user_create', result.user.email);
+  res.status(201).json({ user: result.user });
+});
+
+app.patch('/api/admin/users/:id', requireAuth, requireAdmin, (req, res) => {
+  const result = adminPatchUser(req.params.id, {
+    role: req.body?.role,
+    status: req.body?.status,
+    firstName: req.body?.firstName,
+    lastName: req.body?.lastName,
+  });
+  if ('error' in result) return res.status(400).json({ error: result.error });
+  recordActivity(req.authUser!, 'user_patch', `${result.user.email} → ${result.user.role}/${result.user.status}`);
+  res.json({ user: result.user });
+});
+
+app.get('/api/admin/activity', requireAuth, requireAdmin, (_req, res) => {
+  res.json({ activity: listActivity() });
+});
+
+app.get('/api/admin/analytics', requireAuth, requireAdmin, (_req, res) => {
+  const users = listUsers();
+  res.json({
+    openTickets: mockDb.open_tickets.length,
+    closedTickets: mockDb.closed_tickets.length,
+    waitingDispatcher: mockDb.open_tickets.filter((t) => t.status === 'WAITING_DISPATCHER').length,
+    users: {
+      total: users.length,
+      dispatchers: users.filter((u) => u.role === 'dispatcher').length,
+      admins: users.filter((u) => u.role === 'admin').length,
+      blocked: users.filter((u) => u.status === 'blocked').length,
+    },
+  });
+});
+
+app.get('/api/admin/sla', requireAuth, requireAdmin, (_req, res) => {
+  res.json({ sla: slaSettings });
+});
+
+app.put('/api/admin/sla', requireAuth, requireAdmin, (req, res) => {
+  const next = req.body?.sla;
+  if (!next || typeof next !== 'object') {
+    return res.status(400).json({ error: 'Ожидается объект sla.' });
+  }
+  (['Gold', 'Silver', 'Standard'] as const).forEach((plan) => {
+    const n = Number(next[plan]);
+    if (Number.isFinite(n) && n >= 15) slaSettings[plan] = Math.round(n);
+  });
+  mockDb.contracts = mockDb.contracts.map((c) => ({
+    ...c,
+    sla_minutes: slaSettings[c.plan] ?? c.sla_minutes,
+  }));
+  recordActivity(req.authUser!, 'sla_update', JSON.stringify(slaSettings));
+  res.json({ sla: slaSettings, db: mockDb });
+});
+
 // Telegram Bot Token helper
 let activeBotToken: string | null = process.env.TELEGRAM_BOT_TOKEN || null;
 let isPollingActive = false;
@@ -435,7 +627,7 @@ if (activeBotToken) {
 }
 
 // 1. Real Webhook Endpoint for Telegram Bot
-app.post('/api/webhooks/telegram', requireDispatchToken, async (req, res) => {
+app.post('/api/webhooks/telegram', requireAuth, requireAdminOrMachine, async (req, res) => {
   try {
     const update = req.body;
     let messageText = '';
@@ -518,7 +710,7 @@ app.post('/api/webhooks/telegram', requireDispatchToken, async (req, res) => {
 });
 
 // 2. Real Webhook Endpoint for Email
-app.post('/api/webhooks/email', requireDispatchToken, async (req, res) => {
+app.post('/api/webhooks/email', requireAuth, requireAdminOrMachine, async (req, res) => {
   try {
     const { from, subject, body, text } = req.body;
     const emailText = text || body || subject || '';
@@ -569,7 +761,7 @@ app.post('/api/webhooks/email', requireDispatchToken, async (req, res) => {
 });
 
 // 3. Real Webhook Endpoint for Telephony (Voice STT)
-app.post('/api/webhooks/telephony', requireDispatchToken, async (req, res) => {
+app.post('/api/webhooks/telephony', requireAuth, requireAdminOrMachine, async (req, res) => {
   try {
     const { caller_number, transcript, audio_url, text } = req.body;
     const voiceText = transcript || text || '';
@@ -684,16 +876,16 @@ const handleDispatchLogic = async (req: any, res: any, queryOrBodyData: any) => 
   }
 };
 
-app.post('/api/webhooks/dispatch', requireDispatchToken, async (req, res) => {
+app.post('/api/webhooks/dispatch', requireAuth, requireAdminOrMachine, async (req, res) => {
   await handleDispatchLogic(req, res, req.body || {});
 });
 
-app.get('/api/webhooks/dispatch', requireDispatchToken, async (req, res) => {
+app.get('/api/webhooks/dispatch', requireAuth, requireAdminOrMachine, async (req, res) => {
   await handleDispatchLogic(req, res, req.query || {});
 });
 
 // Supporting GET on other channel webhooks for Swagger
-app.get('/api/webhooks/telegram', requireDispatchToken, async (req, res) => {
+app.get('/api/webhooks/telegram', requireAuth, requireAdminOrMachine, async (req, res) => {
   if (req.query && (req.query.text || req.query.message)) {
     return handleDispatchLogic(req, res, { ...req.query, channel: 'telegram' });
   }
@@ -707,7 +899,7 @@ app.get('/api/webhooks/telegram', requireDispatchToken, async (req, res) => {
   });
 });
 
-app.get('/api/webhooks/email', requireDispatchToken, async (req, res) => {
+app.get('/api/webhooks/email', requireAuth, requireAdminOrMachine, async (req, res) => {
   if (req.query && (req.query.text || req.query.body || req.query.subject)) {
     return handleDispatchLogic(req, res, { ...req.query, channel: 'email' });
   }
@@ -721,7 +913,7 @@ app.get('/api/webhooks/email', requireDispatchToken, async (req, res) => {
   });
 });
 
-app.get('/api/webhooks/telephony', requireDispatchToken, async (req, res) => {
+app.get('/api/webhooks/telephony', requireAuth, requireAdminOrMachine, async (req, res) => {
   if (req.query && (req.query.transcript || req.query.text)) {
     return handleDispatchLogic(req, res, { ...req.query, channel: 'voice' });
   }
@@ -736,7 +928,7 @@ app.get('/api/webhooks/telephony', requireDispatchToken, async (req, res) => {
 });
 
 // Endpoint to configure LLM / GitHub Models token
-app.post('/api/llm/config', requireDispatchToken, (req, res) => {
+app.post('/api/llm/config', requireAuth, requireAdmin, (req, res) => {
   const { token, model } = req.body;
   if (token !== undefined) {
     activeGithubToken = token ? token.trim() : null;
@@ -754,7 +946,7 @@ app.post('/api/llm/config', requireDispatchToken, (req, res) => {
   });
 });
 
-app.get('/api/llm/config', requireDispatchToken, (req, res) => {
+app.get('/api/llm/config', requireAuth, requireAdmin, (req, res) => {
   const token = activeGithubToken || process.env.GITHUB_MODELS_TOKEN;
   res.json({
     configured: !!token,
@@ -764,7 +956,7 @@ app.get('/api/llm/config', requireDispatchToken, (req, res) => {
 });
 
 // 4. Endpoint to Configure Telegram Bot Token live from the UI
-app.post('/api/operator/reply', requireDispatchToken, async (req, res) => {
+app.post('/api/operator/reply', requireAuth, requireSessionUser, async (req, res) => {
   try {
     const { ticket_id, chat_id, operator_message, channel } = req.body;
     if (!operator_message) {
@@ -807,7 +999,7 @@ app.post('/api/operator/reply', requireDispatchToken, async (req, res) => {
 });
 
 // 5. Endpoint to Configure Telegram Bot Token live from the UI
-app.post('/api/telegram/config', requireDispatchToken, async (req, res) => {
+app.post('/api/telegram/config', requireAuth, requireAdmin, async (req, res) => {
   const { token, enable_polling = true } = req.body;
   if (!token || !token.trim()) {
     activeBotToken = null;
@@ -879,30 +1071,39 @@ const handle1cTicketsResponse = (req: any, res: any) => {
   res.json(odataResponse);
 };
 
-app.get('/api/1c/tickets', requireDispatchToken, handle1cTicketsResponse);
-app.post('/api/1c/tickets', requireDispatchToken, handle1cTicketsResponse);
+app.get('/api/1c/tickets', requireAuth, requireAdminOrMachine, handle1cTicketsResponse);
+app.post('/api/1c/tickets', requireAuth, requireAdminOrMachine, handle1cTicketsResponse);
 
-app.get('/api/database', requireDispatchToken, (req, res) => {
+app.get('/api/database', requireAuth, (req, res) => {
   res.json(mockDb);
 });
 
-app.post('/api/database', requireDispatchToken, (req, res) => {
-  if (req.body && Array.isArray(req.body.open_tickets)) {
+app.post('/api/database', requireAuth, requireSessionUser, (req, res) => {
+  if (!req.body || !Array.isArray(req.body.open_tickets)) {
+    return res.status(400).json({ error: 'Некорректное тело запроса.' });
+  }
+  if (req.authUser!.role === 'dispatcher') {
+    mockDb = {
+      ...mockDb,
+      open_tickets: req.body.open_tickets,
+      closed_tickets: Array.isArray(req.body.closed_tickets) ? req.body.closed_tickets : mockDb.closed_tickets,
+    };
+  } else {
     mockDb = req.body;
   }
   res.json({ success: true, db: mockDb });
 });
 
-app.post('/api/database/reset', requireDispatchToken, (req, res) => {
+app.post('/api/database/reset', requireAuth, requireAdmin, (req, res) => {
   mockDb = JSON.parse(JSON.stringify(INITIAL_DATABASE));
   res.json({ success: true, message: 'Database reset to default test state.' });
 });
 
-app.get('/api/logs', requireDispatchToken, (req, res) => {
+app.get('/api/logs', requireAuth, requireAdminOrMachine, (req, res) => {
   res.json({ logs: systemLogs });
 });
 
-app.post('/api/dispatch', requireDispatchToken, async (req, res) => {
+app.post('/api/dispatch', requireAuth, requireAdminOrMachine, async (req, res) => {
   try {
     const { text, channel = 'email', incoming_time, is_dry_run = true } = req.body;
 
@@ -942,7 +1143,7 @@ app.post('/api/dispatch', requireDispatchToken, async (req, res) => {
   }
 });
 
-app.post('/api/commit-ticket', requireDispatchToken, (req, res) => {
+app.post('/api/commit-ticket', requireAuth, requireSessionUser, (req, res) => {
   try {
     const { ticket_payload, action, confirmed_view = true } = req.body;
 
@@ -1037,6 +1238,34 @@ app.post('/api/commit-ticket', requireDispatchToken, (req, res) => {
 
 // Vite & Static File Server Setup
 async function startServer() {
+  app.get(
+    [
+      '/login',
+      '/register',
+      '/operator',
+      '/tickets',
+      '/sla',
+      '/history',
+      '/notifications',
+      '/profile',
+      '/admin',
+      '/admin/users',
+      '/admin/channels',
+      '/admin/console',
+      '/admin/logs',
+      '/admin/monitoring',
+      '/admin/registry',
+      '/admin/architecture',
+      '/admin/settings',
+      '/admin/analytics',
+      '/admin/activity',
+    ],
+    (req, res, next) => {
+      req.url = '/index.html';
+      next();
+    }
+  );
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

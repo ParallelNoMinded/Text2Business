@@ -1,381 +1,278 @@
-import React, { useState } from 'react';
-import { ProcessingResult } from '../types';
-import {
-  CheckCircle,
-  AlertTriangle,
-  XCircle,
-  Copy,
-  Check,
-  Building,
-  Clock,
-  Shield,
-  Send,
-  Zap,
-} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ProcessingResult, Ticket } from '../types';
+import { StatusBadge, StatusTone } from './ui/StatusBadge';
+import { Copy, Check } from 'lucide-react';
 
 interface DispatchCardProps {
   result: ProcessingResult | null;
-  onCommitLive: () => void;
+  onCommitLive: (payloadOverride?: Partial<Ticket>) => void;
+  onReject?: () => void;
   isCommitting: boolean;
   commitSuccessMsg: string | null;
   theme?: 'dark' | 'light';
 }
 
+function actionLabel(action: string): string {
+  const map: Record<string, string> = {
+    CREATE_TICKET: 'СОЗДАТЬ ЗАЯВКУ',
+    UPDATE_TICKET: 'ОБНОВИТЬ ЗАЯВКУ',
+    REQUEST_CLARIFICATION: 'ЗАПРОСИТЬ УТОЧНЕНИЕ',
+    ESCALATE_TO_HUMAN: 'ЭСКАЛАЦИЯ ОПЕРАТОРУ',
+    REJECT: 'ОТКЛОНИТЬ',
+  };
+  return map[action] || action;
+}
+
+function actionTone(action: string): StatusTone {
+  if (action === 'CREATE_TICKET') return 'success';
+  if (action === 'UPDATE_TICKET') return 'warning';
+  if (action === 'ESCALATE_TO_HUMAN' || action === 'REQUEST_CLARIFICATION') return 'warning';
+  return 'danger';
+}
+
 export const DispatchCard: React.FC<DispatchCardProps> = ({
   result,
   onCommitLive,
+  onReject,
   isCommitting,
   commitSuccessMsg,
-  theme = 'dark',
 }) => {
-  const isDark = theme === 'dark';
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [draftApproved, setDraftApproved] = useState(false);
+  const [editPriority, setEditPriority] = useState<Ticket['priority']>('medium');
+
+  useEffect(() => {
+    setDraft(result?.customer_response_draft || '');
+    setDraftApproved(false);
+    setEditing(false);
+    setEditPriority((result?.ticket_payload?.priority as Ticket['priority']) || 'medium');
+  }, [result]);
 
   if (!result) {
     return (
-      <div
-        className={`rounded-2xl p-5 text-center text-xs font-mono border transition-all ${
-          isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
-            : 'bg-white border-slate-300 text-slate-700 font-semibold shadow-sm'
-        }`}
-      >
-        // Ожидание выполнения пайплайна...
-      </div>
+      <>
+        <section className="oc-card px-3 py-6 text-center text-[11px] text-[var(--oc-muted)]">
+          Движок решений — ожидание запуска пайплайна.
+        </section>
+        <section className="oc-card px-3 py-6 text-center text-[11px] text-[var(--oc-muted)]">
+          Действие оператора — появится после решения.
+        </section>
+        <section className="oc-card px-3 py-6 text-center text-[11px] text-[var(--oc-muted)]">
+          Черновик ответа — появится после решения.
+        </section>
+      </>
     );
   }
 
-  const handleCopyReply = () => {
-    if (result.customer_response_draft) {
-      navigator.clipboard.writeText(result.customer_response_draft);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const ticketId = result.target_ticket_id || result.ticket_payload?.ticket_id || '—';
+  const slaMin = result.matched_contract?.sla_minutes;
+  const needsConfirm =
+    result.status === 'REQUIRES_HUMAN_CONFIRMATION' || result.status === 'AUTO_APPROVED';
+  const statusTone: StatusTone =
+    result.status === 'BLOCKED' ? 'danger' : result.status === 'AUTO_APPROVED' ? 'success' : 'warning';
+  const statusLabel =
+    result.status === 'BLOCKED' ? 'СБОЙ' : result.status === 'AUTO_APPROVED' ? 'ГОТОВО' : 'НА ПРОВЕРКЕ';
+
+  const handleCopy = () => {
+    if (!draft) return;
+    navigator.clipboard.writeText(draft);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const formatActionLabel = (action: string) => {
-    switch (action) {
-      case 'CREATE_TICKET':
-        return 'СОЗДАНИЕ ЗАЯВКИ';
-      case 'UPDATE_TICKET':
-        return 'ОБНОВЛЕНИЕ ЗАЯВКИ';
-      case 'REQUEST_CLARIFICATION':
-        return 'ЗАПРОС УТОЧНЕНИЯ';
-      case 'ESCALATE_TO_HUMAN':
-        return 'ЭСКАЛАЦИЯ ОПЕРАТОРУ';
-      case 'REJECT':
-        return 'ОТКЛОНЕНИЕ';
-      default:
-        return action;
-    }
-  };
-
-  const getActionBadgeClass = (action: string) => {
-    switch (action) {
-      case 'CREATE_TICKET':
-        return isDark
-          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-          : 'bg-emerald-100 text-emerald-950 border-emerald-400 font-extrabold';
-      case 'UPDATE_TICKET':
-        return isDark
-          ? 'bg-amber-500/10 text-amber-300 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-          : 'bg-amber-100 text-amber-950 border-amber-400 font-extrabold';
-      case 'REQUEST_CLARIFICATION':
-        return isDark
-          ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-          : 'bg-blue-100 text-blue-950 border-blue-400 font-extrabold';
-      case 'ESCALATE_TO_HUMAN':
-        return isDark
-          ? 'bg-purple-500/10 text-purple-300 border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
-          : 'bg-purple-100 text-purple-950 border-purple-400 font-extrabold';
-      default:
-        return 'bg-red-500/10 text-red-300 border-red-500/40';
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    if (status === 'AUTO_APPROVED') {
-      return (
-        <span
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-mono font-bold text-xs border ${
-            isDark
-              ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
-              : 'bg-emerald-100 text-emerald-950 border-emerald-400 font-extrabold'
-          }`}
-        >
-          <CheckCircle className="h-4 w-4" />
-          АВТО-УТВЕРЖДЕНО
-        </span>
-      );
-    }
-    if (status === 'REQUIRES_HUMAN_CONFIRMATION') {
-      return (
-        <span
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-mono font-bold text-xs border ${
-            isDark
-              ? 'bg-amber-950/80 text-amber-300 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
-              : 'bg-amber-100 text-amber-950 border-amber-400 font-extrabold'
-          }`}
-        >
-          <AlertTriangle className="h-4 w-4" />
-          ТРЕБУЕТСЯ ПОДТВЕРЖДЕНИЕ
-        </span>
-      );
-    }
-    return (
-      <span
-        className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-mono font-bold text-xs border ${
-          isDark
-            ? 'bg-red-950/80 text-red-300 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.2)]'
-            : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
-        }`}
-      >
-        <XCircle className="h-4 w-4" />
-        ЗАБЛОКИРОВАНО СИСТЕМОЙ ЗАЩИТЫ
-      </span>
-    );
+  const confirm = () => {
+    onCommitLive({
+      priority: editPriority,
+      summary: result.ticket_payload?.summary,
+      description: draft
+        ? `${result.ticket_payload?.description || ''}\n\n[Черновик утверждён]\n${draft}`
+        : result.ticket_payload?.description,
+    });
   };
 
   return (
-    <div
-      id="dispatch-decision-card"
-      className={`rounded-2xl p-4 sm:p-5 transition-all border space-y-4 ${
-        isDark
-          ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
-          : 'bg-white border-slate-300 shadow-sm text-slate-900'
-      }`}
-    >
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-700/30">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Zap className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              2. Принятое решение
-            </h2>
+    <>
+      <section id="dispatch-decision-card" className="oc-card" aria-label="Движок решений">
+        <div className="flex items-center justify-between border-b border-[var(--oc-border)] px-3 py-2">
+          <h2 className="oc-section-title">Движок решений</h2>
+          <div className="flex items-center gap-1.5">
+            {result.is_dry_run && <StatusBadge tone="warning" label="ЧЕРНОВИК" />}
+            <StatusBadge tone={statusTone} label={statusLabel} />
           </div>
-          <p className={`text-xs mt-0.5 font-sans ${isDark ? 'text-slate-400' : 'text-slate-700 font-medium'}`}>
-            Решение графа состояний на основе извлеченных фактов и сверки с реестром.
+        </div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 px-3 py-2 text-[12px] sm:grid-cols-3">
+          <div>
+            <p className="text-[10px] uppercase text-[var(--oc-muted)]">Рекомендуемое действие</p>
+            <StatusBadge tone={actionTone(result.recommended_action)} label={actionLabel(result.recommended_action)} />
+          </div>
+          <div>
+            <p className="text-[10px] uppercase text-[var(--oc-muted)]">Уверенность</p>
+            <p className="font-mono tabular-nums">{Math.round(result.confidence_score * 100)}%</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase text-[var(--oc-muted)]">Клиент</p>
+            <p>{result.matched_site?.customer_name || '—'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase text-[var(--oc-muted)]">Оборудование</p>
+            <p className="font-mono">{result.matched_asset?.local_code || '—'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase text-[var(--oc-muted)]">Договор</p>
+            <p>{result.matched_contract?.plan || '—'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase text-[var(--oc-muted)]">SLA / приоритет</p>
+            <p>
+              {slaMin ? `${slaMin} мин` : '—'} · {(result.ticket_payload?.priority || 'medium').toUpperCase()}
+            </p>
+          </div>
+        </div>
+        <div className="border-t border-[var(--oc-border)] px-3 py-2">
+          <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">
+            Правила и источники (без цепочки рассуждений модели)
           </p>
-        </div>
-
-        <div>{getStatusBadge(result.status)}</div>
-      </div>
-
-      {/* Main Action & SLA Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-        {/* Business Action Box */}
-        <div
-          className={`border rounded-xl p-3 flex flex-col justify-between shadow-inner ${
-            isDark
-              ? 'bg-[#020204]/90 border-cyan-500/20'
-              : 'bg-slate-50 border-slate-300'
-          }`}
-        >
-          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            Рекомендуемое Бизнес-Действие
-          </span>
-          <div className="my-2">
-            <span
-              className={`inline-block px-3 py-1.5 rounded-lg border text-xs font-extrabold font-mono tracking-wider ${getActionBadgeClass(
-                result.recommended_action
-              )}`}
-            >
-              {formatActionLabel(result.recommended_action)}
-            </span>
-          </div>
-          <div className="text-[11px] font-mono flex items-center justify-between pt-2 border-t border-slate-700/20">
-            <span className={isDark ? 'text-slate-400' : 'text-slate-700 font-semibold'}>Уверенность AI:</span>
-            <span className={`font-mono font-extrabold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              {Math.round(result.confidence_score * 100)}%
-            </span>
-          </div>
-        </div>
-
-        {/* Matched Asset & Site */}
-        <div
-          className={`border rounded-xl p-3 space-y-1.5 shadow-inner ${
-            isDark
-              ? 'bg-[#020204]/90 border-cyan-500/20'
-              : 'bg-slate-50 border-slate-300'
-          }`}
-        >
-          <div className={`flex items-center space-x-1.5 text-[10px] font-mono font-bold uppercase ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            <Building className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <span>Привязка в БД</span>
-          </div>
-          <div>
-            <p className={`text-xs font-bold font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {result.matched_site ? (
-                `${result.matched_site.customer_name} (${result.matched_site.site_id})`
-              ) : (
-                <span className="text-amber-600 font-sans font-bold">Объект не привязан</span>
-              )}
-            </p>
-            <p className={`text-[11px] line-clamp-1 mt-0.5 font-sans ${isDark ? 'text-slate-400' : 'text-slate-700 font-medium'}`}>
-              {result.matched_site?.address || 'Необходим запрос уточнения'}
-            </p>
-          </div>
-          <div className="pt-1.5 border-t border-slate-700/20 text-[11px] font-mono flex items-center justify-between">
-            <span className={isDark ? 'text-slate-300' : 'text-slate-700 font-semibold'}>Оборудование:</span>
-            <span className={`font-mono font-extrabold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              {result.matched_asset ? result.matched_asset.local_code : 'Не определено'}
-            </span>
-          </div>
-        </div>
-
-        {/* SLA & Deadlines */}
-        <div
-          className={`border rounded-xl p-3 space-y-1.5 shadow-inner ${
-            isDark
-              ? 'bg-[#020204]/90 border-cyan-500/20'
-              : 'bg-slate-50 border-slate-300'
-          }`}
-        >
-          <div className={`flex items-center space-x-1.5 text-[10px] font-mono font-bold uppercase ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            <Clock className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <span>SLA и Сроки (Договор)</span>
-          </div>
-          <div>
-            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono">
-              План: {result.matched_contract?.plan || 'Gold (24x7)'}
-            </p>
-            <p className={`text-[11px] mt-0.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
-              Дедлайн:{' '}
-              {result.ticket_payload?.sla_deadline ? (
-                <span className={`font-mono font-extrabold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-                  {new Date(result.ticket_payload.sla_deadline).toLocaleTimeString('ru-RU', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              ) : (
-                'Не вычисляется'
-              )}
-            </p>
-          </div>
-          <div className="pt-1.5 border-t border-slate-700/20 text-[11px] font-mono flex items-center justify-between">
-            <span className={isDark ? 'text-slate-400' : 'text-slate-700 font-semibold'}>Неустойка:</span>
-            <span className="font-mono text-xs text-rose-600 dark:text-rose-400 font-extrabold">
-              {result.matched_contract?.penalty_per_hour || '50 000 руб./час'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Decision Rationale */}
-      <div
-        className={`border rounded-xl p-3 ${
-          isDark
-            ? 'bg-[#020204]/80 border-cyan-500/20'
-            : 'bg-slate-50 border-slate-300'
-        }`}
-      >
-        <h3 className={`text-[10px] font-mono font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-          <Shield className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-          Аргументация Движка Принятия Решений
-        </h3>
-        <ul className={`space-y-1 text-xs font-sans ${isDark ? 'text-slate-300' : 'text-slate-800 font-medium'}`}>
-          {result.decision_reasoning.map((reason, idx) => (
-            <li key={idx} className="flex items-start space-x-2">
-              <span className={`h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0 ${isDark ? 'bg-cyan-400' : 'bg-blue-900'}`}></span>
-              <span className="leading-relaxed">{reason}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* AI Customer Reply Draft */}
-      <div
-        className={`border rounded-xl p-3 ${
-          isDark
-            ? 'bg-[#020204]/80 border-cyan-500/20'
-            : 'bg-slate-50 border-slate-300'
-        }`}
-      >
-        <div className="flex items-center justify-between mb-1.5">
-          <label className={`text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            <Send className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            3. Проект ответа клиенту
-          </label>
-          <button
-            type="button"
-            onClick={handleCopyReply}
-            className={`flex items-center space-x-1 px-2.5 py-1 text-[10px] font-mono border rounded-lg transition ${
-              isDark
-                ? 'text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/10'
-                : 'text-slate-800 hover:text-blue-950 bg-white hover:bg-slate-100 border-slate-300 font-bold'
-            }`}
-          >
-            {copied ? (
-              <>
-                <Check className={`h-3 w-3 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-                <span className={`font-mono ${isDark ? 'text-cyan-400' : 'text-blue-900'}`}>Скопировано</span>
-              </>
-            ) : (
-              <>
-                <Copy className="h-3 w-3 text-slate-500" />
-                <span>Копировать</span>
-              </>
+          <ul className="space-y-0.5 text-[11px] text-[var(--oc-text)]">
+            {result.guardrail_triggered && (
+              <li>Защитное правило · {result.guardrail_reason}</li>
             )}
-          </button>
+            {result.matched_site && (
+              <li>
+                Реестр · объект {result.matched_site.site_id} / {result.matched_site.address}
+              </li>
+            )}
+            {result.matched_asset && (
+              <li>
+                Реестр · оборудование {result.matched_asset.asset_id} ({result.matched_asset.local_code})
+              </li>
+            )}
+            {result.matched_contract && (
+              <li>
+                Договор · {result.matched_contract.plan}, окно {result.matched_contract.working_hours}
+              </li>
+            )}
+            {result.target_ticket_id && <li>Открытые заявки · дедупликация {result.target_ticket_id}</li>}
+            {(result.decision_reasoning || []).slice(0, 4).map((r, i) => (
+              <li key={i} className="text-[var(--oc-muted)]">
+                {r}
+              </li>
+            ))}
+          </ul>
         </div>
-        <div
-          className={`p-3 border rounded-lg text-xs font-sans leading-relaxed ${
-            isDark
-              ? 'bg-[#080810] border-cyan-500/20 text-slate-200'
-              : 'bg-white border-slate-300 text-slate-900 font-medium'
-          }`}
-        >
-          {result.customer_response_draft}
-        </div>
-      </div>
+      </section>
 
-      {/* Commit & Execution Actions */}
-      <div className="pt-2 border-t border-slate-700/30 flex flex-col sm:flex-row items-center justify-between gap-3 font-mono">
-        <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-700 font-bold'}`}>
-          Режим выполнения:{' '}
-          <span className={`font-mono font-extrabold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            {result.is_dry_run ? 'ТЕСТОВЫЙ РЕЖИМ (Черновик)' : 'ЖИВАЯ ЗАПИСЬ (Запись в БД)'}
-          </span>
+      <section className="oc-card" aria-label="Действие оператора">
+        <div className="flex items-center justify-between border-b border-[var(--oc-border)] px-3 py-2">
+          <h2 className="oc-section-title">Требуется подтверждение</h2>
+          <StatusBadge
+            tone={needsConfirm && result.status !== 'BLOCKED' ? 'warning' : statusTone}
+            label={result.status === 'BLOCKED' ? 'СБОЙ' : 'НА ПРОВЕРКЕ'}
+          />
         </div>
-
-        <div className="flex items-center space-x-3 w-full sm:w-auto">
+        <div className="grid grid-cols-2 gap-2 px-3 py-2 text-[12px] sm:grid-cols-4">
+          <div>
+            <p className="text-[10px] uppercase text-[var(--oc-muted)]">Действие</p>
+            <p className="font-medium">{actionLabel(result.recommended_action)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase text-[var(--oc-muted)]">Заявка</p>
+            <p className="font-mono">{ticketId}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase text-[var(--oc-muted)]">Приоритет</p>
+            {editing ? (
+              <select
+                value={editPriority}
+                onChange={(e) => setEditPriority(e.target.value as Ticket['priority'])}
+                className="h-7 rounded border border-[var(--oc-border)] bg-[var(--oc-bg)] text-xs"
+              >
+                <option value="low">низкий</option>
+                <option value="medium">средний</option>
+                <option value="high">высокий</option>
+                <option value="critical">критичный</option>
+              </select>
+            ) : (
+              <p className="uppercase">{editPriority}</p>
+            )}
+          </div>
+          <div>
+            <p className="text-[10px] uppercase text-[var(--oc-muted)]">SLA</p>
+            <p>{slaMin ? `${slaMin} мин` : '—'}</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5 border-t border-[var(--oc-border)] px-3 py-2">
           <button
             id="commit-live-btn"
             type="button"
-            onClick={onCommitLive}
-            disabled={isCommitting || !result.ticket_payload}
-            className={`w-full sm:w-auto flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-mono font-extrabold uppercase tracking-wider transition ${
-              isCommitting || !result.ticket_payload
-                ? 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-50'
-                : isDark
-                ? 'bg-cyan-400 hover:bg-cyan-300 text-black shadow-[0_0_15px_rgba(34,211,238,0.4)] border border-cyan-200'
-                : 'bg-blue-900 hover:bg-blue-950 text-white shadow-blue-900/20'
-            }`}
+            onClick={confirm}
+            disabled={isCommitting || !result.ticket_payload || result.status === 'BLOCKED'}
+            className="rounded-md bg-[var(--status-success-soft)] px-3 py-1 text-[12px] font-medium text-[var(--status-success)] hover:opacity-90 disabled:opacity-50"
           >
-            {isCommitting ? (
-              <span>Сохранение в БД...</span>
-            ) : (
-              <>
-                <CheckCircle className="h-4 w-4 fill-current" />
-                <span>✅ Подтвердить</span>
-              </>
-            )}
+            {isCommitting ? 'Сохранение…' : 'Подтвердить'}
+          </button>
+          <button
+            type="button"
+            onClick={onReject}
+            className="rounded-md bg-[var(--status-danger-soft)] px-3 py-1 text-[12px] font-medium text-[var(--status-danger)] hover:opacity-90"
+          >
+            Отклонить
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing((v) => !v)}
+            className="rounded-md border border-[var(--oc-border)] px-3 py-1 text-[12px] hover:bg-[var(--oc-surface-2)]"
+          >
+            {editing ? 'Закрепить' : 'Изменить'}
           </button>
         </div>
-      </div>
+        {commitSuccessMsg && (
+          <p className="border-t border-[var(--oc-border)] px-3 py-2 text-[11px] text-[var(--oc-muted)]">{commitSuccessMsg}</p>
+        )}
+      </section>
 
-      {commitSuccessMsg && (
-        <div className={`p-3 rounded-xl text-xs font-mono font-extrabold flex items-center gap-2 border ${
-          isDark
-            ? 'bg-cyan-950/80 border-cyan-500/50 text-cyan-300 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
-            : 'bg-emerald-100 border-emerald-400 text-emerald-950'
-        }`}>
-          <CheckCircle className="h-4 w-4 flex-shrink-0" />
-          <span>{commitSuccessMsg}</span>
+      <section className="oc-card" aria-label="Ответ клиенту">
+        <div className="flex items-center justify-between border-b border-[var(--oc-border)] px-3 py-2">
+          <h2 className="oc-section-title">Ответ клиенту</h2>
+          {draftApproved && <StatusBadge tone="success" label="УТВЕРЖДЁН" />}
         </div>
-      )}
-    </div>
+        <div className="px-3 py-2">
+          <textarea
+            rows={4}
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              setDraftApproved(false);
+            }}
+            className="w-full resize-none rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] p-2 text-xs leading-relaxed"
+          />
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="inline-flex items-center gap-1 rounded-md border border-[var(--oc-border)] px-2 py-1 text-[11px] hover:bg-[var(--oc-surface-2)]"
+            >
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              {copied ? 'Скопировано' : 'Копировать'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraft(result.customer_response_draft)}
+              className="rounded-md border border-[var(--oc-border)] px-2 py-1 text-[11px] hover:bg-[var(--oc-surface-2)]"
+            >
+              Сбросить черновик
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraftApproved(true)}
+              className="rounded-md bg-[var(--oc-accent-soft)] px-2 py-1 text-[11px] text-[var(--oc-accent)]"
+            >
+              Утвердить
+            </button>
+          </div>
+        </div>
+      </section>
+    </>
   );
 };

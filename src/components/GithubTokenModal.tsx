@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Key, ShieldCheck, CheckCircle, AlertCircle, X, Eye, EyeOff, Zap } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ShieldCheck, X } from 'lucide-react';
 import { apiFetch, getDispatchToken, setDispatchToken } from '../api';
 
 interface GithubTokenModalProps {
@@ -11,17 +11,20 @@ interface GithubTokenModalProps {
   theme: 'dark' | 'light';
 }
 
+function mask(value: string): string {
+  if (!value) return 'не задан';
+  if (value.length <= 4) return '••••';
+  return `••••${value.slice(-4)}`;
+}
+
 export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
   isOpen,
   onClose,
   token,
   onSaveToken,
   selectedModel,
-  theme,
 }) => {
-  const isDark = theme === 'dark';
   const [inputToken, setInputToken] = useState(token);
-  const [showToken, setShowToken] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [inputDispatchToken, setInputDispatchToken] = useState(getDispatchToken());
@@ -29,6 +32,15 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
   useEffect(() => {
     setInputToken(token);
   }, [token, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -40,7 +52,6 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
       onSaveToken(trimmed);
       setDispatchToken(inputDispatchToken);
 
-      // Post to backend config
       const res = await apiFetch('/api/llm/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,15 +60,13 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
       const data = await res.json();
 
       if (data.success) {
-        setStatusMsg(`✅ Токен и модель (${selectedModel}) успешно подключены!`);
-        setTimeout(() => {
-          onClose();
-        }, 800);
+        setStatusMsg(`Токен и модель (${selectedModel}) подключены.`);
+        setTimeout(() => onClose(), 800);
       } else {
-        setStatusMsg(`⚠️ Сохранено локально.`);
+        setStatusMsg('Сохранено локально.');
       }
     } catch (err: any) {
-      setStatusMsg(`❌ Ошибка передачи: ${err.message}`);
+      setStatusMsg(`Ошибка передачи: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -71,130 +80,72 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: '', model: selectedModel }),
     }).catch(() => {});
-    setStatusMsg('⚠️ Токен очищен.');
+    setStatusMsg('Токен очищен.');
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+    <div className="oc-dialog-backdrop" onClick={onClose} role="presentation">
       <div
-        className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl transition-all ${
-          isDark
-            ? 'bg-[#060612] border-cyan-500/40 text-white shadow-[0_0_30px_rgba(34,211,238,0.2)]'
-            : 'bg-white border-slate-300 text-slate-900 shadow-xl'
-        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="token-dialog-title"
+        className="oc-card w-full max-w-md p-4 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-700/40">
-          <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-              <Key className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-mono font-bold">Настройка GITHUB_MODELS_TOKEN</h3>
-              <p className="text-xs text-slate-400 font-mono">
-                Подключение нейросетей GitHub Models API
-              </p>
-            </div>
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div>
+            <h2 id="token-dialog-title" className="oc-section-title text-[13px]">
+              Токены API
+            </h2>
+            <p className="mt-0.5 text-[11px] text-[var(--oc-muted)]">
+              Модель {selectedModel}. Значения маскируются, полный секрет не отображается.
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
-          >
-            <X className="h-5 w-5" />
+          <button type="button" className="oc-btn h-8 w-8 p-0" onClick={onClose} aria-label="Закрыть диалог">
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="py-4 space-y-4 font-mono text-xs">
-          <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center space-x-2">
-            <Zap className="h-4 w-4 text-cyan-400 flex-shrink-0" />
-            <p className="text-cyan-300">
-              Активная модель: <span className="font-bold underline">{selectedModel}</span>. По умолчанию
-              запрашивается <span className="font-bold">GITHUB_MODELS_TOKEN</span>.
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-slate-300 font-bold mb-1.5">
-              Введите Personal Access Token (GITHUB_MODELS_TOKEN / GITHUB_TOKEN):
-            </label>
-            <div className="relative">
-              <input
-                type={showToken ? 'text' : 'password'}
-                value={inputToken}
-                onChange={(e) => setInputToken(e.target.value)}
-                placeholder="ghp_... или github_pat_..."
-                className={`w-full p-3 pr-10 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 ${
-                  isDark
-                    ? 'bg-[#030712] border-slate-700 text-cyan-300 focus:ring-cyan-500/50'
-                    : 'bg-slate-50 border-slate-300 text-slate-900 focus:ring-blue-500'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowToken(!showToken)}
-                className="absolute right-3 top-3 text-slate-400 hover:text-white"
-              >
-                {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <p className="mt-1.5 text-[11px] text-slate-400">
-              Если токен установлен в переменных окружения сервера, поле можно оставить пустым или ввести собственный ключ.
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-slate-300 font-bold mb-1.5">
-              X-Dispatch-Token (заголовок защиты API):
-            </label>
+        <div className="grid gap-2 text-[11px]">
+          <label>
+            Токен GitHub Models
             <input
-              type="text"
+              type="password"
+              autoComplete="off"
+              value={inputToken}
+              onChange={(e) => setInputToken(e.target.value)}
+              placeholder="ghp_… или github_pat_…"
+              className="oc-input mt-0.5"
+            />
+            <span className="mt-0.5 block font-mono text-[10px] text-[var(--oc-muted)]">{mask(inputToken)}</span>
+          </label>
+          <label>
+            X-Dispatch-Token
+            <input
+              type="password"
+              autoComplete="off"
               value={inputDispatchToken}
               onChange={(e) => setInputDispatchToken(e.target.value)}
-              placeholder="dev-dispatch-token"
-              className={`w-full p-3 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 ${
-                isDark
-                  ? 'bg-[#030712] border-slate-700 text-cyan-300 focus:ring-cyan-500/50'
-                  : 'bg-slate-50 border-slate-300 text-slate-900 focus:ring-blue-500'
-              }`}
+              className="oc-input mt-0.5"
             />
-            <p className="mt-1.5 text-[11px] text-slate-400">
-              Значение по умолчанию для прототипа — <span className="font-bold">dev-dispatch-token</span> (переопределяется env <span className="font-bold">DISPATCH_TOKEN</span>). Хранится только в sessionStorage.
-            </p>
-          </div>
-
-          {statusMsg && (
-            <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-cyan-300 text-xs">
-              {statusMsg}
-            </div>
-          )}
+            <span className="mt-0.5 block font-mono text-[10px] text-[var(--oc-muted)]">
+              {mask(inputDispatchToken)} · только sessionStorage
+            </span>
+          </label>
+          {statusMsg && <p className="text-[var(--oc-muted)]">{statusMsg}</p>}
         </div>
 
-        {/* Footer actions */}
-        <div className="pt-3 border-t border-slate-700/40 flex items-center justify-between gap-3 font-mono text-xs">
-          <button
-            type="button"
-            onClick={handleClear}
-            className="px-4 py-2 rounded-xl border border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-500/40 transition"
-          >
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <button type="button" className="oc-btn" onClick={handleClear}>
             Очистить
           </button>
-          <div className="flex items-center space-x-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-slate-700 text-slate-300 hover:bg-white/5 transition"
-            >
+          <div className="flex gap-1">
+            <button type="button" className="oc-btn" onClick={onClose}>
               Отмена
             </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold shadow-lg transition flex items-center space-x-1.5"
-            >
-              <ShieldCheck className="h-4 w-4" />
-              <span>{isSaving ? 'Сохранение...' : 'Подключить модель'}</span>
+            <button type="button" className="oc-btn" onClick={handleSave} disabled={isSaving}>
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              {isSaving ? 'Сохранение…' : 'Сохранить'}
             </button>
           </div>
         </div>

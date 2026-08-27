@@ -1,151 +1,100 @@
 import React, { useState } from 'react';
 import { TraceStep } from '../types';
-import { Terminal, ChevronDown, ChevronRight, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { StatusBadge, StatusTone } from './ui/StatusBadge';
+import { redactSafeMeta } from '../opsDashboard';
 
 interface ExecutionTraceTimelineProps {
   trace: TraceStep[];
+  running?: boolean;
   theme?: 'dark' | 'light';
+}
+
+const PIPELINE: { key: string; label: string }[] = [
+  { key: '01_guardrails', label: 'Защитные правила' },
+  { key: '02_fact', label: 'Извлечение фактов' },
+  { key: '03_customer', label: 'Поиск клиента' },
+  { key: '04_assets', label: 'Поиск оборудования' },
+  { key: '05_contract', label: 'Расчёт SLA' },
+  { key: '06_decision', label: 'Движок решений' },
+  { key: '07_execution', label: 'Исполнение' },
+];
+
+function findByIndex(trace: TraceStep[], i: number): TraceStep | undefined {
+  const patterns = [
+    /guardrail/i,
+    /fact/i,
+    /customer|site/i,
+    /asset/i,
+    /contract|sla/i,
+    /decision/i,
+    /dry_run|execution/i,
+  ];
+  return trace.find((s) => patterns[i].test(s.step_name)) || trace[i];
+}
+
+function toUiStatus(
+  step: TraceStep | undefined,
+  running: boolean,
+  hasTrace: boolean
+): { tone: StatusTone; label: string } {
+  if (!step) {
+    if (running && !hasTrace) return { tone: 'info', label: 'ИДЁТ' };
+    return { tone: 'neutral', label: 'ОЖИДАНИЕ' };
+  }
+  if (step.status === 'ERROR') return { tone: 'danger', label: 'ОШИБКА' };
+  if (step.status === 'WARNING') return { tone: 'warning', label: 'ОЖИДАНИЕ' };
+  if (step.status === 'INFO') return { tone: 'info', label: 'ИДЁТ' };
+  return { tone: 'success', label: 'ГОТОВО' };
 }
 
 export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({
   trace,
-  theme = 'dark',
+  running = false,
 }) => {
-  const isDark = theme === 'dark';
-  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
-
-  if (!trace || trace.length === 0) {
-    return (
-      <div
-        className={`rounded-2xl p-5 text-center text-xs font-mono border transition-all ${
-          isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
-            : 'bg-white border-slate-300 text-slate-700 font-semibold shadow-sm'
-        }`}
-      >
-        // Трассировка появится после выполнения вызова пайплайна...
-      </div>
-    );
-  }
-
-  const toggleExpand = (id: string) => {
-    setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const totalDuration = trace.reduce((acc, curr) => acc + (curr.duration_ms || 0), 0);
+  const [open, setOpen] = useState<string | null>(null);
+  const total = (trace || []).reduce((a, s) => a + (s.duration_ms || 0), 0);
 
   return (
-    <div
-      id="execution-trace-panel"
-      className={`rounded-2xl p-4 sm:p-5 transition-all border space-y-4 ${
-        isDark
-          ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
-          : 'bg-white border-slate-300 shadow-sm text-slate-900'
-      }`}
-    >
-      {/* Header Bar */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
-        <div className="flex items-center space-x-2">
-          <Terminal className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-          <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            3. Трассировка выполнения
-          </h2>
-        </div>
-        <div className="flex items-center space-x-3 text-xs font-mono">
-          <span className={isDark ? 'text-slate-400' : 'text-slate-700 font-semibold'}>Шагов: {trace.length}</span>
-          <span
-            className={`px-2.5 py-0.5 rounded-md font-extrabold border ${
-              isDark
-                ? 'bg-cyan-950/60 text-cyan-300 border-cyan-500/40 shadow-[0_0_8px_rgba(34,211,238,0.2)]'
-                : 'bg-blue-50 text-blue-950 border-blue-200'
-            }`}
-          >
-            Общая задержка: {totalDuration} мс
-          </span>
-        </div>
+    <section id="execution-trace-panel" className="oc-card" aria-label="Трасса выполнения">
+      <div className="flex items-center justify-between border-b border-[var(--oc-border)] px-3 py-2">
+        <h2 className="oc-section-title">Пайплайн</h2>
+        <span className="font-mono text-[11px] text-[var(--oc-muted)]">{total} ms</span>
       </div>
-
-      {/* Timeline List */}
-      <div className="space-y-2 font-mono">
-        {trace.map((step, idx) => {
-          const isExpanded = !!expandedIds[step.id];
-          const isSuccess = step.status === 'SUCCESS';
-          const isWarning = step.status === 'WARNING';
-
+      <ol className="px-3 py-2">
+        {PIPELINE.map((row, i) => {
+          const step = findByIndex(trace || [], i);
+          const ui = toUiStatus(step, running, Boolean(trace?.length));
+          const isOpen = open === row.key;
           return (
-            <div
-              key={step.id || idx}
-              className={`border rounded-xl overflow-hidden transition-all shadow-inner ${
-                isDark
-                  ? 'bg-[#020204]/90 border-cyan-500/20'
-                  : 'bg-slate-50 border-slate-300'
-              }`}
-            >
-              {/* Step Summary Bar */}
+            <li key={row.key} className="border-b border-[var(--oc-border)] last:border-0">
               <button
                 type="button"
-                onClick={() => toggleExpand(step.id)}
-                className={`w-full text-left p-3 flex items-center justify-between transition ${
-                  isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100'
-                }`}
+                onClick={() => step && setOpen(isOpen ? null : row.key)}
+                className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 py-1.5 text-left hover:bg-[var(--oc-surface-2)]"
               >
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0">
-                    {isSuccess && <CheckCircle2 className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />}
-                    {isWarning && <AlertCircle className="h-4 w-4 text-amber-500" />}
-                    {!isSuccess && !isWarning && (
-                      <Clock className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className={`font-mono text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        [{step.step_name}]
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {step.timestamp}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <span
-                    className={`font-mono text-[11px] px-2 py-0.5 rounded border font-extrabold ${
-                      isDark
-                        ? 'text-cyan-300 bg-[#080810] border-white/10'
-                        : 'text-blue-950 bg-white border-slate-300'
-                    }`}
-                  >
-                    {step.duration_ms} ms
+                {i > 0 && (
+                  <span className="hidden w-3 text-[10px] text-[var(--oc-muted)] sm:inline" aria-hidden="true">
+                    →
                   </span>
-                  {isExpanded ? (
-                    <ChevronDown className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
-                  )}
-                </div>
+                )}
+                <span className="min-w-[8rem] shrink-0 text-[11px]">{row.label}</span>
+                <StatusBadge tone={ui.tone} label={ui.label} />
+                <span className="ml-auto font-mono text-[11px] text-[var(--oc-muted)]">
+                  {step ? `${step.duration_ms} ms` : '—'}
+                </span>
+                <span className="w-20 text-right font-mono text-[10px] text-[var(--oc-muted)]">
+                  {step?.timestamp || '—'}
+                </span>
               </button>
-
-              {/* Step Expanded Details */}
-              {isExpanded && (
-                <div
-                  className={`p-3 border-t text-xs font-mono overflow-x-auto ${
-                    isDark
-                      ? 'bg-[#05050c] border-cyan-500/20 text-cyan-300/90'
-                      : 'bg-white border-slate-300 text-slate-900 font-medium'
-                  }`}
-                >
-                  <pre className="text-[11px] leading-relaxed whitespace-pre-wrap">
-                    {JSON.stringify(step.details, null, 2)}
-                  </pre>
-                </div>
+              {isOpen && step && (
+                <pre className="mb-2 max-h-32 overflow-auto rounded bg-[var(--oc-bg)] p-2 font-mono text-[10px] text-[var(--oc-muted)]">
+                  {JSON.stringify(redactSafeMeta(step.details || {}), null, 2)}
+                </pre>
               )}
-            </div>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ol>
+    </section>
   );
 };

@@ -143,3 +143,41 @@ export interface ScenarioPreset {
   description: string;
   expected_outcome: string;
 }
+
+export type UserRole = 'dispatcher' | 'admin';
+export type UserStatus = 'active' | 'blocked';
+
+export type AppTab =
+  | 'home'
+  | 'channels'
+  | 'console'
+  | 'operator'
+  | 'database'
+  | 'sla'
+  | 'history'
+  | 'notifications'
+  | 'logs_traces'
+  | 'architecture'
+  | 'profile'
+  | 'admin_users'
+  | 'admin_settings'
+  | 'admin_analytics';
+
+export interface PublicUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+  createdAt: string;
+}
+
+export interface ActivityEvent {
+  id: string;
+  timestamp: string;
+  userId: string;
+  email: string;
+  action: string;
+  detail?: string;
+}

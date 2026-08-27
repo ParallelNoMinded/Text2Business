@@ -12,23 +12,89 @@ import { FactExtractorView } from './components/FactExtractorView';
 import { DispatchCard } from './components/DispatchCard';
 import { ExecutionTraceTimeline } from './components/ExecutionTraceTimeline';
 import { SCENARIO_PRESETS } from './scenarios';
-import { ProcessingResult } from './types';
+import { ProcessingResult, Ticket, PublicUser } from './types';
 import { apiFetch } from './api';
 import {
   startUXSession,
   startDispatchMeasurement,
   markDecisionReceived,
   completeUXScenario,
-  registerUXClick,
 } from './uxMetrics';
 import { INITIAL_DATABASE, DatabaseSchema } from './mockDb';
+import { PageSection } from './components/layout/PageSection';
+import { PipelineRail } from './components/pipeline/PipelineRail';
+import { LoginView } from './components/LoginView';
+import { RegisterView } from './components/RegisterView';
+import { ProfileView } from './components/ProfileView';
+import { AdminUsersView } from './components/AdminUsersView';
+import { AdminSettingsView } from './components/AdminSettingsView';
+import { AdminAnalyticsView } from './components/AdminAnalyticsView';
+import { AccessDenied } from './components/AccessDenied';
+import { WorkSlaView } from './components/WorkSlaView';
+import { WorkHistoryView } from './components/WorkHistoryView';
+import { WorkNotificationsView } from './components/WorkNotificationsView';
+import { clearSessionId, getSessionId } from './authSession';
+import { navigateTo, usePathname } from './appPath';
+import { canAccessPath, canAccessTab, pathForTab, tabForPath } from './roles';
 
 export default function App() {
-const [activeTab, setActiveTab] = useState<TabType>('home');
-const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const pathname = usePathname();
+  const [currentUser, setCurrentUser] = useState<PublicUser | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [geminiActive, setGeminiActive] = useState(true);
+  const [apiHealthy, setApiHealthy] = useState<boolean | null>(null);
   useEffect(() => {
     startUXSession();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const sid = getSessionId();
+    if (!sid) {
+      setAuthReady(true);
+      return;
+    }
+    apiFetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.user) setCurrentUser(data.user);
+        else clearSessionId();
+      })
+      .catch(() => {
+        if (!cancelled) clearSessionId();
+      })
+      .finally(() => {
+        if (!cancelled) setAuthReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const ping = async () => {
+      try {
+        const res = await fetch('/api/health');
+        if (!res.ok) throw new Error('unhealthy');
+        const data = await res.json();
+        if (!cancelled) {
+          setApiHealthy(true);
+          setGeminiActive(Boolean(data.gemini_enabled));
+        }
+      } catch {
+        if (!cancelled) setApiHealthy(false);
+      }
+    };
+    ping();
+    const id = setInterval(ping, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, []);
 
   const [selectedModel, setSelectedModel] = useState<string>('gpt-4o');
@@ -40,12 +106,13 @@ const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
   // Sync token with server on mount & model change
   useEffect(() => {
+    if (currentUser?.role !== 'admin') return;
     apiFetch('/api/llm/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: githubToken, model: selectedModel }),
     }).catch(() => {});
-  }, [githubToken, selectedModel]);
+  }, [githubToken, selectedModel, currentUser?.role]);
 
   const handleSelectModel = (newModel: string) => {
     setSelectedModel(newModel);
@@ -119,7 +186,7 @@ const [theme, setTheme] = useState<'light' | 'dark'>('dark');
     }
   };
 
-  const handleCommitLive = async () => {
+  const handleCommitLive = async (payloadOverride?: Partial<Ticket>) => {
     if (!result?.ticket_payload) return;
     setIsCommitting(true);
     setCommitSuccessMsg(null);
@@ -128,7 +195,7 @@ const [theme, setTheme] = useState<'light' | 'dark'>('dark');
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ticket_payload: result.ticket_payload,
+          ticket_payload: { ...result.ticket_payload, ...payloadOverride },
           action: result.recommended_action,
         }),
       });
@@ -172,12 +239,13 @@ const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   }, []);
 
   useEffect(() => {
+    if (!currentUser) return;
     fetchDatabase();
     const interval = setInterval(() => {
       fetchDatabase();
     }, 2500);
     return () => clearInterval(interval);
-  }, [fetchDatabase]);
+  }, [fetchDatabase, currentUser]);
 
   const handleUpdateDb = (newDb: DatabaseSchema) => {
     setDb(newDb);
@@ -205,18 +273,77 @@ const [theme, setTheme] = useState<'light' | 'dark'>('dark');
     (t) => t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0)
   ).length;
 
-  const isDark = theme === 'dark';
+  const isAdmin = currentUser?.role === 'admin';
+
+  const guardedSetTab = (tab: TabType) => {
+    if (currentUser && !canAccessTab(currentUser.role, tab)) {
+      navigateTo('/');
+      setActiveTab('home');
+      return;
+    }
+    if (currentUser) navigateTo(pathForTab(tab, currentUser.role));
+    setActiveTab(tab);
+  };
+
+  useEffect(() => {
+    if (!authReady) return;
+    if (!currentUser && pathname !== '/login' && pathname !== '/register') {
+      navigateTo('/login');
+    }
+  }, [authReady, currentUser, pathname]);
+
+  useEffect(() => {
+    if (!authReady || !currentUser) return;
+    if (pathname === '/login' || pathname === '/register') {
+      navigateTo('/');
+      return;
+    }
+    if (!canAccessPath(currentUser.role, pathname)) return;
+    const tab = tabForPath(pathname);
+    if (tab && tab !== activeTab) setActiveTab(tab);
+  }, [authReady, currentUser, pathname]);
+
+  const handleLogout = async () => {
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      /* ignore */
+    }
+    clearSessionId();
+    setCurrentUser(null);
+    setActiveTab('home');
+    navigateTo('/login');
+  };
+
+  if (!authReady) {
+    return (
+      <div className="oc-shell flex min-h-screen items-center justify-center text-[12px] text-[var(--oc-muted)]">
+        Проверка сессии…
+      </div>
+    );
+  }
+
+  if (!currentUser && pathname === '/register') {
+    return <RegisterView onAuthenticated={setCurrentUser} />;
+  }
+
+  if (!currentUser) {
+    return <LoginView onAuthenticated={setCurrentUser} />;
+  }
+
+  const pathAllowed = canAccessPath(currentUser.role, pathname);
 
   return (
-    <div
-      className={`min-h-screen flex flex-col justify-between font-sans antialiased transition-colors duration-200 ${
-        isDark ? 'bg-[#020204] text-slate-100' : 'bg-slate-100 text-slate-900'
-      }`}
-    >
-      {/* Streamlined Header */}
+    <div className="oc-shell flex min-h-screen flex-col antialiased">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[60] focus:rounded-md focus:bg-[var(--oc-surface)] focus:px-3 focus:py-1.5 focus:text-xs"
+      >
+        Перейти к содержимому
+      </a>
       <Header
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={guardedSetTab}
         theme={theme}
         setTheme={setTheme}
         geminiActive={geminiActive}
@@ -227,9 +354,13 @@ const [theme, setTheme] = useState<'light' | 'dark'>('dark');
         pendingOperatorCount={pendingOperatorCount}
         githubToken={githubToken}
         onOpenTokenModal={() => setIsTokenModalOpen(true)}
+        apiHealthy={apiHealthy}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* GITHUB_MODELS_TOKEN Setup Modal */}
+      {isAdmin && (
       <GithubTokenModal
         isOpen={isTokenModalOpen}
         onClose={() => setIsTokenModalOpen(false)}
@@ -238,76 +369,85 @@ const [theme, setTheme] = useState<'light' | 'dark'>('dark');
         selectedModel={selectedModel}
         theme={theme}
       />
+      )}
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        {/* TAB 0: LANDING HOME PAGE */}
+      <main id="main-content" className="mx-auto w-full max-w-[1440px] flex-1 px-3 py-4 sm:px-6">
+        {!pathAllowed ? (
+          <AccessDenied
+            onGoHome={() => {
+              navigateTo('/');
+              setActiveTab('home');
+            }}
+          />
+        ) : (
+          <>
         {activeTab === 'home' && (
           <LandingHome
-            setActiveTab={setActiveTab}
+            setActiveTab={guardedSetTab}
             theme={theme}
+            pendingOperatorCount={pendingOperatorCount}
+            apiHealthy={apiHealthy}
+            db={db}
+            lastResult={result}
+            geminiActive={geminiActive}
+            githubToken={githubToken}
+            isDryRun={isDryRun}
+            isAdmin={isAdmin}
           />
         )}
 
         {/* TAB 1: CONNECTORS & CHANNELS CONFIG */}
-        {activeTab === 'channels' && (
+        {isAdmin && activeTab === 'channels' && (
           <ChannelsConfigView
             theme={theme}
-            onNavigateToConsole={() => setActiveTab('console')}
+            onNavigateToConsole={() => guardedSetTab('console')}
+            onViewLogs={() => guardedSetTab('logs_traces')}
           />
         )}
 
         {/* TAB 1.5: LIVE DISPATCH WORKBENCH (console) */}
-        {activeTab === 'console' && (
-          <div className="space-y-4">
-            <div
-              className={`rounded-2xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                isDark
-                  ? 'bg-[#060612]/90 border-cyan-500/30 text-white'
-                  : 'bg-white border-slate-300 text-slate-950 shadow-sm'
-              }`}
-            >
-              <div>
-                <h2 className={`text-sm font-mono font-extrabold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-                  Демо-стенд AI-Диспетчера (4 сценария ТЗ)
-                </h2>
-                <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-800 font-medium'}`}>
-                  Обращение → извлечение фактов → решение движка → трассировка. Любое выполнение — dry-run;
-                  подтверждённый коммит в БД делает оператор (кнопка «Подтвердить»).
-                </p>
-              </div>
-              <span className={`text-[11px] font-mono px-3 py-1.5 rounded-lg border font-bold whitespace-nowrap ${
-                isDark ? 'bg-amber-500/10 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-950 border-amber-400'
-              }`}>
-                ⚠ ТЕСТОВЫЙ РЕЖИМ (dry-run)
-              </span>
+        {isAdmin && activeTab === 'console' && (
+          <div className="grid gap-3">
+            <PageSection
+              title="Демо-стенд · пайплайн ИИ-диспетчера"
+              description="Входящее → факты → реестр/SLA → решение → подтверждение оператора → исполнение. Черновик до подтверждения."
+              status={
+                isRunningDispatch
+                  ? { tone: 'info', label: 'ИДЁТ' }
+                  : isDryRun
+                    ? { tone: 'warning', label: 'ЧЕРНОВИК' }
+                    : { tone: 'success', label: 'АКТИВЕН' }
+              }
+            />
+            <PipelineRail result={result} running={isRunningDispatch} />
+
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+              <ScenarioRunner
+                selectedPresetId={selectedPresetId}
+                onSelectPreset={handleSelectPreset}
+                rawText={rawText}
+                setRawText={setRawText}
+                channel={channel}
+                setChannel={setChannel}
+                incomingTime={incomingTime}
+                setIncomingTime={setIncomingTime}
+                isDryRun={isDryRun}
+                setIsDryRun={setIsDryRun}
+                onRunDispatch={handleRunDispatch}
+                isLoading={isRunningDispatch}
+                onResetInput={handleResetInput}
+                theme={theme}
+              />
+              <FactExtractorView facts={result?.extracted_facts || null} theme={theme} />
             </div>
-
-            <ScenarioRunner
-              selectedPresetId={selectedPresetId}
-              onSelectPreset={handleSelectPreset}
-              rawText={rawText}
-              setRawText={setRawText}
-              channel={channel}
-              setChannel={setChannel}
-              incomingTime={incomingTime}
-              setIncomingTime={setIncomingTime}
-              isDryRun={isDryRun}
-              setIsDryRun={setIsDryRun}
-              onRunDispatch={handleRunDispatch}
-              isLoading={isRunningDispatch}
-              onResetInput={handleResetInput}
-              theme={theme}
-            />
-
-            <FactExtractorView
-              facts={result?.extracted_facts || null}
-              theme={theme}
-            />
 
             <DispatchCard
               result={result}
               onCommitLive={handleCommitLive}
+              onReject={() => {
+                setResult(null);
+                setCommitSuccessMsg('Решение отклонено. Запись в БД не выполнена.');
+              }}
               isCommitting={isCommitting}
               commitSuccessMsg={commitSuccessMsg}
               theme={theme}
@@ -315,21 +455,16 @@ const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
             <ExecutionTraceTimeline
               trace={result?.trace || []}
+              running={isRunningDispatch}
               theme={theme}
             />
 
-            <div
-              className={`rounded-2xl p-4 border text-xs font-mono ${
-                isDark
-                  ? 'bg-[#060612]/90 border-cyan-500/20 text-slate-400'
-                  : 'bg-white border-slate-300 text-slate-700 font-medium shadow-sm'
-              }`}
-            >
+            <p className="text-[11px] text-[var(--oc-muted)]">
               Ожидаемый результат пресета:{' '}
-              <span className={isDark ? 'text-cyan-300 font-bold' : 'text-blue-950 font-extrabold'}>
+              <span className="text-[var(--oc-text)]">
                 {SCENARIO_PRESETS.find((p) => p.id === selectedPresetId)?.expected_outcome}
               </span>
-            </div>
+            </p>
           </div>
         )}
 
@@ -350,39 +485,53 @@ const [theme, setTheme] = useState<'light' | 'dark'>('dark');
             onUpdateDb={handleUpdateDb}
             isLoading={isLoading}
             theme={theme}
+            canResetDatabase={isAdmin}
+            ticketsOnly={!isAdmin}
           />
         )}
 
+        {activeTab === 'sla' && <WorkSlaView db={db} />}
+        {activeTab === 'history' && <WorkHistoryView db={db} />}
+        {activeTab === 'notifications' && (
+          <WorkNotificationsView db={db} onOpenAppeals={() => guardedSetTab('operator')} />
+        )}
+
+        {activeTab === 'profile' && (
+          <ProfileView user={currentUser} onUserUpdate={setCurrentUser} />
+        )}
+
+        {isAdmin && activeTab === 'admin_users' && <AdminUsersView />}
+        {isAdmin && activeTab === 'admin_settings' && <AdminSettingsView />}
+        {isAdmin && activeTab === 'admin_analytics' && <AdminAnalyticsView />}
+
         {/* TAB 4: LOGS & TRACES */}
-        {activeTab === 'logs_traces' && (
-          <LogsTracesView theme={theme} db={db} />
+        {isAdmin && activeTab === 'logs_traces' && (
+          <LogsTracesView
+            theme={theme}
+            db={db}
+            lastResult={result}
+            apiHealthy={apiHealthy}
+            geminiActive={geminiActive}
+            githubToken={githubToken}
+          />
         )}
 
         {/* TAB 5: ARCHITECTURE REPORT & C4 SCHEMAS */}
-        {activeTab === 'architecture' && (
+        {isAdmin && activeTab === 'architecture' && (
           <ArchitectureView theme={theme} />
+        )}
+          </>
         )}
       </main>
 
-      {/* Antigravity Footer */}
-      <footer
-        className={`border-t mt-8 py-5 text-center text-xs font-mono transition-colors ${
-          isDark
-            ? 'border-white/10 bg-[#020204] text-slate-500'
-            : 'border-slate-300 bg-white text-slate-700'
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center space-x-2">
-            <span className={`h-2 w-2 rounded-full ${isDark ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-blue-900'}`}></span>
-            <span className={`font-bold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              Текстовый AI-Диспетчер для бизнеса
-            </span>
-            <span>/ Промышленная архитектура</span>
-          </div>
-          <p className="text-[11px]">
-            Архитектор AI-решений / Техлид AI-внедрений • Full-Stack контейнер Cloud Run
-          </p>
+      <footer className="mt-auto border-t border-[var(--oc-border)] bg-[var(--oc-surface)]">
+        <div className="mx-auto flex max-w-[1440px] flex-col gap-1 px-3 py-2 text-[11px] text-[var(--oc-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <span>Text2Business · Операционный центр ИИ</span>
+          <span>
+            {pendingOperatorCount > 0
+              ? `${pendingOperatorCount} заявок ждут диспетчера`
+              : 'Очередь оператора пуста'}
+          </span>
         </div>
       </footer>
     </div>

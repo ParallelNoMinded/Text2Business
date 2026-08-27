@@ -1,143 +1,66 @@
 import React from 'react';
-import { ExtractedFacts } from '../types';
-import { Eye, Quote } from 'lucide-react';
+import { ExtractedFacts, ExtractedFact } from '../types';
+import { StatusBadge } from './ui/StatusBadge';
 
 interface FactExtractorViewProps {
   facts: ExtractedFacts | null;
   theme?: 'dark' | 'light';
 }
 
-export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, theme = 'dark' }) => {
-  const isDark = theme === 'dark';
+function sourceLabel(type: string): string {
+  if (type === 'fact') return 'ФАКТ';
+  if (type === 'inference') return 'ВЫВОД';
+  if (type === 'database') return 'БД';
+  return type.toUpperCase();
+}
 
-  if (!facts) {
-    return (
-      <div
-        className={`rounded-2xl p-5 text-center text-xs font-mono border transition-all ${
-          isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
-            : 'bg-white border-slate-300 text-slate-700 shadow-sm font-semibold'
-        }`}
-      >
-        // Ожидание запуска пайплайна для извлечения фактов LLM (Structured Output)...
+function FactRow({ label, fact }: { label: string; fact: ExtractedFact }) {
+  const conf = Math.round((fact.confidence || 0) * 100);
+  const tone = !fact.value ? 'neutral' : conf >= 85 ? 'success' : conf >= 50 ? 'warning' : 'danger';
+  return (
+    <div className="grid grid-cols-[7rem_1fr_3.25rem_5.5rem] items-start gap-2 border-b border-[var(--oc-border)] py-1.5 last:border-0">
+      <span className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">{label}</span>
+      <span className="min-w-0 truncate text-[12px]" title={fact.value || undefined}>
+        {fact.value || '—'}
+      </span>
+      <span className="text-right font-mono text-[11px] tabular-nums text-[var(--oc-muted)]">{conf}%</span>
+      <StatusBadge tone={tone} label={fact.value ? sourceLabel(fact.type) : 'НЕТ'} />
+    </div>
+  );
+}
+
+export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts }) => {
+  return (
+    <section id="fact-extractor-card" className="oc-card" aria-label="Извлечённые факты">
+      <div className="flex items-center justify-between border-b border-[var(--oc-border)] px-3 py-2">
+        <h2 className="oc-section-title">Извлечённые факты</h2>
+        <StatusBadge tone={facts ? 'info' : 'neutral'} label={facts ? 'ИИ' : 'ОЖИДАНИЕ'} />
       </div>
-    );
-  }
-
-  const renderFactCard = (
-    label: string,
-    factItem: { value: string | null; quote?: string | null; confidence: number; type: string }
-  ) => {
-    const confPercent = Math.round((factItem.confidence || 0) * 100);
-    const isHighConf = confPercent >= 85;
-
-    return (
-      <div
-        className={`border rounded-xl p-3 flex flex-col justify-between space-y-2 shadow-inner ${
-          isDark
-            ? 'bg-[#020204]/90 border-cyan-500/20'
-            : 'bg-slate-50 border-slate-300'
-        }`}
-      >
-        <div className="flex items-center justify-between">
-          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            {label}
-          </span>
-          <div className="flex items-center space-x-1.5">
-            <span
-              className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
-                isHighConf
-                  ? isDark
-                    ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/50 shadow-[0_0_8px_rgba(34,211,238,0.3)]'
-                    : 'bg-blue-100 text-blue-950 border border-blue-300 font-extrabold'
-                  : isDark
-                  ? 'bg-amber-950 text-amber-300 border border-amber-500/50'
-                  : 'bg-amber-100 text-amber-950 border border-amber-300 font-extrabold'
-              }`}
-            >
-              Conf: {confPercent}%
-            </span>
-            <span
-              className={`text-[9px] font-mono px-1 py-0.5 rounded uppercase font-semibold ${
-                isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-200 text-slate-700'
-              }`}
-            >
-              {factItem.type}
-            </span>
-          </div>
-        </div>
-
-        <div>
-          <p className={`text-xs font-bold font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {factItem.value || <span className="text-slate-500 italic font-sans font-normal">Не обнаружено</span>}
-          </p>
-        </div>
-
-        {factItem.quote && (
-          <div className="pt-1.5 border-t border-slate-700/20 flex items-start space-x-1 text-[11px] text-slate-500">
-            <Quote className={`h-3 w-3 flex-shrink-0 mt-0.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <span className="italic line-clamp-1 font-sans">"{factItem.quote}"</span>
-          </div>
+      <div className="px-3 py-1">
+        {!facts && (
+          <p className="py-4 text-center text-[11px] text-[var(--oc-muted)]">Ожидание извлечения фактов…</p>
+        )}
+        {facts && (
+          <>
+            <div className="grid grid-cols-[7rem_1fr_3.25rem_5.5rem] gap-2 pb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">
+              <span>Поле</span>
+              <span>Значение</span>
+              <span className="text-right">Увер.</span>
+              <span>Источник</span>
+            </div>
+            <FactRow label="Клиент" fact={facts.customer_name} />
+            <FactRow label="Объект / адрес" fact={facts.site_info} />
+            <FactRow label="Оборудование" fact={facts.asset_code} />
+            <FactRow label="Проблема" fact={facts.problem_summary} />
+            <FactRow label="Срок" fact={facts.requested_deadline} />
+            <FactRow label="Резерв" fact={facts.has_backup} />
+            <div className="grid grid-cols-[7rem_1fr] items-start gap-2 py-1.5">
+              <span className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Симптомы</span>
+              <span className="text-[12px]">{facts.symptoms?.length ? facts.symptoms.join(' · ') : '—'}</span>
+            </div>
+          </>
         )}
       </div>
-    );
-  };
-
-  return (
-    <div
-      id="fact-extractor-card"
-      className={`rounded-2xl p-4 sm:p-5 transition-all border ${
-        isDark
-          ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
-          : 'bg-white border-slate-300 shadow-sm text-slate-900'
-      }`}
-    >
-      <div className="flex items-center justify-between pb-3 border-b border-slate-700/30 mb-3">
-        <div className="flex items-center space-x-2">
-          <Eye className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-          <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            1. Извлеченные факты
-          </h2>
-        </div>
-        <span
-          className={`text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg border ${
-            isDark
-              ? 'text-cyan-300 bg-cyan-950/60 border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-              : 'text-blue-950 bg-blue-50 border-blue-200 font-extrabold'
-          }`}
-        >
-          Структурированный вывод
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-        {renderFactCard('Заказчик / Клиент', facts.customer_name)}
-        {renderFactCard('Объект / Адрес', facts.site_info)}
-        {renderFactCard('Код Оборудования', facts.asset_code)}
-        {renderFactCard('Суть Проблемы', facts.problem_summary)}
-        {renderFactCard('Запрошенный Срок', facts.requested_deadline)}
-        {renderFactCard('Наличие Резерва', facts.has_backup)}
-      </div>
-
-      {facts.symptoms && facts.symptoms.length > 0 && (
-        <div className="mt-3 pt-2.5 border-t border-slate-700/20 flex items-center space-x-2 text-xs">
-          <span className={`font-mono font-bold text-[11px] ${isDark ? 'text-slate-400' : 'text-blue-950'}`}>Симптомы поломки:</span>
-          <div className="flex flex-wrap gap-1.5">
-            {facts.symptoms.map((s, idx) => (
-              <span
-                key={idx}
-                className={`px-2 py-0.5 rounded-full border text-[11px] font-mono font-bold ${
-                  isDark
-                    ? 'bg-[#020204] border-cyan-500/30 text-cyan-300'
-                    : 'bg-blue-50 border-blue-200 text-blue-950'
-                }`}
-              >
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+    </section>
   );
 };

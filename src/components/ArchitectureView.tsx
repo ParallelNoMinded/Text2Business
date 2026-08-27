@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { PageSection } from './layout/PageSection';
+import { StatusBadge } from './ui/StatusBadge';
 import {
-  BookOpen,
   Layers,
   FileText,
   Terminal,
@@ -889,100 +890,57 @@ end
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn font-sans pb-12">
-      {/* Header Banner */}
-      <div
-        className={`p-6 rounded-2xl border backdrop-blur-md shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
-          isDark
-            ? 'bg-gradient-to-r from-[#030712] via-[#09152a] to-[#030712] border-cyan-500/40 text-white shadow-[0_0_30px_rgba(34,211,238,0.15)]'
-            : 'bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 border-blue-800 text-white shadow-xl'
-        }`}
-      >
-        <div className="flex items-center space-x-3.5">
-          <div className="p-3 rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-inner">
-            <BookOpen className="h-7 w-7" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-400 text-slate-950 uppercase">
-                ArcSpace Registry
-              </span>
-              <span className="text-xs font-mono text-cyan-300">/architecture/</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold font-mono tracking-tight mt-1">
-              Архитектурный Центральный Реестр
-            </h1>
-            <p className="text-xs text-slate-300 font-mono mt-0.5">
-              Разделение монолита (As-Is / MVP) и целевой событийной микросервисной системы (To-Be / Enterprise)
-            </p>
-          </div>
-        </div>
-
-        {/* Primary Architecture Switcher: AS-IS vs TO-BE */}
-        <div className="flex items-center p-1 rounded-xl bg-[#010309] border border-cyan-500/40 shadow-inner font-mono text-xs">
+    <div className="grid gap-3 pb-8">
+      <PageSection
+        title="Реестр архитектуры"
+        description="Текущая MVP (As-Is) и целевая корпоративная архитектура (To-Be). Диаграммы и ADR без смены runtime."
+      />
+      <div className="oc-card flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[11px] text-[var(--oc-muted)]">/architecture/</p>
+        <div className="flex flex-wrap gap-1">
           <button
+            type="button"
             onClick={() => {
               setMainMode('as_is');
               if (selectedPuml === 'eda') setSelectedPuml('c2');
             }}
-            className={`px-4 py-2 rounded-lg font-extrabold transition flex items-center space-x-2 ${
-              mainMode === 'as_is'
-                ? 'bg-amber-500 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.5)]'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className={`oc-btn ${mainMode === 'as_is' ? 'border-[var(--oc-accent)] bg-[var(--oc-accent-soft)]' : ''}`}
           >
-            <Monitor className="h-4 w-4" />
-            <span>Текущая (As-Is / MVP)</span>
+            <Monitor className="h-3.5 w-3.5" aria-hidden="true" />
+            As-Is / MVP
           </button>
-
           <button
+            type="button"
             onClick={() => {
               setMainMode('to_be');
               setSelectedPuml('eda');
             }}
-            className={`px-4 py-2 rounded-lg font-extrabold transition flex items-center space-x-2 ${
-              mainMode === 'to_be'
-                ? 'bg-cyan-400 text-slate-950 shadow-[0_0_15px_rgba(34,211,238,0.5)]'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className={`oc-btn ${mainMode === 'to_be' ? 'border-[var(--oc-accent)] bg-[var(--oc-accent-soft)]' : ''}`}
           >
-            <Cloud className="h-4 w-4" />
-            <span>Целевая (To-Be / Enterprise)</span>
+            <Cloud className="h-3.5 w-3.5" aria-hidden="true" />
+            To-Be / Enterprise
           </button>
         </div>
       </div>
 
-      {/* Mode Status Indicator Bar */}
-      <div
-        className={`p-3.5 rounded-xl border flex items-center justify-between font-mono text-xs ${
-          mainMode === 'as_is'
-            ? isDark
-              ? 'bg-amber-950/20 border-amber-500/40 text-amber-300'
-              : 'bg-amber-50 border-amber-300 text-amber-900'
-            : isDark
-            ? 'bg-cyan-950/20 border-cyan-500/40 text-cyan-300'
-            : 'bg-cyan-50 border-cyan-300 text-cyan-900'
-        }`}
-      >
-        <div className="flex items-center space-x-2">
-          <span className={`h-2.5 w-2.5 rounded-full ${mainMode === 'as_is' ? 'bg-amber-400' : 'bg-cyan-400'} animate-pulse`}></span>
-          <span className="font-bold uppercase tracking-wider">
-            {mainMode === 'as_is' ? 'БЛОК 1: ТЕКУЩАЯ АРХИТЕКТУРА (AS-IS / MVP)' : 'БЛОК 2: ЦЕЛЕВАЯ АРХИТЕКТУРА (TO-BE / ENTERPRISE)'}
+      <div className="oc-card flex flex-col gap-1 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <StatusBadge
+            tone={mainMode === 'as_is' ? 'warning' : 'info'}
+            label={mainMode === 'as_is' ? 'AS-IS' : 'TO-BE'}
+          />
+          <span className="text-[11px]">
+            {mainMode === 'as_is' ? 'Текущая архитектура (MVP)' : 'Целевая архитектура (Enterprise)'}
           </span>
         </div>
-        <span className="hidden sm:inline text-[11px] opacity-80">
+        <span className="text-[11px] text-[var(--oc-muted)]">
           {mainMode === 'as_is'
-            ? 'Node.js 20 • Express.js • React 19 • In-Memory DB (mockDb.ts)'
-            : 'Envoy Gateway • Apache Kafka • Go Temporal.io • PostgreSQL 18'}
+            ? 'Node.js 20 · Express · React 19 · mockDb'
+            : 'Envoy · Kafka · Temporal · PostgreSQL'}
         </span>
       </div>
 
-      {/* Sub-Navigation Tabs */}
-      <div
-        className={`flex items-center space-x-2 p-1.5 rounded-xl border overflow-x-auto no-scrollbar font-mono text-xs ${
-          isDark ? 'bg-[#060612] border-cyan-500/30' : 'bg-white border-slate-300 shadow-sm'
-        }`}
-      >
+      <div className="oc-card flex items-center gap-1 overflow-x-auto p-1.5 text-[11px]">
         {mainMode === 'as_is' ? (
           <>
             <button
@@ -1016,7 +974,7 @@ end
               }`}
             >
               <Zap className="h-4 w-4" />
-              <span>Data Flow Пайплайн</span>
+              <span>Поток данных</span>
             </button>
             <button
               onClick={() => setAsIsSubTab('openapi')}
@@ -1027,7 +985,7 @@ end
               }`}
             >
               <Terminal className="h-4 w-4" />
-              <span>OpenAPI Current</span>
+              <span>OpenAPI (текущая)</span>
             </button>
             <button
               onClick={() => setAsIsSubTab('report')}
@@ -1063,7 +1021,7 @@ end
               }`}
             >
               <Layers className="h-4 w-4" />
-              <span>Микросервисы Target</span>
+              <span>Целевые микросервисы</span>
             </button>
             <button
               onClick={() => setToBeSubTab('migration')}
@@ -1096,7 +1054,7 @@ end
               }`}
             >
               <Terminal className="h-4 w-4" />
-              <span>OpenAPI Target</span>
+              <span>OpenAPI (целевая)</span>
             </button>
             <button
               onClick={() => setToBeSubTab('report')}

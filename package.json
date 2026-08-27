@@ -9,7 +9,7 @@
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.cjs",
-    "test": "tsx --test tests/dispatcher.test.ts",
+    "test": "tsx --test tests/dispatcher.test.ts tests/auth.test.ts tests/rbac.test.ts tests/rbac-http.test.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
