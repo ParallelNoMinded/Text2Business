@@ -44,19 +44,19 @@ export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({
       }`}
     >
       {/* Header Bar */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
+      <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-slate-700/30' : 'border-slate-200'}`}>
         <div className="flex items-center space-x-2">
-          <Terminal className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-          <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
+          <Terminal className={`h-4 w-4 ${isDark ? 'text-slate-300' : 'text-blue-900'}`} />
+          <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-slate-100' : 'text-blue-950'}`}>
             3. Трассировка выполнения
           </h2>
         </div>
         <div className="flex items-center space-x-3 text-xs font-mono">
-          <span className={isDark ? 'text-slate-400' : 'text-slate-700 font-semibold'}>Шагов: {trace.length}</span>
+          <span className={isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'}>Шагов: {trace.length}</span>
           <span
             className={`px-2.5 py-0.5 rounded-md font-extrabold border ${
               isDark
-                ? 'bg-cyan-950/60 text-cyan-300 border-cyan-500/40 shadow-[0_0_8px_rgba(34,211,238,0.2)]'
+                ? 'bg-[#222222] text-slate-300 border-[#2A2A2A]'
                 : 'bg-blue-50 text-blue-950 border-blue-200'
             }`}
           >
@@ -91,16 +91,16 @@ export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({
               >
                 <div className="flex items-center space-x-3">
                   <div className="flex-shrink-0">
-                    {isSuccess && <CheckCircle2 className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />}
+                    {isSuccess && <CheckCircle2 className={`h-4 w-4 ${isDark ? 'text-slate-300' : 'text-blue-900'}`} />}
                     {isWarning && <AlertCircle className="h-4 w-4 text-amber-500" />}
                     {!isSuccess && !isWarning && (
-                      <Clock className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
+                      <Clock className={`h-4 w-4 ${isDark ? 'text-slate-400' : 'text-blue-900'}`} />
                     )}
                   </div>
 
                   <div>
                     <div className="flex items-center space-x-2">
-                      <span className={`font-mono text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      <span className={`font-mono text-xs font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
                         [{step.step_name}]
                       </span>
                       <span className="text-[10px] text-slate-500 font-mono">
@@ -114,16 +114,16 @@ export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({
                   <span
                     className={`font-mono text-[11px] px-2 py-0.5 rounded border font-extrabold ${
                       isDark
-                        ? 'text-cyan-300 bg-[#222222] border-[#2A2A2A]'
+                        ? 'text-slate-300 bg-[#222222] border-[#2A2A2A]'
                         : 'text-blue-950 bg-white border-slate-300'
                     }`}
                   >
                     {step.duration_ms} ms
                   </span>
                   {isExpanded ? (
-                    <ChevronDown className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
+                    <ChevronDown className={`h-4 w-4 ${isDark ? 'text-slate-300' : 'text-blue-900'}`} />
                   ) : (
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                    <ChevronRight className={`h-4 w-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`} />
                   )}
                 </div>
               </button>
@@ -133,7 +133,7 @@ export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({
                 <div
                   className={`p-3 border-t text-xs font-mono overflow-x-auto ${
                     isDark
-                      ? 'bg-[#222222] border-[#2A2A2A] text-cyan-300/90'
+                      ? 'bg-[#222222] border-[#2A2A2A] text-slate-300/90'
                       : 'bg-white border-slate-300 text-slate-900 font-medium'
                   }`}
                 >

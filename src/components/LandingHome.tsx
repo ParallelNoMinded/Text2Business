@@ -107,62 +107,68 @@ export const LandingHome: React.FC<LandingHomeProps> = ({
 
   return (
     <div className="relative mx-auto w-full max-w-[1280px] px-0 py-0">
-      <div className="min-h-screen rounded-none border-0 bg-[#141414] px-3 py-0 text-white sm:px-5 lg:px-10">
-        <div className="mx-auto max-w-[1200px] pt-2">
+      {/* Золотое сечение: вертикальный ритм по шкале φ (8/13/21/34/55/89), герой ≈ 61.8% высоты первого экрана */}
+      <div className={`min-h-screen rounded-none border-0 px-3 py-0 sm:px-5 lg:px-10 ${isDark ? 'bg-[#141414] text-white' : 'bg-slate-100 text-slate-900'}`}>
+        <div className="mx-auto max-w-[1200px] pt-[21px]">
           <div className="flex flex-col items-center justify-center text-center">
-            <div className="mb-3 flex items-center gap-4 pt-1">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/40 bg-[#1D1F26] shadow-[0_0_20px_rgba(34,211,238,0.12)] sm:h-14 sm:w-14">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#0F141A] text-cyan-400 sm:h-9 sm:w-9">
+            <div className="mb-[13px] flex items-center gap-[13px] pt-[8px]">
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border sm:h-14 sm:w-14 ${isDark ? 'border-[#2A2A2A] bg-[#1C1B1B]' : 'border-blue-900/30 bg-white shadow-md'}`}>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-xl sm:h-9 sm:w-9 ${isDark ? 'bg-[#222222] text-slate-300' : 'bg-blue-950 text-blue-100'}`}>
                   <Cpu className="h-5 w-5" />
                 </div>
               </div>
               <div className="flex flex-col items-start">
-                <div className="font-mono text-[22px] font-black uppercase tracking-tight text-white sm:text-[28px]">
+                <div className={`font-mono text-[22px] font-black uppercase tracking-tight sm:text-[28px] ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   TEXT2BUSINESS
                 </div>
-                <div className="mt-1 inline-flex rounded-md border border-cyan-500/40 bg-[#101B23] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">
+                <div className={`mt-1 inline-flex rounded-md border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] ${isDark ? 'border-[#2A2A2A] bg-[#222222] text-slate-300' : 'border-blue-900/30 bg-blue-950 text-blue-100'}`}>
                   AI-ДИСПЕТЧЕР
                 </div>
               </div>
             </div>
 
-            <h1 className="max-w-[1080px] text-[28px] font-extrabold leading-[0.98] tracking-[-0.03em] text-white sm:text-[36px] lg:text-[44px]">
+            {/* Типографическая шкала φ: 28 → 45 (×1.618), межблочный ритм 34px */}
+            <h1 className={`max-w-[1080px] text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-[36px] lg:text-[45px] ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Превращаем хаос входящих обращений
-              <span className="block text-cyan-400">в управляемый сервис</span>
+              <span className={`block ${isDark ? 'text-slate-300' : 'text-blue-900'}`}>в управляемый сервис</span>
             </h1>
 
-            <p className="mt-4 max-w-[1000px] text-[15px] leading-[1.45] tracking-[-0.02em] text-slate-300 sm:text-[16px]">
+            <p className={`mt-[21px] max-w-[1000px] text-[15px] leading-[1.618] tracking-[-0.02em] sm:text-[16px] ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
               Умный AI-диспетчер для холодильного оборудования. Понимает контекст в письмах, чатах и звонках,
               рассчитывает SLA без ошибок и передает тикет напрямую в 1С:ERP.
             </p>
           </div>
 
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <div className="mt-[34px] grid gap-[21px] md:grid-cols-2">
             {cards.map((card, index) => (
               <button
                 key={card.id}
                 type="button"
                 onClick={() => handleCardClick(card.id)}
-                className="group flex min-h-[220px] flex-col justify-between rounded-2xl border border-[#2A2A2A] bg-[#1C1B1B] p-4 text-left transition duration-200 hover:border-cyan-500/40 hover:shadow-[0_0_14px_rgba(34,211,238,0.06)]"
+                className={`group flex min-h-[220px] flex-col justify-between rounded-2xl border p-[21px] text-left transition duration-200 ${
+                  isDark
+                    ? 'border-[#2A2A2A] bg-[#1C1B1B] hover:border-slate-500/50'
+                    : 'border-slate-300 bg-white shadow-sm hover:border-blue-900/50 hover:shadow-md'
+                }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-500/30 bg-[#222222] text-cyan-400">
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-xl border ${isDark ? 'border-[#2A2A2A] bg-[#222222] text-slate-300' : 'border-blue-900/30 bg-blue-950 text-blue-100'}`}>
                       {card.icon}
                     </div>
-                    <div className="font-sans text-[18px] font-medium leading-tight text-white">
+                    <div className={`font-sans text-[18px] font-medium leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {index + 1}. {card.label}
                     </div>
                   </div>
 
-                  <span className="rounded-md border border-amber-500/40 bg-[#2A2418] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-amber-300">
+                  <span className={`rounded-md border px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] ${isDark ? 'border-[#2A2A2A] bg-[#222222] text-slate-400' : 'border-slate-300 bg-slate-100 text-slate-700'}`}>
                     {card.status}
                   </span>
                 </div>
 
-                <div className="mt-4 text-[14px] leading-[1.5] text-slate-300">{card.description}</div>
+                <div className={`mt-[13px] text-[14px] leading-[1.618] ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{card.description}</div>
 
-                <div className="mt-6 flex items-center gap-4 font-mono text-[15px] font-medium text-cyan-400">
+                <div className={`mt-[21px] flex items-center gap-[13px] font-mono text-[15px] font-medium ${isDark ? 'text-slate-300' : 'text-blue-900'}`}>
                   <span className="pr-1">{card.action}</span>
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </div>
@@ -170,10 +176,10 @@ export const LandingHome: React.FC<LandingHomeProps> = ({
             ))}
           </div>
 
-          <div className="mt-4 flex flex-col gap-2 text-[11px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+          <div className={`mt-[34px] mb-[21px] flex flex-col gap-[8px] text-[11px] sm:flex-row sm:items-center sm:justify-between ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             <div className="flex flex-wrap items-center gap-3">
               <span>Текстовый AI-Диспетчер для бизнеса</span>
-              <span className="text-slate-500">/</span>
+              <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>/</span>
               <span>Промышленная архитектура</span>
             </div>
             <div className="text-left sm:text-right">

@@ -919,7 +919,7 @@ end
         </div>
 
         {/* Primary Architecture Switcher: AS-IS vs TO-BE */}
-        <div className="flex items-center p-1 rounded-xl bg-[#222222] border border-cyan-500/40 shadow-inner font-mono text-xs">
+        <div className={`flex items-center p-1 rounded-xl ${isDark ? 'bg-[#222222] border border-cyan-500/40 shadow-inner font-mono text-xs' : 'bg-white border border-slate-300 shadow-inner font-mono text-xs'}`}>
           <button
             onClick={() => {
               setMainMode('as_is');
@@ -928,7 +928,7 @@ end
             className={`px-4 py-2 rounded-lg font-extrabold transition flex items-center space-x-2 ${
               mainMode === 'as_is'
                 ? 'bg-amber-500 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.5)]'
-                : 'text-slate-400 hover:text-white'
+                : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
             }`}
           >
             <Monitor className="h-4 w-4" />
@@ -943,7 +943,7 @@ end
             className={`px-4 py-2 rounded-lg font-extrabold transition flex items-center space-x-2 ${
               mainMode === 'to_be'
                 ? 'bg-cyan-400 text-slate-950 shadow-[0_0_15px_rgba(34,211,238,0.5)]'
-                : 'text-slate-400 hover:text-white'
+                : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
             }`}
           >
             <Cloud className="h-4 w-4" />
@@ -990,7 +990,7 @@ end
               className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 asIsSubTab === 'diagrams'
                   ? 'bg-amber-500 text-slate-950 font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : (isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
               }`}
             >
               <Code className="h-4 w-4" />
@@ -1001,7 +1001,7 @@ end
               className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 asIsSubTab === 'components'
                   ? 'bg-amber-500 text-slate-950 font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : (isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
               }`}
             >
               <Server className="h-4 w-4" />
@@ -1012,7 +1012,7 @@ end
               className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 asIsSubTab === 'data_flow'
                   ? 'bg-amber-500 text-slate-950 font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : (isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
               }`}
             >
               <Zap className="h-4 w-4" />
@@ -1023,7 +1023,7 @@ end
               className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 asIsSubTab === 'openapi'
                   ? 'bg-amber-500 text-slate-950 font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : (isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
               }`}
             >
               <Terminal className="h-4 w-4" />
@@ -1034,7 +1034,7 @@ end
               className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 asIsSubTab === 'report'
                   ? 'bg-amber-500 text-slate-950 font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : (isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
               }`}
             >
               <FileText className="h-4 w-4" />
@@ -1048,7 +1048,7 @@ end
               className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 toBeSubTab === 'diagrams'
                   ? 'bg-cyan-400 text-slate-950 font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : (isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
               }`}
             >
               <Code className="h-4 w-4" />
@@ -1059,7 +1059,7 @@ end
               className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 toBeSubTab === 'components'
                   ? 'bg-cyan-400 text-slate-950 font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : (isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
               }`}
             >
               <Layers className="h-4 w-4" />
@@ -1070,7 +1070,7 @@ end
               className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 toBeSubTab === 'migration'
                   ? 'bg-cyan-400 text-slate-950 font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : (isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
               }`}
             >
               <GitBranch className="h-4 w-4" />
@@ -1081,7 +1081,7 @@ end
               className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 toBeSubTab === 'adrs'
                   ? 'bg-cyan-400 text-slate-950 font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : (isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
               }`}
             >
               <FileText className="h-4 w-4" />
@@ -1092,7 +1092,7 @@ end
               className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 toBeSubTab === 'openapi'
                   ? 'bg-cyan-400 text-slate-950 font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : (isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
               }`}
             >
               <Terminal className="h-4 w-4" />
@@ -1103,7 +1103,7 @@ end
               className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 toBeSubTab === 'report'
                   ? 'bg-cyan-400 text-slate-950 font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : (isDark ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
               }`}
             >
               <FileText className="h-4 w-4" />
@@ -1131,7 +1131,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'eda'
                         ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     Target EDA Map
@@ -1141,7 +1141,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'c1'
                         ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     C1 Context
@@ -1151,7 +1151,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'c2'
                         ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     C2 Container
@@ -1161,7 +1161,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'c3'
                         ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     C3 Component
@@ -1171,7 +1171,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'deployment'
                         ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     Deployment
@@ -1181,7 +1181,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'sequence'
                         ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     Sequence
@@ -1191,7 +1191,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'er'
                         ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     ER Diagram
@@ -1201,7 +1201,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'api'
                         ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     API Architecture
@@ -1214,7 +1214,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'c1'
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     C1 Context
@@ -1224,7 +1224,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'c2'
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     C2 Container
@@ -1234,7 +1234,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'c3'
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     C3 Component
@@ -1244,7 +1244,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'deployment'
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     Deployment
@@ -1254,7 +1254,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'sequence'
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     Sequence
@@ -1264,7 +1264,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'er'
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     ER Diagram
@@ -1274,7 +1274,7 @@ end
                     className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
                       selectedPuml === 'api'
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
-                        : 'text-slate-400 hover:text-white'
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-800 hover:text-blue-950 hover:bg-slate-200/80 font-bold')
                     }`}
                   >
                     API Routes
@@ -1285,12 +1285,12 @@ end
 
             {/* View Mode Switcher: Code vs Visual SVG */}
             <div className="flex items-center space-x-2">
-              <span className="text-slate-400 text-[11px]">Режим показа:</span>
-              <div className="flex items-center p-1 rounded-lg bg-[#222222] border border-slate-700">
+              <span className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>Режим показа:</span>
+              <div className={`flex items-center p-1 rounded-lg ${isDark ? 'bg-[#222222] border border-slate-700' : 'bg-white border border-slate-300'}`}>
                 <button
                   onClick={() => setPumlRenderMode('visual')}
                   className={`px-2.5 py-1 rounded text-[11px] font-bold ${
-                    pumlRenderMode === 'visual' ? 'bg-cyan-500/30 text-cyan-300' : 'text-slate-400'
+                    pumlRenderMode === 'visual' ? (isDark ? 'bg-cyan-500/30 text-cyan-300' : 'bg-blue-900 text-white') : (isDark ? 'text-slate-400' : 'text-slate-600')
                   }`}
                 >
                   Визуал (SVG)
@@ -1298,7 +1298,7 @@ end
                 <button
                   onClick={() => setPumlRenderMode('code')}
                   className={`px-2.5 py-1 rounded text-[11px] font-bold ${
-                    pumlRenderMode === 'code' ? 'bg-cyan-500/30 text-cyan-300' : 'text-slate-400'
+                    pumlRenderMode === 'code' ? (isDark ? 'bg-cyan-500/30 text-cyan-300' : 'bg-blue-900 text-white') : (isDark ? 'text-slate-400' : 'text-slate-600')
                   }`}
                 >
                   Код PlantUML
@@ -1306,7 +1306,7 @@ end
                 <button
                   onClick={() => setPumlRenderMode('both')}
                   className={`px-2.5 py-1 rounded text-[11px] font-bold ${
-                    pumlRenderMode === 'both' ? 'bg-cyan-500/30 text-cyan-300' : 'text-slate-400'
+                    pumlRenderMode === 'both' ? (isDark ? 'bg-cyan-500/30 text-cyan-300' : 'bg-blue-900 text-white') : (isDark ? 'text-slate-400' : 'text-slate-600')
                   }`}
                 >
                   Оба
@@ -1315,7 +1315,7 @@ end
 
               <button
                 onClick={() => handleCopyCode(getActivePumlCode())}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+                className={`p-1.5 rounded-lg border transition ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'}`}
                 title="Скопировать исходный код PlantUML"
               >
                 {copiedCode ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
@@ -1328,12 +1328,12 @@ end
             {(pumlRenderMode === 'visual' || pumlRenderMode === 'both') && (
               <div
                 className={`p-6 rounded-2xl border shadow-xl relative overflow-hidden ${
-                  isDark ? 'bg-[#222222] border-cyan-500/40 text-cyan-300' : 'bg-slate-900 border-slate-700 text-cyan-300'
+                  isDark ? 'bg-[#222222] border-cyan-500/40 text-cyan-300' : 'bg-white border-slate-300 text-blue-950 shadow-md'
                 }`}
               >
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4 font-mono text-xs">
-                  <span className="font-bold text-white uppercase tracking-wider flex items-center space-x-2">
-                    <Code className="h-4 w-4 text-cyan-400" />
+                <div className={`flex items-center justify-between pb-3 border-b mb-4 font-mono text-xs ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+                  <span className={`font-bold uppercase tracking-wider flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <Code className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
                     <span>
                       Рендеринг PlantUML — {selectedPuml.toUpperCase()} ({mainMode.toUpperCase()})
                     </span>
@@ -1342,14 +1342,14 @@ end
                     href={getKrokiUrl(getActivePumlCode())}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-[11px] text-cyan-400 hover:underline flex items-center space-x-1"
+                    className={`text-[11px] hover:underline flex items-center space-x-1 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`}
                   >
                     <span>Открыть SVG в новой вкладке</span>
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
 
-                <div className="flex justify-center items-center min-h-[300px] bg-[#222222] rounded-xl border border-cyan-500/30 p-4 overflow-x-auto">
+                <div className={`flex justify-center items-center min-h-[300px] rounded-xl border p-4 overflow-x-auto ${isDark ? 'bg-[#222222] border-cyan-500/30' : 'bg-white border-slate-300'}`}>
                   <img
                     src={getKrokiUrl(getActivePumlCode())}
                     alt="PlantUML Diagram Render"
@@ -1370,11 +1370,11 @@ end
                   isDark ? 'bg-[#222222] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
                 }`}
               >
-                <div className="flex items-center justify-between border-b border-slate-700 pb-2">
-                  <span className="text-xs font-bold text-cyan-400">PlantUML Source Code (.puml)</span>
-                  <span className="text-[10px] text-slate-400">Используйте java -jar plantuml.jar для сборки</span>
+                <div className={`flex items-center justify-between border-b pb-2 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                  <span className={`text-xs font-bold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>PlantUML Source Code (.puml)</span>
+                  <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Используйте java -jar plantuml.jar для сборки</span>
                 </div>
-                <pre className="p-4 rounded-xl bg-[#222222] border border-cyan-500/30 text-cyan-300 text-xs overflow-x-auto leading-relaxed">
+                <pre className={`p-4 rounded-xl border text-xs overflow-x-auto leading-relaxed ${isDark ? 'bg-[#222222] border-cyan-500/30 text-cyan-300' : 'bg-slate-50 border-slate-300 text-slate-800'}`}>
                   {getActivePumlCode()}
                 </pre>
               </div>
@@ -1391,11 +1391,11 @@ end
               isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
-            <h3 className="text-sm font-bold text-amber-400 border-b pb-2 border-slate-700">1. Backend Gateway (`server.ts`)</h3>
-            <p className="text-slate-300 text-[11px] leading-relaxed">
+            <h3 className={`text-sm font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'} border-b pb-2 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>1. Backend Gateway (`server.ts`)</h3>
+            <p className={`${isDark ? 'text-slate-300' : 'text-slate-700'} text-[11px] leading-relaxed`}>
               Монолитный Express.js сервер, обслуживающий REST Webhook ручки, связь с GitHub Models / Gemini и OData эмулятор 1С.
             </p>
-            <ul className="space-y-1 text-[11px] text-slate-400">
+            <ul className={`space-y-1 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               <li>• `POST /api/webhooks/dispatch`: Вход для Telegram, Email и голоса</li>
               <li>• `POST /api/llm/config`: Настройка ключей и выбор нейросети</li>
               <li>• `GET/POST /api/1c/tickets`: Проведение заявок в OData 1С</li>
@@ -1407,11 +1407,11 @@ end
               isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
-            <h3 className="text-sm font-bold text-amber-400 border-b pb-2 border-slate-700">2. Deterministic Engine (`dispatcherEngine.ts`)</h3>
-            <p className="text-slate-300 text-[11px] leading-relaxed">
+            <h3 className={`text-sm font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'} border-b pb-2 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>2. Deterministic Engine (`dispatcherEngine.ts`)</h3>
+            <p className={`${isDark ? 'text-slate-300' : 'text-slate-700'} text-[11px] leading-relaxed`}>
               Детерминированный 8-шаговый пайплайн: проверкa Guardrails, сопоставление контрагентов и расчет дедлайнов SLA.
             </p>
-            <ul className="space-y-1 text-[11px] text-slate-400">
+            <ul className={`space-y-1 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               <li>• Guardrails Check (защита от промпт-инъекций)</li>
               <li>• Разрешение неоднозначности оборудования (TC-02)</li>
               <li>• Расчет SLA (Gold: 60 мин, Standard: 480 мин)</li>
@@ -1427,8 +1427,8 @@ end
             isDark ? 'bg-[#222222] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
           }`}
         >
-          <h3 className="text-sm font-bold text-amber-400 border-b pb-2 border-slate-700">Пайплайн Обработки Обращения (As-Is MVP)</h3>
-          <pre className="p-4 rounded-xl bg-[#222222] border border-amber-500/30 text-amber-300 text-xs overflow-x-auto leading-relaxed">
+          <h3 className={`text-sm font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'} border-b pb-2 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>Пайплайн Обработки Обращения (As-Is MVP)</h3>
+          <pre className={`p-4 rounded-xl border text-xs overflow-x-auto leading-relaxed ${isDark ? 'bg-[#222222] border-amber-500/30 text-amber-300' : 'bg-slate-50 border-amber-300 text-amber-800'}`}>
 {`[ Telegram / Email / Voice ]
              │
              ▼
@@ -1458,11 +1458,11 @@ end
               isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
-            <div className="flex items-center space-x-2 text-cyan-400 font-bold border-b pb-2 border-slate-700">
+            <div className={`flex items-center space-x-2 font-bold border-b pb-2 ${isDark ? 'text-cyan-400 border-slate-700' : 'text-blue-950 border-slate-200'}`}>
               <Server className="h-4 w-4" />
               <span>1. Envoy Ingress Gateway</span>
             </div>
-            <p className="text-[11px] text-slate-300">
+            <p className={`text-[11px] ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
               Высоконагруженный вход TLS 1.3 с лимитированием частоты запросов, защитой от DDoS и валидацией подписей вебхуков.
             </p>
           </div>
@@ -1472,11 +1472,11 @@ end
               isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
-            <div className="flex items-center space-x-2 text-cyan-400 font-bold border-b pb-2 border-slate-700">
+            <div className={`flex items-center space-x-2 font-bold border-b pb-2 ${isDark ? 'text-cyan-400 border-slate-700' : 'text-blue-950 border-slate-200'}`}>
               <Zap className="h-4 w-4" />
               <span>2. Apache Kafka Event Bus</span>
             </div>
-            <p className="text-[11px] text-slate-300">
+            <p className={`text-[11px] ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
               Асинхронная шина событий. Изолирует сетевые сбои external API и сглаживает пиковые нагрузки обращений.
             </p>
           </div>
@@ -1486,11 +1486,11 @@ end
               isDark ? 'bg-[#222222] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
-            <div className="flex items-center space-x-2 text-cyan-400 font-bold border-b pb-2 border-slate-700">
+            <div className={`flex items-center space-x-2 font-bold border-b pb-2 ${isDark ? 'text-cyan-400 border-slate-700' : 'text-blue-950 border-slate-200'}`}>
               <Database className="h-4 w-4" />
               <span>3. Go + Temporal Decision Engine</span>
             </div>
-            <p className="text-[11px] text-slate-300">
+            <p className={`text-[11px] ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
               Гарантированное управление Workflow с сохранением состояния (Durable Execution) и поддержкой паузы HITL.
             </p>
           </div>
@@ -1504,16 +1504,16 @@ end
             isDark ? 'bg-[#222222] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
           }`}
         >
-          <h3 className="text-sm font-bold text-cyan-400 border-b pb-2 border-slate-700">
+          <h3 className={`text-sm font-bold border-b pb-2 ${isDark ? 'text-cyan-400 border-slate-700' : 'text-blue-950 border-slate-200'}`}>
             План Миграции: От As-Is Монолита к To-Be EDA Платформе
           </h3>
 
           <div className="space-y-4 text-xs">
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold text-[10px]">
+            <div className={`p-4 rounded-xl border space-y-2 ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+              <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${isDark ? 'bg-cyan-500/20 text-cyan-300' : 'bg-blue-100 text-blue-950'}`}>
                 ФАЗА 1 (Месяц 1): Слой Данных и Контейнеризация
               </span>
-              <ul className="space-y-1 text-slate-300 text-[11px]">
+              <ul className={`space-y-1 text-[11px] ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 <li className="flex items-center space-x-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                   <span>Перенос In-Memory store (`mockDb.ts`) в PostgreSQL 18 + `pgvector`.</span>
@@ -1525,11 +1525,11 @@ end
               </ul>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold text-[10px]">
+            <div className={`p-4 rounded-xl border space-y-2 ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+              <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${isDark ? 'bg-cyan-500/20 text-cyan-300' : 'bg-blue-100 text-blue-950'}`}>
                 ФАЗА 2 (Месяцы 2-3): Event Bus & AI Microservice
               </span>
-              <ul className="space-y-1 text-slate-300 text-[11px]">
+              <ul className={`space-y-1 text-[11px] ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 <li className="flex items-center space-x-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                   <span>Развертывание кластера Apache Kafka.</span>
@@ -1541,11 +1541,11 @@ end
               </ul>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold text-[10px]">
+            <div className={`p-4 rounded-xl border space-y-2 ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+              <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${isDark ? 'bg-cyan-500/20 text-cyan-300' : 'bg-blue-100 text-blue-950'}`}>
                 ФАЗА 3 (Месяцы 4-5): Go + Temporal Workflow Engine
               </span>
-              <ul className="space-y-1 text-slate-300 text-[11px]">
+              <ul className={`space-y-1 text-[11px] ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 <li className="flex items-center space-x-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                   <span>Перенос ядра принятий решений из `dispatcherEngine.ts` в Go Temporal Worker.</span>
@@ -1559,7 +1559,7 @@ end
       {/* ADR INDEX */}
       {((mainMode === 'as_is' && asIsSubTab === 'report') || (mainMode === 'to_be' && toBeSubTab === 'adrs')) && (
         <div className="space-y-4 font-mono">
-          <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Архитектурные Решения (ADR Index)</h3>
+          <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>Архитектурные Решения (ADR Index)</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {adrList.map((adr) => (
               <div
@@ -1569,16 +1569,16 @@ end
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isDark ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : 'bg-blue-100 text-blue-950 border-blue-300'}`}>
                     {adr.id}
                   </span>
-                  <span className="text-[10px] text-emerald-400 font-bold">{adr.status}</span>
+                  <span className={`text-[10px] font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{adr.status}</span>
                 </div>
-                <h4 className="text-sm font-bold mt-2 text-white">{adr.title}</h4>
-                <p className="text-xs text-slate-400 mt-1">{adr.summary}</p>
+                <h4 className={`text-sm font-bold mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{adr.title}</h4>
+                <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{adr.summary}</p>
                 <div className="flex flex-wrap gap-1 mt-3">
                   {adr.tags.map((t) => (
-                    <span key={t} className="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300">
+                    <span key={t} className={`px-2 py-0.5 rounded text-[10px] ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-800'}`}>
                       #{t}
                     </span>
                   ))}
@@ -1596,13 +1596,13 @@ end
             isDark ? 'bg-[#222222] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
           }`}
         >
-          <div className="flex items-center justify-between border-b border-slate-700 pb-3">
-            <h3 className="text-sm font-bold text-cyan-400">
+          <div className={`flex items-center justify-between border-b pb-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <h3 className={`text-sm font-bold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
               OpenAPI 3.0 Спецификация ({mainMode === 'as_is' ? '/architecture/api/openapi_current.yaml' : '/architecture/api/openapi_target.yaml'})
             </h3>
-            <span className="text-xs text-emerald-400">REST & Webhook Spec</span>
+            <span className={`text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>REST & Webhook Spec</span>
           </div>
-          <pre className="p-4 rounded-xl bg-[#222222] border border-cyan-500/30 text-cyan-300 text-xs overflow-x-auto">
+          <pre className={`p-4 rounded-xl border text-xs overflow-x-auto ${isDark ? 'bg-[#222222] border-cyan-500/30 text-cyan-300' : 'bg-slate-50 border-slate-300 text-slate-800'}`}>
 {mainMode === 'as_is'
   ? `openapi: 3.0.3
 info:
@@ -1643,10 +1643,10 @@ paths:
             isDark ? 'bg-[#222222] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
           }`}
         >
-          <h3 className="text-sm font-bold text-cyan-400 border-b pb-2 border-slate-700">
+          <h3 className={`text-sm font-bold border-b pb-2 ${isDark ? 'text-cyan-400 border-slate-700' : 'text-blue-950 border-slate-200'}`}>
             {mainMode === 'as_is' ? 'Технический Отчет по Текущей Версии (As-Is)' : 'Технический Отчет по Целевой Системе (To-Be)'}
           </h3>
-          <p className="text-xs text-slate-300 leading-relaxed">
+          <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
             {mainMode === 'as_is'
               ? 'Текущая версия системы представляет собой высокопроизводительный прототип (MVP) в монолитном Node.js 20 контейнере. Извлечение фактов выполняется за <1 секунду с использованием GitHub Models API (gpt-4o) в формате Structured Output (JSON Mode). В случае сбоя внешних сервисов активируется локальный алгоритм.'
               : 'Целевая промышленная платформа спроектирована по паттерну Event-Driven Microservices (EDA) на базе Envoy Gateway, Apache Kafka, Go Temporal.io и PostgreSQL 18. Платформа обеспечивает обработку 10,000+ обращений в минуту с гарантированной сохранностью состояний и поддержкой Air-Gapped режима.'}

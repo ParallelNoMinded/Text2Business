@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Cpu,
   Database,
@@ -23,6 +23,125 @@ export type TabType =
   | 'architecture';
 
 export type UserRole = 'dispatcher' | 'admin';
+
+const MODEL_OPTIONS = [
+  'qwen3.6-27b',
+  'gpt-4o',
+  'gemma4:e4b',
+  'deepseek-reasoner',
+  'nemotron-3-ultra-550b-a55b',
+];
+
+const WIDEST_MODEL_LABEL = MODEL_OPTIONS.reduce((a, b) => (b.length > a.length ? b : a));
+
+interface ModelSelectProps {
+  value: string;
+  onChange: (model: string) => void;
+  isDark: boolean;
+  id?: string;
+}
+
+// Кастомный выпадающий список выбора модели ИИ.
+// Ширина кнопки зафиксирована по самому широкому пункту меню (невидимый sizer).
+export const ModelSelect: React.FC<ModelSelectProps> = ({ value, onChange, isDark, id }) => {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  return (
+    <div ref={rootRef} className="relative inline-block text-left">
+      {/* Невидимый sizer: ширина контейнера = самый широкий пункт меню */}
+      <span
+        aria-hidden
+        className={`invisible whitespace-nowrap font-mono text-xs font-bold pl-7 pr-8 ${
+          isDark ? 'text-white' : 'text-slate-900'
+        }`}
+      >
+        {WIDEST_MODEL_LABEL}
+      </span>
+
+      <button
+        type="button"
+        id={id}
+        onClick={() => setOpen((o) => !o)}
+        className={`absolute inset-0 flex items-center gap-1.5 px-2.5 rounded-lg border font-mono text-xs font-bold transition-all whitespace-nowrap ${
+          isDark
+            ? 'bg-[#1C1B1B] border-[#2A2A2A] text-white hover:border-slate-500/50'
+            : 'bg-white border-slate-300 text-slate-900 shadow-sm hover:border-blue-900/50'
+        } ${open && isDark ? 'border-slate-400/60' : ''}`}
+        title="Выбрать модель ИИ"
+      >
+        <Zap className={`h-3.5 w-3.5 flex-shrink-0 ${isDark ? 'text-slate-300' : 'text-blue-900'}`} />
+        <span className="flex-1 text-left truncate">{value}</span>
+        <ChevronDown
+          className={`h-4 w-4 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''} ${
+            isDark ? 'text-slate-400' : 'text-slate-700'
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div
+          className={`absolute right-0 top-full mt-1.5 z-[60] min-w-full w-max rounded-xl border overflow-hidden shadow-2xl backdrop-blur-md ${
+            isDark
+              ? 'bg-[#1C1B1B]/95 border-[#2A2A2A] shadow-[0_10px_30px_rgba(0,0,0,0.7)]'
+              : 'bg-white/95 border-slate-300 shadow-xl'
+          }`}
+        >
+          {MODEL_OPTIONS.map((model) => {
+            const isActive = model === value;
+            return (
+              <button
+                key={model}
+                type="button"
+                onClick={() => {
+                  onChange(model);
+                  setOpen(false);
+                }}
+                className={`w-full flex items-center justify-between gap-3 px-3.5 py-2 text-left font-mono text-xs whitespace-nowrap transition ${
+                  isActive
+                    ? isDark
+                      ? 'bg-[#222222] text-slate-100 font-bold'
+                      : 'bg-blue-950 text-white font-bold'
+                    : isDark
+                    ? 'text-slate-300 hover:bg-white/5 hover:text-white'
+                    : 'text-slate-800 hover:bg-slate-100 hover:text-blue-950 font-semibold'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Zap
+                    className={`h-3 w-3 ${
+                      isActive
+                        ? isDark
+                          ? 'text-slate-300'
+                          : 'text-blue-100'
+                        : isDark
+                        ? 'text-slate-500'
+                        : 'text-slate-400'
+                    }`}
+                  />
+                  {model}
+                </span>
+                {isActive && (
+                  <span className={`h-1.5 w-1.5 rounded-full ${isDark ? 'bg-slate-300' : 'bg-blue-100'}`} />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface HeaderProps {
   activeTab: TabType;
@@ -90,24 +209,11 @@ export const Header: React.FC<HeaderProps> = ({
       <header className="sticky top-0 z-50 p-4 pointer-events-none">
         <div className="max-w-7xl mx-auto flex justify-end items-center gap-2">
           <button
-            id="book-architecture-btn-home"
-            onClick={() => setActiveTab('architecture')}
-            className={`pointer-events-auto p-2.5 rounded-xl border transition-all flex items-center space-x-2 font-mono text-xs font-bold ${
-              isDark
-                ? 'bg-[#06060e]/90 hover:bg-cyan-500/20 border-cyan-500/40 text-cyan-300 backdrop-blur-md shadow-[0_0_15px_rgba(0,0,0,0.5)]'
-                : 'bg-white/90 hover:bg-slate-100 border-slate-300 text-blue-900 shadow-md backdrop-blur-md'
-            }`}
-            title="Открыть архитектурный отчёт и C4 схемы"
-          >
-            <BookOpen className="h-5 w-5 text-cyan-400" />
-          </button>
-
-          <button
             id="theme-toggle-btn"
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
             className={`pointer-events-auto p-2.5 rounded-xl border transition-all ${
               isDark
-                ? 'bg-[#06060e]/90 hover:bg-white/10 border-cyan-500/30 text-amber-400 backdrop-blur-md shadow-[0_0_15px_rgba(0,0,0,0.5)]'
+                ? 'bg-[#06060e]/90 hover:bg-white/10 border-[#2A2A2A] text-slate-300 backdrop-blur-md shadow-[0_0_15px_rgba(0,0,0,0.5)]'
                 : 'bg-white/90 hover:bg-slate-100 border-slate-300 text-blue-900 shadow-md backdrop-blur-md'
             }`}
             title="Переключить тему оформления"
@@ -122,7 +228,7 @@ export const Header: React.FC<HeaderProps> = ({
   // Simplified header for dispatcher (use same layout for console and operator)
   if (userRole === 'dispatcher') {
     return (
-      <header className={`sticky top-0 z-50 transition-colors duration-200 border-b backdrop-blur-md ${isDark ? 'bg-[#141414]/90 border-cyan-500/20 text-white' : 'bg-white/95 border-slate-300 text-slate-900'}`}>
+      <header className={`sticky top-0 z-50 transition-colors duration-200 border-b backdrop-blur-md ${isDark ? 'bg-[#141414]/90 border-[#2A2A2A] text-white' : 'bg-white/95 border-slate-300 text-slate-900'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
               <div className="flex items-center gap-3">
@@ -139,7 +245,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <>
                     <button
                       onClick={() => setActiveTab('console')}
-                      className={`flex items-center gap-2 px-3 py-1 rounded-lg font-bold transition ${isConsoleActive ? (isDark ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50' : 'bg-blue-950 text-white') : 'text-slate-300 bg-transparent hover:text-white hover:bg-white/5'}`}
+                      className={`flex items-center gap-2 px-3 py-1 rounded-lg font-bold transition ${isConsoleActive ? (isDark ? 'bg-[#222222] text-slate-100 border border-[#2A2A2A]' : 'bg-blue-950 text-white') : isDark ? 'text-slate-300 bg-transparent hover:text-white hover:bg-white/5' : 'text-slate-900 bg-transparent hover:text-blue-950 hover:bg-slate-200/80'}`}
                     >
                       <Zap className="h-4 w-4" />
                       Демо-стенд
@@ -147,7 +253,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                     <button
                       onClick={() => setActiveTab('operator')}
-                      className={`flex items-center gap-2 px-3 py-1 rounded-lg font-bold transition ${isOperatorActive ? (isDark ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50' : 'bg-blue-950 text-white') : 'text-slate-300 bg-transparent hover:text-white hover:bg-white/5'}`}
+                      className={`flex items-center gap-2 px-3 py-1 rounded-lg font-bold transition ${isOperatorActive ? (isDark ? 'bg-[#222222] text-slate-100 border border-[#2A2A2A]' : 'bg-blue-950 text-white') : isDark ? 'text-slate-300 bg-transparent hover:text-white hover:bg-white/5' : 'text-slate-900 bg-transparent hover:text-blue-950 hover:bg-slate-200/80'}`}
                     >
                       <User className="h-4 w-4" />
                       <span>Заявки</span>
@@ -160,22 +266,12 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
 
             <div className="flex items-center gap-2">
-              <div className="relative flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-semibold w-36 bg-[#0B2731] border-[#0B2731] text-white">
-                <Zap className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-                <select
-                  id="header-model-dropdown-dispatcher"
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel?.(e.target.value)}
-                  className={`appearance-none bg-[#0B2731] text-white text-xs font-mono font-bold focus:outline-none cursor-pointer w-full [&>option]:bg-[#0B2731] [&>option]:text-white`}
-                >
-                  <option value="qwen3.6-27b">qwen3.6-27b</option>
-                  <option value="gpt-4o">gpt-4o</option>
-                  <option value="gemma4:e4b">gemma4:e4b</option>
-                  <option value="deepseek-reasoner">deepseek-reasoner</option>
-                  <option value="nemotron-3-ultra-550b-a55b">nemotron-3-ultra-550b-a55b</option>
-                </select>
-                <ChevronDown className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
-              </div>
+              <ModelSelect
+                id="header-model-dropdown-dispatcher"
+                value={selectedModel}
+                onChange={(m) => setSelectedModel?.(m)}
+                isDark={isDark}
+              />
               <button
                 id="header-theme-btn-dispatcher"
                 onClick={() => setTheme(isDark ? 'light' : 'dark')}
@@ -199,7 +295,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header
       className={`sticky top-0 z-50 transition-colors duration-200 border-b backdrop-blur-md ${
         isDark
-          ? 'bg-[#141414]/90 border-cyan-500/20 text-white shadow-[0_4px_20px_rgba(0,0,0,0.8)]'
+          ? 'bg-[#141414]/90 border-[#2A2A2A] text-white shadow-[0_4px_20px_rgba(0,0,0,0.8)]'
           : 'bg-white/95 border-slate-300 text-slate-900 shadow-md'
       }`}
     >
@@ -217,7 +313,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             <nav className={`hidden md:flex items-center justify-start gap-3 p-1 rounded-xl border font-mono text-xs ${
-              isDark ? 'border-cyan-500/30 bg-[#141414]' : 'border-slate-300 bg-slate-100/90 shadow-inner'
+              isDark ? 'border-[#2A2A2A] bg-[#141414]' : 'border-slate-300 bg-slate-100/90 shadow-inner'
             }`}>
             {visibleTabs.map((tab) => {
               const Icon = getTabIcon(tab);
@@ -232,7 +328,7 @@ export const Header: React.FC<HeaderProps> = ({
                   className={`relative px-2.5 py-1 rounded-lg font-bold transition-all flex items-center space-x-2 whitespace-nowrap ${
                     isActive
                       ? isDark
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
+                        ? 'bg-[#222222] text-slate-100 border border-[#2A2A2A]'
                         : 'bg-blue-950 text-white font-extrabold shadow-sm'
                       : isDark
                       ? 'text-slate-300 hover:text-white hover:bg-white/5'
@@ -253,23 +349,17 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div className="flex items-center gap-2 text-xs font-mono">
             {userRole === 'dispatcher' ? (
-              <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-semibold ${
-                isDark
-                  ? 'bg-cyan-950/60 border-cyan-500/40 text-cyan-300'
-                  : 'bg-blue-50 border-blue-200 text-blue-950 font-bold'
-              }`}>
-                <Zap className={`h-3.5 w-3.5 animate-pulse ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-                <select id="header-model-dropdown" value={selectedModel} onChange={(e) => setSelectedModel?.(e.target.value)} className={`bg-transparent text-xs font-mono font-bold focus:outline-none cursor-pointer w-full ${isDark ? 'text-cyan-300 [&>option]:bg-[#060612] [&>option]:text-white' : 'text-blue-950 [&>option]:bg-white [&>option]:text-slate-900'}`}>
-                  <option value="qwen3.6-27b">qwen3.6-27b</option>
-                  <option value="gpt-4o">gpt-4o</option>
-                  <option value="gemma4:e4b">gemma4:e4b</option>
-                  <option value="deepseek-reasoner">deepseek-reasoner</option>
-                  <option value="nemotron-3-ultra-550b-a55b">nemotron-3-ultra-550b-a55b</option>
-                </select>
+              <div className="hidden sm:flex items-center gap-2">
+                <ModelSelect
+                  id="header-model-dropdown"
+                  value={selectedModel}
+                  onChange={(m) => setSelectedModel?.(m)}
+                  isDark={isDark}
+                />
                 <button
                   id="header-theme-btn-dispatcher"
                   onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                  className={`ml-2 p-2 rounded-lg border transition-all ${
+                  className={`p-2 rounded-lg border transition-all ${
                     isDark
                       ? 'bg-white/5 hover:bg-white/10 border-white/10 text-amber-400'
                       : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-blue-950'
@@ -282,24 +372,15 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <>
 
-                <div className="relative hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-semibold w-36 bg-[#0B2731] border-[#0B2731] text-white">
-                  <Zap className={`h-3.5 w-3.5 animate-pulse ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-                  <select
+                <div className="hidden sm:flex items-center">
+                  <ModelSelect
                     id="header-model-dropdown"
                     value={selectedModel}
-                    onChange={(e) => {
-                      const newModel = e.target.value;
-                      if (setSelectedModel) setSelectedModel(newModel);
+                    onChange={(m) => {
+                      if (setSelectedModel) setSelectedModel(m);
                     }}
-                    className={`appearance-none bg-[#0B2731] text-white text-xs font-mono font-bold focus:outline-none cursor-pointer w-full [&>option]:bg-[#0B2731] [&>option]:text-white`}
-                  >
-                    <option value="qwen3.6-27b">qwen3.6-27b</option>
-                    <option value="gpt-4o">gpt-4o</option>
-                    <option value="gemma4:e4b">gemma4:e4b</option>
-                    <option value="deepseek-reasoner">deepseek-reasoner</option>
-                    <option value="nemotron-3-ultra-550b-a55b">nemotron-3-ultra-550b-a55b</option>
-                  </select>
-                  <ChevronDown className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
+                    isDark={isDark}
+                  />
                 </div>
                 <button
                   id="header-theme-btn"

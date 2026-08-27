@@ -5,9 +5,10 @@ import { Eye, Quote } from 'lucide-react';
 interface FactExtractorViewProps {
   facts: ExtractedFacts | null;
   theme?: 'dark' | 'light';
+  onFactsChange?: (facts: ExtractedFacts) => void;
 }
 
-export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, theme = 'dark' }) => {
+export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, theme = 'dark', onFactsChange }) => {
   const isDark = theme === 'dark';
   const [editableValues, setEditableValues] = useState<Record<string, string>>({});
 
@@ -23,6 +24,26 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, the
       has_backup: facts.has_backup?.value || '',
     });
   }, [facts]);
+
+  // Sync edited values back to parent when facts change
+  useEffect(() => {
+    if (!facts || !onFactsChange) return;
+    const hasChanges = Object.keys(editableValues).some(
+      (key) => editableValues[key] !== (facts[key as keyof ExtractedFacts] as any)?.value
+    );
+    if (!hasChanges) return;
+
+    const updatedFacts: ExtractedFacts = {
+      ...facts,
+      customer_name: { ...facts.customer_name, value: editableValues.customer_name || null },
+      site_info: { ...facts.site_info, value: editableValues.site_info || null },
+      asset_code: { ...facts.asset_code, value: editableValues.asset_code || null },
+      problem_summary: { ...facts.problem_summary, value: editableValues.problem_summary || null },
+      requested_deadline: { ...facts.requested_deadline, value: editableValues.requested_deadline || null },
+      has_backup: { ...facts.has_backup, value: editableValues.has_backup || null },
+    };
+    onFactsChange(updatedFacts);
+  }, [editableValues]);
 
   if (!facts) {
     return (
@@ -55,7 +76,7 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, the
         }`}
       >
         <div className="flex items-center justify-between">
-          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
+          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-blue-950'}`}>
             {label}
           </span>
           <div className="flex items-center space-x-1.5">
@@ -63,10 +84,10 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, the
               className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
                 isHighConf
                   ? isDark
-                    ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/50 shadow-[0_0_8px_rgba(34,211,238,0.3)]'
+                    ? 'bg-[#222222] text-slate-300 border border-[#2A2A2A]'
                     : 'bg-blue-100 text-blue-950 border border-blue-300 font-extrabold'
                   : isDark
-                  ? 'bg-amber-950 text-amber-300 border border-amber-500/50'
+                  ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
                   : 'bg-amber-100 text-amber-950 border border-amber-300 font-extrabold'
               }`}
             >
@@ -103,8 +124,8 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, the
         </div>
 
         {factItem.quote && (
-          <div className="pt-1.5 border-t border-slate-700/20 flex items-start space-x-1 text-[11px] text-slate-500">
-            <Quote className={`h-3 w-3 flex-shrink-0 mt-0.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
+          <div className={`pt-1.5 border-t flex items-start space-x-1 text-[11px] ${isDark ? 'border-slate-700/20 text-slate-500' : 'border-slate-200 text-slate-600'}`}>
+            <Quote className={`h-3 w-3 flex-shrink-0 mt-0.5 ${isDark ? 'text-slate-400' : 'text-blue-900'}`} />
             <span className="italic line-clamp-1 font-sans">"{factItem.quote}"</span>
           </div>
         )}
@@ -123,15 +144,15 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, the
     >
       <div className="flex items-center justify-between pb-3 border-b border-slate-700/30 mb-3">
         <div className="flex items-center space-x-2">
-          <Eye className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-          <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
+          <Eye className={`h-4 w-4 ${isDark ? 'text-slate-300' : 'text-blue-900'}`} />
+          <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-slate-100' : 'text-blue-950'}`}>
             1. Извлеченные факты
           </h2>
         </div>
         <span
           className={`text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg border ${
             isDark
-              ? 'text-cyan-300 bg-cyan-950/60 border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
+              ? 'text-slate-300 bg-[#222222] border-[#2A2A2A]'
               : 'text-blue-950 bg-blue-50 border-blue-200 font-extrabold'
           }`}
         >

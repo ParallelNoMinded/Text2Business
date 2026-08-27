@@ -76,11 +76,11 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
       }`}
     >
       {/* Header Bar */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
+      <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-slate-700/30' : 'border-slate-200'}`}>
         <div>
           <div className="flex items-center space-x-2">
-            <span className={`h-2 w-2 rounded-full ${isDark ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-blue-900'}`}></span>
-            <h2 className={`text-xs font-mono font-extrabold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
+            <span className={`h-2 w-2 rounded-full ${isDark ? 'bg-slate-400' : 'bg-blue-900'}`}></span>
+            <h2 className={`text-xs font-mono font-extrabold uppercase tracking-wider ${isDark ? 'text-slate-100' : 'text-blue-950'}`}>
               Обращение
             </h2>
           </div>
@@ -96,7 +96,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           onClick={onResetInput}
           className={`flex items-center space-x-1 px-2.5 py-1 text-[11px] font-mono border rounded-lg transition ${
               isDark
-                ? 'text-slate-300 bg-[#222222] border-[#2A2A2A] hover:border-cyan-500/30 hover:text-white'
+                ? 'text-slate-300 bg-[#222222] border-[#2A2A2A] hover:border-slate-500/50 hover:text-white'
                 : 'text-slate-700 hover:text-blue-950 bg-slate-100 hover:bg-slate-200 border-slate-300 font-bold'
             }`}
           title="Сбросить введенные данные к значениям пресета"
@@ -126,10 +126,10 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                 className={`text-left px-3 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col justify-between ${
                   isSelected
                     ? isDark
-                      ? 'bg-cyan-950/60 border-cyan-500/80 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.2)] ring-1 ring-cyan-500/40'
+                      ? 'bg-[#222222] border-slate-400/60 text-slate-100 ring-1 ring-slate-400/40'
                       : 'bg-blue-900 border-blue-950 text-white font-extrabold ring-1 ring-blue-900 shadow-sm'
                     : isDark
-                    ? 'bg-[#1C1B1B] border-[#2A2A2A] text-slate-300 hover:border-cyan-500/40 hover:text-slate-200'
+                    ? 'bg-[#1C1B1B] border-[#2A2A2A] text-slate-300 hover:border-slate-500/50 hover:text-slate-200'
                     : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-blue-900 hover:bg-slate-100 font-semibold'
                 }`}
               >
@@ -139,11 +139,11 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                     className={`text-[9px] px-1 py-0.2 rounded font-bold uppercase ${
                       preset.id === 'tc-04'
                         ? isDark
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                          : 'bg-rose-100 text-rose-950 border border-rose-300 font-extrabold'
+                          ? 'bg-red-500/10 text-red-300 border border-red-500/25'
+                          : 'bg-red-100 text-red-950 border border-red-300 font-extrabold'
                         : isSelected
                         ? isDark
-                          ? 'bg-cyan-500/20 text-cyan-300'
+                          ? 'bg-slate-600/40 text-slate-200'
                           : 'bg-blue-800 text-white'
                         : isDark
                         ? 'bg-slate-700/30 text-slate-400'
@@ -168,7 +168,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           <div>
             <label
               className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${
-                isDark ? 'text-cyan-400' : 'text-blue-950'
+                isDark ? 'text-slate-400' : 'text-blue-950'
               }`}
             >
               Канал связи
@@ -180,7 +180,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                 onChange={(e) => setChannel(e.target.value)}
                 className={`w-full border rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none appearance-none pr-8 ${
                   isDark
-                    ? 'bg-[#1C1B1B] border-[#2A2A2A] text-white focus:border-cyan-400'
+                    ? 'bg-[#1C1B1B] border-[#2A2A2A] text-white focus:border-slate-400'
                     : 'bg-slate-50 border-slate-300 text-blue-950 font-bold focus:border-blue-900'
                 }`}
               >
@@ -191,7 +191,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                 <option value="telegram">Telegram Бот / Чат</option>
                 <option value="portal">Сервисный Веб-Портал</option>
               </select>
-              <div className={`absolute right-2.5 top-2.5 pointer-events-none ${isDark ? 'text-cyan-500' : 'text-blue-900'}`}>
+              <div className={`absolute right-2.5 top-2.5 pointer-events-none ${isDark ? 'text-slate-400' : 'text-blue-900'}`}>
                 {getChannelIcon(channel)}
               </div>
             </div>
@@ -200,7 +200,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           <div>
             <label
               className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${
-                isDark ? 'text-cyan-400' : 'text-blue-950'
+                isDark ? 'text-slate-400' : 'text-blue-950'
               }`}
             >
               Время получения (Timestamp)
@@ -213,11 +213,11 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                 onChange={(e) => setIncomingTime(e.target.value)}
                 className={`w-full border rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none pr-8 ${
                   isDark
-                    ? 'bg-[#1C1B1B] border-[#2A2A2A] text-white focus:border-cyan-400'
+                    ? 'bg-[#1C1B1B] border-[#2A2A2A] text-white focus:border-slate-400'
                     : 'bg-slate-50 border-slate-300 text-blue-950 font-bold focus:border-blue-900'
                 }`}
               />
-              <Clock className={`absolute right-2.5 top-2 h-3.5 w-3.5 pointer-events-none ${isDark ? 'text-cyan-500' : 'text-blue-900'}`} />
+              <Clock className={`absolute right-2.5 top-2 h-3.5 w-3.5 pointer-events-none ${isDark ? 'text-slate-400' : 'text-blue-900'}`} />
             </div>
           </div>
         </div>
@@ -227,7 +227,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           <div className="flex items-center justify-between mb-1">
             <label
               className={`block text-[10px] font-mono font-bold uppercase tracking-wider ${
-                isDark ? 'text-cyan-400' : 'text-blue-950'
+                isDark ? 'text-slate-400' : 'text-blue-950'
               }`}
             >
               Текст входящего обращения
@@ -249,7 +249,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
             placeholder="Введите неструктурированный текст обращения..."
             className={`w-full border rounded-xl p-4 text-sm placeholder-slate-400 focus:outline-none font-sans leading-relaxed shadow-inner resize-none ${
               isDark
-                ? 'bg-[#1C1B1B] border-[#2A2A2A] text-slate-100 focus:border-cyan-400'
+                ? 'bg-[#1C1B1B] border-[#2A2A2A] text-slate-100 focus:border-slate-400'
                 : 'bg-slate-50 border-slate-300 text-slate-900 font-semibold focus:border-blue-900'
             }`}
           />
@@ -263,7 +263,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           disabled={isLoading || !rawText.trim()}
           className={`w-full font-extrabold py-4 px-4 rounded-xl shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-[0.99] ${
             isDark
-              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-[0_10px_40px_rgba(34,211,238,0.12)]'
+              ? 'bg-slate-200 hover:bg-white text-slate-950'
               : 'bg-blue-900 hover:bg-blue-950 text-white shadow-blue-900/20'
           } ${isLoading || !rawText.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
         >

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Header, TabType, UserRole } from './components/Header';
 import { LandingHome } from './components/LandingHome';
 import { ChannelsConfigView } from './components/ChannelsConfigView';
@@ -63,6 +63,13 @@ export default function App() {
   const [isCommitting, setIsCommitting] = useState<boolean>(false);
   const [commitSuccessMsg, setCommitSuccessMsg] = useState<string | null>(null);
   const [homeRoleSelection, setHomeRoleSelection] = useState<boolean>(false);
+  const dispatchCardRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToResult = () => {
+    if (dispatchCardRef.current) {
+      dispatchCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const handleSelectPreset = (presetId: string) => {
     const preset = SCENARIO_PRESETS.find((p) => p.id === presetId);
@@ -107,6 +114,27 @@ export default function App() {
       setIsRunningDispatch(false);
     }
   };
+
+  // Inline fact editing: sync edited facts back into result for commit
+  const handleFactsChange = useCallback((updatedFacts: ProcessingResult['extracted_facts']) => {
+    setResult((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        extracted_facts: updatedFacts,
+        // Rebuild ticket payload summary from edited facts
+        ticket_payload: prev.ticket_payload
+          ? {
+              ...prev.ticket_payload,
+              summary: updatedFacts.problem_summary?.value || prev.ticket_payload.summary,
+              description: updatedFacts.problem_summary?.value
+                ? `Канал: ${prev.ticket_payload.description?.split('\n')[0]?.replace('Канал: ', '') || 'REST'}\nОтправитель: ${updatedFacts.customer_name?.value || ''}\nДетали: ${updatedFacts.problem_summary?.value || ''}`
+                : prev.ticket_payload.description,
+            }
+          : prev.ticket_payload,
+      };
+    });
+  }, []);
 
   const handleCommitLive = async () => {
     if (!result?.ticket_payload) return;
@@ -278,11 +306,27 @@ export default function App() {
                   подтверждённый коммит в БД делает оператор (кнопка «Подтвердить»).
                 </p>
               </div>
-              <span className={`text-[11px] font-mono px-3 py-1.5 rounded-lg border font-bold whitespace-nowrap ${
-                isDark ? 'bg-amber-500/10 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-950 border-amber-400'
-              }`}>
-                ⚠ ТЕСТОВЫЙ РЕЖИМ (dry-run)
-              </span>
+              <div className="flex items-center gap-2">
+                {result && (
+                  <button
+                    type="button"
+                    onClick={scrollToResult}
+                    className={`text-[11px] font-mono px-3 py-1.5 rounded-lg border font-bold whitespace-nowrap transition ${
+                      isDark
+                        ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/20'
+                        : 'bg-blue-50 text-blue-950 border-blue-300 hover:bg-blue-100'
+                    }`}
+                    title="Прокрутить к решению"
+                  >
+                    ↓ К результату
+                  </button>
+                )}
+                <span className={`text-[11px] font-mono px-3 py-1.5 rounded-lg border font-bold whitespace-nowrap ${
+                  isDark ? 'bg-amber-500/10 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-950 border-amber-400'
+                }`}>
+                  ⚠ ТЕСТОВЫЙ РЕЖИМ (dry-run)
+                </span>
+              </div>
             </div>
 
             <ScenarioRunner
@@ -305,15 +349,36 @@ export default function App() {
             <FactExtractorView
               facts={result?.extracted_facts || null}
               theme={theme}
+              onFactsChange={handleFactsChange}
             />
 
-            <DispatchCard
-              result={result}
-              onCommitLive={handleCommitLive}
-              isCommitting={isCommitting}
-              commitSuccessMsg={commitSuccessMsg}
-              theme={theme}
-            />
+            {/* Skeleton loaders while dispatch is running */}
+            {isRunningDispatch && !result && (
+              <div className="space-y-4 animate-pulse">
+                <div className={`rounded-2xl p-5 border ${isDark ? 'bg-[#1C1B1B] border-[#2A2A2A]' : 'bg-white border-slate-300'}`}>
+                  <div className={`h-4 w-40 rounded mb-3 ${isDark ? 'bg-slate-700/50' : 'bg-slate-200'}`} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className={`h-24 rounded-xl ${isDark ? 'bg-slate-700/30' : 'bg-slate-100'}`} />
+                    ))}
+                  </div>
+                </div>
+                <div className={`rounded-2xl p-5 border ${isDark ? 'bg-[#1C1B1B] border-[#2A2A2A]' : 'bg-white border-slate-300'}`}>
+                  <div className={`h-4 w-48 rounded mb-3 ${isDark ? 'bg-slate-700/50' : 'bg-slate-200'}`} />
+                  <div className={`h-20 rounded-xl ${isDark ? 'bg-slate-700/30' : 'bg-slate-100'}`} />
+                </div>
+              </div>
+            )}
+
+            <div ref={dispatchCardRef}>
+              <DispatchCard
+                result={result}
+                onCommitLive={handleCommitLive}
+                isCommitting={isCommitting}
+                commitSuccessMsg={commitSuccessMsg}
+                theme={theme}
+              />
+            </div>
 
             <ExecutionTraceTimeline
               trace={result?.trace || []}

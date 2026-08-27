@@ -160,10 +160,10 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
   };
 
   return (
-    <div id="operator-console-page" className="flex flex-col h-[calc(100vh-120px)]">
+    <div id="operator-console-page" className="space-y-6">
       {/* Top Banner */}
       <div
-        className={`rounded-2xl p-[21px] border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-[13px] ${
+        className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
           isDark
             ? 'bg-[#1C1B1B] border-[#2A2A2A] text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
             : 'bg-white border-slate-300 text-slate-950 shadow-md'
@@ -176,7 +176,7 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
               Рабочее Место Диспетчера
             </h2>
           </div>
-          <p className={`text-xs mt-[5px] font-sans ${isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'}`}>
+          <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'}`}>
             Разрешение неопределенностей, интерактивный диалог с клиентом в боте, ручное дообогащение данных и передача в 1С:ERP.
           </p>
         </div>
@@ -204,131 +204,128 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
         </div>
       </div>
 
-      {/* Главное содержимое: вертикальный φ-раздел 61.8% / 38.2% */}
-      <div className="flex flex-1 gap-[21px] overflow-hidden">
-        {/* SECTION 1: PENDING HITL TICKETS — 61.8% высоты */}
-        <div className="flex-[1.618] min-h-0 space-y-[13px] overflow-y-auto">
-          <h3 className={`text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-1.5 ${
-            isDark ? 'text-slate-300' : 'text-slate-800 font-extrabold'
-          }`}>
-            <ShieldAlert className="h-4 w-4" />
-            <span>Обращения, Требующие Уточнения Данных Диспетчером ({pendingTickets.length})</span>
-          </h3>
+      {/* SECTION 1: PENDING HITL TICKETS (RED GLOW ATTENTION) */}
+      <div className="space-y-3">
+        <h3 className={`text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-1.5 ${
+          isDark ? 'text-slate-300' : 'text-slate-800 font-extrabold'
+        }`}>
+          <ShieldAlert className="h-4 w-4" />
+          <span>Обращения, Требующие Уточнения Данных Диспетчером ({pendingTickets.length})</span>
+        </h3>
 
-          {pendingTickets.length === 0 ? (
-            <div className={`p-[21px] rounded-2xl border text-center text-xs font-mono ${isDark ? 'bg-[#222222] border-[#2A2A2A] text-slate-500' : 'bg-slate-100 border-slate-300 text-slate-900 font-semibold'}`}>
-              // Нет неполных обращений. AI-Диспетчер автоматически обработал 100% поступивших сообщений.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-[21px]">
-              {pendingTickets.map((ticket) => (
-                <div
-                  key={ticket.ticket_id}
-                  onClick={() => handleOpenTicketInspector(ticket)}
-                  className={`p-[21px] rounded-2xl border transition-all cursor-pointer hover:scale-[1.01] ${
+        {pendingTickets.length === 0 ? (
+          <div className={`p-5 rounded-2xl border text-center text-xs font-mono ${isDark ? 'bg-[#222222] border-slate-800 text-slate-500' : 'bg-slate-100 border-slate-300 text-slate-900 font-semibold'}`}>
+            // Нет неполных обращений. AI-Диспетчер автоматически обработал 100% поступивших сообщений.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pendingTickets.map((ticket) => (
+              <div
+                key={ticket.ticket_id}
+                onClick={() => handleOpenTicketInspector(ticket)}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer hover:scale-[1.01] ${
+                  isDark
+                    ? 'bg-[#1C1B1B] border-red-500/25 hover:border-red-500/50'
+                    : 'bg-white border-red-400 hover:border-red-600 shadow-md text-slate-950'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${
                     isDark
-                      ? 'bg-[#1C1B1B] border-red-500/25 hover:border-red-500/50'
-                      : 'bg-white border-red-400 hover:border-red-600 shadow-md text-slate-950'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-[13px]">
-                    <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${
-                      isDark
-                        ? 'text-slate-200 bg-[#222222] border-[#2A2A2A]'
-                        : 'text-slate-800 bg-slate-100 border-slate-300 font-extrabold'
-                    }`}>
-                      {ticket.ticket_id}
-                    </span>
-                    <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded border flex items-center space-x-1 ${
-                      isDark
-                        ? 'text-red-300 bg-red-500/10 border-red-500/25'
-                        : 'text-red-950 bg-red-100 border-red-400 font-extrabold'
-                    }`}>
-                      <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping"></span>
-                      <span>Уточнение Данных</span>
-                    </span>
-                  </div>
-
-                  <h4 className={`text-xs font-bold mb-[13px] ${isDark ? 'text-white' : 'text-slate-950 font-extrabold'}`}>
-                    {ticket.summary || 'Неполное обращение без кода оборудования'}
-                  </h4>
-                  <p className={`text-[11px] mb-[21px] line-clamp-2 ${isDark ? 'text-slate-400' : 'text-slate-900 font-medium'}`}>
-                    {ticket.description}
-                  </p>
-
-                  {ticket.missing_fields && (
-                    <div className="mb-[13px] flex flex-wrap gap-1 font-mono text-[10px]">
-                      <span className={isDark ? 'text-slate-400' : 'text-slate-900 font-bold'}>Отсутствует:</span>
-                      {ticket.missing_fields.map((field) => (
-                        <span key={field} className={`px-2 py-0.5 rounded border font-bold ${
-                          isDark
-                            ? 'bg-red-500/10 text-red-300 border-red-500/25'
-                            : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
-                        }`}>
-                          ⚠️ {field}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className={`flex items-center justify-between pt-[13px] border-t text-[11px] font-mono font-bold ${
-                    isDark
-                      ? 'border-slate-700/30 text-slate-300'
-                      : 'border-slate-200 text-blue-950 font-extrabold'
+                      ? 'text-slate-200 bg-[#222222] border-[#2A2A2A]'
+                      : 'text-slate-800 bg-slate-100 border-slate-300 font-extrabold'
                   }`}>
-                    <span>Открыть интерактивный диалог</span>
-                    <MessageSquare className="h-4 w-4" />
-                  </div>
+                    {ticket.ticket_id}
+                  </span>
+                  <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded border flex items-center space-x-1 ${
+                    isDark
+                      ? 'text-red-300 bg-red-500/10 border-red-500/25'
+                      : 'text-red-950 bg-red-100 border-red-400 font-extrabold'
+                  }`}>
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping"></span>
+                    <span>Уточнение Данных</span>
+                  </span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* SECTION 2: REGULAR IN-PROGRESS TICKETS — 38.2% высоты */}
-        <div className="flex-1 min-h-0 space-y-[13px]">
-          <h3 className={`text-xs font-mono font-bold uppercase tracking-wider ${
-            isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'
-          }`}>
-            Все Укомплектованные Заявки в Работе ({activeTickets.length})
-          </h3>
+                <h4 className={`text-xs font-bold mb-1 ${isDark ? 'text-white' : 'text-slate-950 font-extrabold'}`}>
+                  {ticket.summary || 'Неполное обращение без кода оборудования'}
+                </h4>
+                <p className={`text-[11px] mb-3 line-clamp-2 ${isDark ? 'text-slate-400' : 'text-slate-900 font-medium'}`}>
+                  {ticket.description}
+                </p>
 
-          <div className={`rounded-2xl p-[21px] border overflow-x-auto flex-1 ${isDark ? 'bg-[#1C1B1B] border-[#2A2A2A]' : 'bg-white border-slate-300 shadow-sm'}`}>
-            <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-950'}`}>
-              <thead className={`font-mono uppercase text-[10px] border-b ${isDark ? 'bg-[#222222] text-slate-300 border-[#2A2A2A]' : 'bg-slate-200 text-slate-950 font-extrabold border-slate-300'}`}>
-                <tr>
-                  <th className="p-3">ID Заявки</th>
-                  <th className="p-3">Объект / Ассет</th>
-                  <th className="p-3">Суть Обращения</th>
-                  <th className="p-3">Приоритет</th>
-                  <th className="p-3">SLA Дедлайн</th>
-                  <th className="p-3">Группа</th>
-                </tr>
-              </thead>
-              <tbody className={`divide-y font-sans ${isDark ? 'divide-slate-700/20' : 'divide-slate-200'}`}>
-                {activeTickets.map((t) => (
-                  <tr key={t.ticket_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100/80'}>
-                    <td className={`p-3 font-mono font-bold ${isDark ? 'text-slate-200' : 'text-slate-900 font-extrabold'}`}>{t.ticket_id}</td>
-                    <td className={`p-3 font-mono font-bold ${isDark ? 'text-slate-300' : 'text-slate-800 font-extrabold'}`}>{t.asset_id}</td>
-                    <td className="p-3 font-semibold">{t.summary}</td>
-                    <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded border font-mono font-bold text-[10px] ${
+                {ticket.missing_fields && (
+                  <div className="mb-3 flex flex-wrap gap-1 font-mono text-[10px]">
+                    <span className={isDark ? 'text-slate-400' : 'text-slate-900 font-bold'}>Отсутствует:</span>
+                    {ticket.missing_fields.map((field) => (
+                      <span key={field} className={`px-2 py-0.5 rounded border font-bold ${
                         isDark
                           ? 'bg-red-500/10 text-red-300 border-red-500/25'
                           : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
                       }`}>
-                        {t.priority.toUpperCase()}
+                        ⚠️ {field}
                       </span>
-                    </td>
-                    <td className="p-3 font-mono font-semibold">
-                      {new Date(t.sla_deadline).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                    </td>
-                    <td className={`p-3 font-mono ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>{t.assigned_group}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    ))}
+                  </div>
+                )}
+
+                <div className={`flex items-center justify-between pt-2 border-t text-[11px] font-mono font-bold ${
+                  isDark
+                    ? 'border-slate-700/30 text-slate-300'
+                    : 'border-slate-200 text-blue-950 font-extrabold'
+                }`}>
+                  <span>Открыть интерактивный диалог</span>
+                  <MessageSquare className="h-4 w-4" />
+                </div>
+              </div>
+            ))}
           </div>
+        )}
+      </div>
+
+      {/* SECTION 2: REGULAR IN-PROGRESS TICKETS */}
+      <div className="space-y-3 pt-4">
+        <h3 className={`text-xs font-mono font-bold uppercase tracking-wider ${
+          isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'
+        }`}>
+          Все Укомплектованные Заявки в Работе ({activeTickets.length})
+        </h3>
+
+        <div className={`rounded-2xl p-4 border overflow-x-auto ${isDark ? 'bg-[#1C1B1B] border-[#2A2A2A]' : 'bg-white border-slate-300 shadow-sm'}`}>
+          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-950'}`}>
+            <thead className={`font-mono uppercase text-[10px] border-b ${isDark ? 'bg-[#222222] text-slate-300 border-[#2A2A2A]' : 'bg-slate-200 text-slate-950 font-extrabold border-slate-300'}`}>
+              <tr>
+                <th className="p-3">ID Заявки</th>
+                <th className="p-3">Объект / Ассет</th>
+                <th className="p-3">Суть Обращения</th>
+                <th className="p-3">Приоритет</th>
+                <th className="p-3">SLA Дедлайн</th>
+                <th className="p-3">Группа</th>
+              </tr>
+            </thead>
+            <tbody className={`divide-y font-sans ${isDark ? 'divide-slate-700/20' : 'divide-slate-200'}`}>
+              {activeTickets.map((t) => (
+                <tr key={t.ticket_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100/80'}>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-slate-200' : 'text-slate-900 font-extrabold'}`}>{t.ticket_id}</td>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-slate-300' : 'text-slate-800 font-extrabold'}`}>{t.asset_id}</td>
+                  <td className="p-3 font-semibold">{t.summary}</td>
+                  <td className="p-3">
+                    <span className={`px-2 py-0.5 rounded border font-mono font-bold text-[10px] ${
+                      isDark
+                        ? 'bg-red-500/10 text-red-300 border-red-500/25'
+                        : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
+                    }`}>
+                      {t.priority.toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="p-3 font-mono font-semibold">
+                    {new Date(t.sla_deadline).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>{t.assigned_group}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -336,12 +333,12 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
       {selectedTicket && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div
-            className={`w-full max-w-[792px] rounded-2xl p-[21px] border shadow-2xl flex flex-col max-h-[90vh] ${
+            className={`w-full max-w-2xl rounded-2xl p-6 border shadow-2xl flex flex-col max-h-[90vh] ${
               isDark ? 'bg-[#1C1B1B] border-[#2A2A2A] text-white' : 'bg-white border-slate-400 text-slate-950 shadow-2xl'
             }`}
           >
             {/* Modal Header */}
-            <div className={`flex items-center justify-between pb-[13px] border-b ${isDark ? 'border-slate-700/30' : 'border-slate-300'}`}>
+            <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-slate-700/30' : 'border-slate-300'}`}>
               <div className="flex items-center space-x-2.5">
                 <div className={`p-2 rounded-xl border ${
                   isDark
@@ -371,8 +368,8 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
               </button>
             </div>
 
-            {/* Chat Messages History Stream — φ-пропорция: 61.8% высоты */}
-            <div className={`flex-[1.618] overflow-y-auto my-[21px] space-y-[13px] p-[13px] rounded-xl border font-sans text-xs ${
+            {/* Chat Messages History Stream */}
+            <div className={`flex-1 overflow-y-auto my-4 space-y-3 p-3 rounded-xl border font-sans text-xs ${
               isDark ? 'bg-[#222222]/60 border-[#2A2A2A]' : 'bg-slate-100 border-slate-300'
             }`}>
               {(selectedTicket.messages || [
@@ -386,31 +383,31 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
               ]).map((msg) => (
                 <div
                   key={msg.id}
-                  className={`p-3 rounded-xl ${
+                  className={`p-3 rounded-xl max-w-[85%] ${
                     msg.sender === 'operator'
                       ? isDark
-                        ? 'bg-cyan-500/10 border border-cyan-500/25 text-cyan-100/90 ml-auto max-w-[61.8%]'
-                        : 'bg-blue-100 border border-blue-400 text-blue-950 font-semibold ml-auto max-w-[61.8%] shadow-sm'
+                        ? 'bg-cyan-500/10 border border-cyan-500/25 text-cyan-100/90 ml-auto'
+                        : 'bg-blue-100 border border-blue-400 text-blue-950 font-semibold ml-auto shadow-sm'
                       : msg.sender === 'bot'
                       ? isDark
-                        ? 'bg-[#262626] border border-[#2A2A2A] text-slate-300 ml-auto max-w-[61.8%]'
-                        : 'bg-purple-100 border border-purple-400 text-purple-950 font-semibold ml-auto max-w-[61.8%] shadow-sm'
+                        ? 'bg-[#262626] border border-[#2A2A2A] text-slate-300 ml-auto'
+                        : 'bg-purple-100 border border-purple-400 text-purple-950 font-semibold ml-auto shadow-sm'
                       : isDark
-                      ? 'bg-[#262626] border border-[#2A2A2A] text-slate-200 mr-auto max-w-[61.8%]'
-                      : 'bg-white border border-slate-300 text-slate-950 font-semibold mr-auto max-w-[61.8%] shadow-sm'
+                      ? 'bg-[#262626] border border-[#2A2A2A] text-slate-200 mr-auto'
+                      : 'bg-white border border-slate-300 text-slate-950 font-semibold mr-auto shadow-sm'
                   }`}
                 >
                   <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1 opacity-90">
                     <span>{msg.author_name}</span>
                     <span>{new Date(msg.timestamp).toLocaleTimeString('ru-RU')}</span>
                   </div>
-                  <p className="leading-[1.618]">{msg.text}</p>
+                  <p className="leading-relaxed">{msg.text}</p>
                 </div>
               ))}
             </div>
 
-            {/* Operator Manual Entry / Clarification Controls — 38.2% высоты */}
-            <div className={`space-y-[13px] font-mono text-xs border-t pt-[13px] ${isDark ? 'border-slate-700/30' : 'border-slate-300'}`}>
+            {/* Operator Manual Entry / Clarification Controls */}
+            <div className={`space-y-3 font-mono text-xs border-t pt-3 ${isDark ? 'border-slate-700/30' : 'border-slate-300'}`}>
               {/* Missing Information Highlight */}
               <div className={`p-2.5 rounded-xl border text-[11px] flex items-center justify-between ${
                 isDark
@@ -441,7 +438,7 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
               </div>
 
               {/* Quick Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-[13px]">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={handleSendClarification}
                   disabled={isSending}
