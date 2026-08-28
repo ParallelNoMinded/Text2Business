@@ -117,9 +117,9 @@ function normalizeParsedFacts(parsed: any, fallbackText: string): ExtractedFacts
   };
   const problemSummary = pickFact(parsed?.problem_summary);
   if (!problemSummary.value) {
-    const slice = fallbackText.slice(0, 120);
-    problemSummary.value = slice;
-    problemSummary.quote = slice;
+    const full = fallbackText.trim().slice(0, 2000);
+    problemSummary.value = full;
+    problemSummary.quote = full;
     problemSummary.confidence = 0.8;
   }
   return {

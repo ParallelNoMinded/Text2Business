@@ -76,19 +76,19 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
       <div
         className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
           isDark
-            ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
+            ? 'bg-[#1A1D22] border-[#2C3139] text-white '
             : 'bg-white border-slate-300 text-slate-950 shadow-md'
         }`}
       >
         <div>
           <div className="flex items-center space-x-2">
-            <Activity className={`h-5 w-5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`} />
-            <h2 className={`text-sm font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950 font-extrabold'}`}>
-              Мониторинг, Логи и Трейсы Выполнения
+            <Activity className={`h-5 w-5 ${isDark ? 'text-[#52525B]' : 'text-zinc-900'}`} />
+            <h2 className={`text-sm font-mono font-bold uppercase tracking-wider ${isDark ? 'text-[#52525B]' : 'text-zinc-900 font-extrabold'}`}>
+              Журнал обработки
             </h2>
           </div>
           <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'}`}>
-            Сквозное логирование входящих запросов, трассировка OpenTelemetry / Arize AI и дашборды метрик работы AI-Диспетчера.
+            Журнал входящих запросов, цепочки обработки и показатели работы диспетчера.
           </p>
         </div>
 
@@ -96,11 +96,11 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
         <div className="flex items-center space-x-2 font-mono text-xs">
           <button
             onClick={() => setActiveTab('logs')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
+            className={`px-3.5 py-2 rounded-2xl font-bold transition-all flex items-center space-x-1.5 ${
               activeTab === 'logs'
                 ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
+                  ? 'bg-[#52525B]/10 text-zinc-200 border border-[#52525B]/40'
+                  : 'bg-zinc-900 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
                 ? 'text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
@@ -112,11 +112,11 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
 
           <button
             onClick={() => setActiveTab('traces')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
+            className={`px-3.5 py-2 rounded-2xl font-bold transition-all flex items-center space-x-1.5 ${
               activeTab === 'traces'
                 ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
+                  ? 'bg-[#52525B]/10 text-zinc-200 border border-[#52525B]/40'
+                  : 'bg-zinc-900 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
                 ? 'text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
@@ -128,11 +128,11 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
 
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
+            className={`px-3.5 py-2 rounded-2xl font-bold transition-all flex items-center space-x-1.5 ${
               activeTab === 'analytics'
                 ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
+                  ? 'bg-[#52525B]/10 text-zinc-200 border border-[#52525B]/40'
+                  : 'bg-zinc-900 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
                 ? 'text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
@@ -146,25 +146,25 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
 
       {/* METRICS SUMMARY CARDS (по данным прототипа) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
+        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#1A1D22]/80 border-[#2C3139] text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
           <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Всего Заявок</div>
-          <div className={`text-xl font-black ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>{totalRequests}</div>
+          <div className={`text-xl font-black ${isDark ? 'text-[#52525B]' : 'text-zinc-900'}`}>{totalRequests}</div>
           <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>открыто: {db?.open_tickets?.length || 0} • закрыто: {db?.closed_tickets?.length || 0}</div>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
+        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#1A1D22]/80 border-[#2C3139] text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
           <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Авто-Диспетчеризация</div>
           <div className={`text-xl font-black ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{autoRate}%</div>
           <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>SLA-дедлайн по контракту + бизнес-часам</div>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Ожидают HITL</div>
+        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#1A1D22]/80 border-[#2C3139] text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
+          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Ожидают диспетчера</div>
           <div className={`text-xl font-black ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>{pendingHITL}</div>
           <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>требуют уточнения диспетчера</div>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
+        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#1A1D22]/80 border-[#2C3139] text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
           <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Средний Latency</div>
           <div className={`text-xl font-black ${isDark ? 'text-purple-400' : 'text-purple-900'}`}>{avgLatencyMs} ms</div>
           <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>по последним событиям логов</div>
@@ -176,7 +176,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
         <div
           className={`rounded-2xl p-5 border transition-all ${
             isDark
-              ? 'bg-[#030712] border-cyan-500/30 text-slate-200'
+              ? 'bg-[#121417] border-[#2C3139] text-slate-200'
               : 'bg-slate-900 border-slate-800 text-slate-200'
           }`}
         >
@@ -187,7 +187,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
               <select
                 value={logFilter}
                 onChange={(e: any) => setLogFilter(e.target.value)}
-                className="bg-black/80 border border-slate-700 text-cyan-400 rounded-lg p-1.5 text-xs focus:outline-none"
+                className="bg-black/80 border border-slate-700 text-[#52525B] rounded-xl p-1.5 text-xs focus:outline-none"
               >
                 <option value="ALL">Все Каналы</option>
                 <option value="TELEGRAM">Telegram</option>
@@ -206,14 +206,14 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
                   placeholder="Поиск по логам..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-black/80 border border-slate-700 text-white rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none"
+                  className="w-full bg-black/80 border border-slate-700 text-white rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none"
                 />
                 <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
               </div>
 
               <button
                 onClick={handleRefreshLogs}
-                className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold whitespace-nowrap flex items-center space-x-1"
+                className="px-3 py-1.5 rounded-xl bg-[#52525B]/10 hover:bg-cyan-500/30 text-zinc-200 border border-[#2C3139] text-xs font-bold whitespace-nowrap flex items-center space-x-1"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 <span>Обновить</span>
@@ -224,14 +224,14 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
           {/* Terminal Console Stream */}
           <div className="font-mono text-xs space-y-2 max-h-96 overflow-y-auto pr-2">
             {filteredLogs.length === 0 && (
-              <div className="p-6 text-center text-slate-400 border border-dashed border-slate-700 rounded-xl">
+              <div className="p-6 text-center text-slate-400 border border-dashed border-slate-700 rounded-2xl">
                 Событий пока нет. Выполните обращение через демо-стенд (вкладка «Диспетчер») — логи появятся здесь из GET /api/logs.
               </div>
             )}
             {filteredLogs.map((log) => (
               <div
                 key={log.id}
-                className="p-2.5 rounded-xl bg-black/50 border border-slate-800/80 hover:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition"
+                className="p-2.5 rounded-2xl bg-black/50 border border-slate-800/80 hover:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition"
               >
                 <div className="flex items-center space-x-2.5">
                   <span
@@ -249,7 +249,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
                   <span className="text-slate-200">{log.message}</span>
                 </div>
                 {log.duration_ms && (
-                  <span className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 whitespace-nowrap self-end sm:self-auto">
+                  <span className="text-[10px] text-[#52525B] bg-[#52525B]/10 px-2 py-0.5 rounded border border-[#2C3139] whitespace-nowrap self-end sm:self-auto">
                     {log.duration_ms} ms
                   </span>
                 )}
@@ -264,14 +264,14 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
         <div
           className={`rounded-2xl p-5 border transition-all ${
             isDark
-              ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-md'
+              ? 'bg-[#1A1D22] border-[#2C3139] text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
           <div className="flex items-center justify-between mb-4 border-b pb-3 border-slate-700/30 font-mono">
             <div className="flex items-center space-x-2">
-              <Layers className="h-5 w-5 text-cyan-400" />
-              <h3 className="text-sm font-bold uppercase text-cyan-400">
+              <Layers className="h-5 w-5 text-[#52525B]" />
+              <h3 className="text-sm font-bold uppercase text-[#52525B]">
                 Trace ID: trace_ot_891823719_tg
               </h3>
             </div>
@@ -280,7 +280,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
 
           <div className="space-y-3 font-mono text-xs">
             {/* Span 1 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
+            <div className="p-3 rounded-2xl bg-black/40 border border-slate-800 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sky-400">1. Inbound Webhook Ingress (Telegram)</span>
                 <span className="text-slate-400">12 ms</span>
@@ -291,7 +291,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
             </div>
 
             {/* Span 2 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
+            <div className="p-3 rounded-2xl bg-black/40 border border-slate-800 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-amber-400">2. PII Sanitizer & Masking Guardrails</span>
                 <span className="text-slate-400">4 ms</span>
@@ -302,9 +302,9 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
             </div>
 
             {/* Span 3 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
+            <div className="p-3 rounded-2xl bg-black/40 border border-slate-800 space-y-1">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-cyan-400">3. Gemini 3.6 Flash Structured Perception</span>
+                <span className="font-bold text-[#52525B]">3. Gemini 3.6 Flash Structured Perception</span>
                 <span className="text-slate-400">435 ms</span>
               </div>
               <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -313,7 +313,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
             </div>
 
             {/* Span 4 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
+            <div className="p-3 rounded-2xl bg-black/40 border border-slate-800 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-emerald-400">4. Deterministic Rule Match & SLA Evaluation</span>
                 <span className="text-slate-400">9 ms</span>
@@ -324,7 +324,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
             </div>
 
             {/* Span 5 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
+            <div className="p-3 rounded-2xl bg-black/40 border border-slate-800 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-purple-400">5. 1C:ERP Document Commit via OData REST</span>
                 <span className="text-slate-400">22 ms</span>
@@ -342,16 +342,16 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
         <div
           className={`rounded-2xl p-5 border transition-all ${
             isDark
-              ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-md'
+              ? 'bg-[#1A1D22] border-[#2C3139] text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
-          <h3 className="text-sm font-mono font-bold uppercase text-cyan-400 mb-4">
+          <h3 className="text-sm font-mono font-bold uppercase text-[#52525B] mb-4">
             Распределение Обращений по Каналам и Аналитика AI
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-mono text-xs">
-            <div className="p-4 rounded-xl bg-black/40 border border-slate-800 space-y-3">
+            <div className="p-4 rounded-2xl bg-black/40 border border-slate-800 space-y-3">
               <div className="font-bold text-slate-300">Распределение по Каналам</div>
 
               <div className="space-y-2">
@@ -397,7 +397,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-black/40 border border-slate-800 space-y-3">
+            <div className="p-4 rounded-2xl bg-black/40 border border-slate-800 space-y-3">
               <div className="font-bold text-slate-300">Точность Идентификации Фактов</div>
 
               <div className="space-y-2">
@@ -424,7 +424,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
                 <div>
                   <div className="flex justify-between mb-1">
                     <span>Оценка SLA Дедлайна</span>
-                    <span className="text-cyan-400 font-bold">100.0%</span>
+                    <span className="text-[#52525B] font-bold">100.0%</span>
                   </div>
                   <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                     <div className="bg-cyan-400 h-full w-[100%]" />

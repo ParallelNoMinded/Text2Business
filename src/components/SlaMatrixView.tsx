@@ -14,7 +14,7 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
       <div
         className={`rounded-2xl p-6 transition-all border ${
           isDark
-            ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
+            ? 'bg-[#1A1D22] border-[#2C3139]  text-white'
             : 'bg-white border-slate-200 shadow-md text-slate-900'
         }`}
       >
@@ -33,7 +33,7 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
       <div
         className={`rounded-2xl p-6 transition-all border ${
           isDark
-            ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
+            ? 'bg-[#1A1D22] border-[#2C3139]  text-white'
             : 'bg-white border-slate-200 shadow-md text-slate-900'
         }`}
       >
@@ -47,7 +47,7 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
             <thead
               className={`uppercase font-mono text-[10px] tracking-wider border-b ${
                 isDark
-                  ? 'bg-[#020204] text-cyan-400 border-cyan-500/20'
+                  ? 'bg-[#020204] text-[#52525B] border-[#2C3139]'
                   : 'bg-slate-100 text-cyan-800 border-slate-200'
               }`}
             >
@@ -60,9 +60,9 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10 font-sans">
-              <tr className={isDark ? 'bg-cyan-950/20 hover:bg-cyan-950/40' : 'bg-cyan-50/50 hover:bg-cyan-50'}>
+              <tr className={isDark ? 'bg-[#52525B]/10/20 hover:bg-[#52525B]/10/40' : 'bg-cyan-50/50 hover:bg-cyan-50'}>
                 <td className="py-3.5 px-4 font-mono font-bold text-amber-500 flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]"></span>
+                  <span className="h-2 w-2 rounded-full bg-amber-400 "></span>
                   Gold (Премиум)
                 </td>
                 <td className={`py-3.5 px-4 font-mono font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -84,7 +84,7 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
               </tr>
               <tr className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
                 <td className="py-3.5 px-4 font-mono font-bold text-cyan-500 flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]"></span>
+                  <span className="h-2 w-2 rounded-full bg-cyan-400 "></span>
                   Silver (Бизнес)
                 </td>
                 <td className={`py-3.5 px-4 font-mono font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -135,7 +135,7 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
         <div
           className={`rounded-2xl p-5 space-y-3 border transition-all ${
             isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white'
+              ? 'bg-[#1A1D22] border-[#2C3139] text-white'
               : 'bg-white border-slate-200 text-slate-900 shadow-md'
           }`}
         >
@@ -145,8 +145,8 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
           </h3>
           <div className="space-y-2 text-xs">
             <div
-              className={`p-3 rounded-xl border shadow-inner ${
-                isDark ? 'bg-[#020204]/90 border-cyan-500/20' : 'bg-slate-50 border-slate-200'
+              className={`p-3 rounded-2xl border shadow-inner ${
+                isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-slate-50 border-slate-200'
               }`}
             >
               <span className="font-mono font-bold text-emerald-500">CREATE_TICKET:</span>
@@ -155,8 +155,8 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
               </p>
             </div>
             <div
-              className={`p-3 rounded-xl border shadow-inner ${
-                isDark ? 'bg-[#020204]/90 border-cyan-500/20' : 'bg-slate-50 border-slate-200'
+              className={`p-3 rounded-2xl border shadow-inner ${
+                isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-slate-50 border-slate-200'
               }`}
             >
               <span className="font-mono font-bold text-amber-500">UPDATE_TICKET:</span>
@@ -165,8 +165,8 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
               </p>
             </div>
             <div
-              className={`p-3 rounded-xl border shadow-inner ${
-                isDark ? 'bg-[#020204]/90 border-cyan-500/20' : 'bg-slate-50 border-slate-200'
+              className={`p-3 rounded-2xl border shadow-inner ${
+                isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-slate-50 border-slate-200'
               }`}
             >
               <span className="font-mono font-bold text-cyan-500">REQUEST_CLARIFICATION:</span>
@@ -175,8 +175,8 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
               </p>
             </div>
             <div
-              className={`p-3 rounded-xl border shadow-inner ${
-                isDark ? 'bg-[#020204]/90 border-cyan-500/20' : 'bg-slate-50 border-slate-200'
+              className={`p-3 rounded-2xl border shadow-inner ${
+                isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-slate-50 border-slate-200'
               }`}
             >
               <span className="font-mono font-bold text-purple-500">ESCALATE_TO_HUMAN:</span>
@@ -191,7 +191,7 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
         <div
           className={`rounded-2xl p-5 space-y-3 border transition-all ${
             isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white'
+              ? 'bg-[#1A1D22] border-[#2C3139] text-white'
               : 'bg-white border-slate-200 text-slate-900 shadow-md'
           }`}
         >
@@ -201,7 +201,7 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
           </h3>
           <div className="space-y-3 text-xs">
             <div
-              className={`p-3 rounded-xl border shadow-inner ${
+              className={`p-3 rounded-2xl border shadow-inner ${
                 isDark
                   ? 'bg-red-950/30 border-red-500/30 text-slate-300'
                   : 'bg-red-50 border-red-200 text-red-900'
@@ -216,9 +216,9 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
             </div>
 
             <div
-              className={`p-3 rounded-xl border shadow-inner ${
+              className={`p-3 rounded-2xl border shadow-inner ${
                 isDark
-                  ? 'bg-cyan-950/30 border-cyan-500/30 text-slate-300'
+                  ? 'bg-[#52525B]/10/30 border-[#2C3139] text-slate-300'
                   : 'bg-cyan-50 border-cyan-200 text-cyan-900'
               }`}
             >
@@ -231,7 +231,7 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
             </div>
 
             <div
-              className={`p-3 rounded-xl border shadow-inner ${
+              className={`p-3 rounded-2xl border shadow-inner ${
                 isDark
                   ? 'bg-emerald-950/30 border-emerald-500/30 text-slate-300'
                   : 'bg-emerald-50 border-emerald-200 text-emerald-900'

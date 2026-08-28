@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="16" fill="#F7F8FA"/>
+  <ellipse cx="32" cy="32" rx="24" ry="10" transform="rotate(-28 32 32)" stroke="#1A1A1A" stroke-width="2.2"/>
+  <circle cx="12" cy="28" r="3.2" fill="#1A1A1A"/>
+  <text x="18" y="42" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#1A1A1A">NB</text>
+</svg>

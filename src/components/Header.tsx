@@ -1,18 +1,21 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Cpu,
-  Database,
-  Zap,
   Activity,
-  User,
+  BookOpen,
+  ChevronDown,
+  Database,
   Home,
-  Sun,
+  Key,
+  Menu,
   Moon,
   Send,
-  AlertTriangle,
-  Key,
-  BookOpen,
+  Sun,
+  User,
+  X,
+  Zap,
 } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
+import { AppRole, canAccessTab } from '../roles';
 
 export type TabType =
   | 'home'
@@ -36,300 +39,398 @@ interface HeaderProps {
   pendingOperatorCount?: number;
   githubToken?: string;
   onOpenTokenModal?: () => void;
+  onRequestDemo?: () => void;
+  sessionRole?: AppRole;
+  onResetRole?: () => void;
 }
+
+const INDUSTRIES = [
+  {
+    title: 'Обслуживание оборудования',
+    items: [
+      'Сервисные компании',
+      'Климатические системы (ОВИК)',
+      'Холодильное оборудование',
+      'Производство и ТЭК',
+      'Телекоммуникации и ИТ',
+    ],
+  },
+  {
+    title: 'Недвижимость',
+    items: ['Торговые и бизнес-центры', 'Клининг', 'Строительство и ремонты', 'Ритейл', 'ЖКХ'],
+  },
+  {
+    title: 'Мобильные сотрудники',
+    items: ['Обходы и проверки', 'Выездной ремонт', 'Доставка', 'Другие отрасли'],
+  },
+];
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   theme,
   setTheme,
-  isDryRun,
-  setIsDryRun,
   selectedModel = 'gpt-4o',
   setSelectedModel,
-  pendingOperatorCount = 1,
+  pendingOperatorCount = 0,
   githubToken = '',
   onOpenTokenModal,
+  onRequestDemo,
+  sessionRole = 'guest' as AppRole,
+  onResetRole,
 }) => {
   const isDark = theme === 'dark';
+  const [openMenu, setOpenMenu] = useState<null | 'industries' | 'features' | 'mobile'>(null);
+  const wrapRef = useRef<HTMLElement>(null);
 
-  if (activeTab === 'home') {
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpenMenu(null);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenMenu(null);
+    };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  const go = (tab: TabType) => {
+    setActiveTab(tab);
+    setOpenMenu(null);
+  };
+
+  const navLink = (tab: TabType, label: string, icon: React.ReactNode, badge?: number) => {
+    const isCurrent =
+      tab === 'channels'
+        ? activeTab === 'channels'
+        : tab === 'console'
+        ? activeTab === 'console'
+        : activeTab === tab;
+    const locked = !canAccessTab(sessionRole, tab);
     return (
-      <header className="sticky top-0 z-50 p-4 pointer-events-none">
-        <div className="max-w-7xl mx-auto flex justify-end items-center space-x-2">
-          <button
-            id="book-architecture-btn-home"
-            onClick={() => setActiveTab('architecture')}
-            className={`pointer-events-auto p-2.5 rounded-xl border transition-all flex items-center space-x-2 font-mono text-xs font-bold ${
-              isDark
-                ? 'bg-[#06060e]/90 hover:bg-cyan-500/20 border-cyan-500/40 text-cyan-300 backdrop-blur-md shadow-[0_0_15px_rgba(0,0,0,0.5)]'
-                : 'bg-white/90 hover:bg-slate-100 border-slate-300 text-blue-900 shadow-md backdrop-blur-md'
-            }`}
-            title="Открыть архитектурный отчёт и C4 схемы"
-          >
-            <BookOpen className="h-5 w-5 text-cyan-400" />
-          </button>
-
-          <button
-            id="theme-toggle-btn"
-            onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            className={`pointer-events-auto p-2.5 rounded-xl border transition-all ${
-              isDark
-                ? 'bg-[#06060e]/90 hover:bg-white/10 border-cyan-500/30 text-amber-400 backdrop-blur-md shadow-[0_0_15px_rgba(0,0,0,0.5)]'
-                : 'bg-white/90 hover:bg-slate-100 border-slate-300 text-blue-900 shadow-md backdrop-blur-md'
-            }`}
-            title="Переключить тему оформления"
-          >
-            {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </button>
-        </div>
-      </header>
+      <button
+        type="button"
+        onClick={() => !locked && go(tab)}
+        disabled={locked}
+        title={
+          locked
+            ? sessionRole === 'demo'
+              ? 'Недоступно в роли демо-стенда'
+              : 'Недоступно в роли диспетчера'
+            : undefined
+        }
+        className={`relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-semibold transition ${
+          locked
+            ? 'opacity-35 cursor-not-allowed text-zinc-400'
+            : isCurrent
+            ? isDark
+              ? 'bg-white/10 text-white'
+              : 'bg-zinc-900 text-white'
+            : isDark
+            ? 'text-zinc-300 hover:bg-white/5 hover:text-white'
+            : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+        }`}
+      >
+        {icon}
+        <span>{label}</span>
+        {!!badge && badge > 0 && !locked && (
+          <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-zinc-700 px-1 text-[10px] font-bold text-white">
+            {badge}
+          </span>
+        )}
+      </button>
     );
-  }
+  };
+
+  const megaPanel = (children: React.ReactNode) => (
+    <div
+      className={`absolute left-1/2 top-[calc(100%+10px)] z-50 w-[min(920px,calc(100vw-2rem))] -translate-x-1/2 rounded-3xl border p-6 shadow-[0_24px_80px_rgba(16,24,40,0.12)] ${
+        isDark ? 'bg-[#1A1D22] border-[#2C3139]' : 'bg-white border-[#E6E8EC]'
+      }`}
+    >
+      {children}
+    </div>
+  );
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-colors duration-200 border-b backdrop-blur-md ${
-        isDark
-          ? 'bg-[#030712]/90 border-cyan-500/20 text-white shadow-[0_4px_20px_rgba(0,0,0,0.8)]'
-          : 'bg-white/95 border-slate-300 text-slate-900 shadow-md'
+      ref={wrapRef}
+      className={`sticky top-0 z-50 border-b backdrop-blur-md ${
+        isDark ? 'bg-[#121417]/92 border-[#2C3139] text-white' : 'bg-white/92 border-[#E6E8EC] text-zinc-900'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
-          {/* Logo & Brand */}
-          <div
-            onClick={() => setActiveTab('home')}
-            className="flex items-center space-x-2.5 cursor-pointer group flex-shrink-0"
-            title="Перейти на главную страницу"
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 h-[68px]">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button type="button" onClick={() => go('home')} title="На главную">
+            <BrandLogo markClassName="h-9 w-9" />
+          </button>
+          {sessionRole !== 'guest' && (
+            <span
+              className={`hidden sm:inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                isDark ? 'border-[#3A404A] text-zinc-300' : 'border-[#E6E8EC] text-zinc-600'
+              }`}
+            >
+              {sessionRole === 'demo' ? 'Роль: демо' : 'Роль: диспетчер'}
+            </span>
+          )}
+        </div>
+
+        <nav className="hidden lg:flex items-center gap-0.5 relative">
+          <button
+            type="button"
+            onClick={() => setOpenMenu(openMenu === 'industries' ? null : 'industries')}
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-semibold ${
+              openMenu === 'industries'
+                ? isDark
+                  ? 'text-white'
+                  : 'text-zinc-900'
+                : isDark
+                ? 'text-zinc-300 hover:text-white'
+                : 'text-zinc-600 hover:text-zinc-900'
+            }`}
           >
-            <div
-              className={`h-9 w-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${
-                isDark
-                  ? 'bg-gradient-to-br from-cyan-400 via-indigo-500 to-purple-600 p-0.5 shadow-[0_0_12px_rgba(34,211,238,0.3)]'
-                  : 'bg-transparent'
-              }`}
-            >
-              <div
-                className={`h-full w-full rounded-[10px] flex items-center justify-center ${
-                  isDark ? 'bg-[#030712]' : 'bg-transparent'
-                }`}
-              >
-                <Cpu className={`h-5 w-5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`} />
+            Отрасли
+            <ChevronDown className={`h-3.5 w-3.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`} />
+          </button>
+          {openMenu === 'industries' &&
+            megaPanel(
+              <div className="grid grid-cols-3 gap-8">
+                {INDUSTRIES.map((col) => (
+                  <div key={col.title}>
+                    <h4 className="text-sm font-extrabold mb-3">{col.title}</h4>
+                    <ul className="space-y-2">
+                      {col.items.map((item) => (
+                        <li key={item}>
+                          <button
+                            type="button"
+                            onClick={() => go('architecture')}
+                            className={`text-sm text-left w-full rounded-xl px-2 py-1.5 transition ${
+                              isDark ? 'text-zinc-400 hover:bg-white/5 hover:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </div>
-            </div>
-            <div className="flex flex-col">
-              <span className={`font-extrabold text-xs sm:text-sm tracking-tight font-mono uppercase leading-none ${isDark ? 'text-white' : 'text-blue-950'}`}>
-                TEXT2BUSINESS
-              </span>
-              <span className={`text-[10px] font-mono tracking-widest font-bold uppercase mt-0.5 leading-none ${isDark ? 'text-cyan-400' : 'text-blue-700'}`}>
-                AI-ДИСПЕТЧЕР
-              </span>
-            </div>
-          </div>
+            )}
 
-          {/* Top 5 Clean Navigation Tabs */}
-          <nav className={`hidden md:flex items-center space-x-1 p-1 rounded-xl border font-mono text-xs overflow-x-auto no-scrollbar max-w-2xl ${
-            isDark ? 'border-cyan-500/30 bg-[#020204]/60' : 'border-slate-300 bg-slate-100/90 shadow-inner'
-          }`}>
-            {/* 1. Главная */}
+          <button
+            type="button"
+            onClick={() => setOpenMenu(openMenu === 'features' ? null : 'features')}
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-semibold ${
+              openMenu === 'features'
+                ? isDark
+                  ? 'text-white'
+                  : 'text-zinc-900'
+                : isDark
+                ? 'text-zinc-300 hover:text-white'
+                : 'text-zinc-600 hover:text-zinc-900'
+            }`}
+          >
+            Возможности
+            <ChevronDown className={`h-3.5 w-3.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`} />
+          </button>
+          {openMenu === 'features' &&
+            megaPanel(
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { tab: 'channels' as TabType, title: 'Каналы', desc: 'Telegram, почта, голос, приём из систем' },
+                  { tab: 'console' as TabType, title: 'Демо-стенд', desc: 'Четыре сценария, пробный прогон и подтверждение' },
+                  { tab: 'operator' as TabType, title: 'Диспетчер', desc: 'Уточнения и эскалации оператору' },
+                  { tab: 'database' as TabType, title: 'Реестр', desc: 'Контрагенты, объекты, заявки' },
+                  { tab: 'logs_traces' as TabType, title: 'Журнал', desc: 'Наблюдение и сроки реакции' },
+                  { tab: 'architecture' as TabType, title: 'Обзор системы', desc: 'Схемы и архитектурный отчёт' },
+                ].map((f) => {
+                  const locked = !canAccessTab(sessionRole, f.tab);
+                  return (
+                  <button
+                    key={f.tab}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => !locked && go(f.tab)}
+                    className={`rounded-2xl p-3 text-left transition ${
+                      locked
+                        ? 'opacity-40 cursor-not-allowed'
+                        : isDark
+                        ? 'hover:bg-white/5'
+                        : 'hover:bg-zinc-50'
+                    }`}
+                  >
+                    <div className="text-sm font-extrabold">{f.title}</div>
+                    <div className={`text-xs mt-1 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      {locked ? 'Закрыто для текущей роли' : f.desc}
+                    </div>
+                  </button>
+                  );
+                })}
+              </div>
+            )}
+
+          {navLink('console', 'Демо-стенд', <Zap className="h-3.5 w-3.5" />)}
+          {navLink('operator', 'Диспетчер', <User className="h-3.5 w-3.5" />, pendingOperatorCount)}
+          {navLink('database', 'Реестр', <Database className="h-3.5 w-3.5" />)}
+          <button
+            type="button"
+            onClick={() => go('architecture')}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold ${
+              activeTab === 'architecture'
+                ? isDark
+                  ? 'bg-white/10 text-white'
+                  : 'bg-zinc-900 text-white'
+                : isDark
+                ? 'text-zinc-300 hover:bg-white/5'
+                : 'text-zinc-600 hover:bg-zinc-100'
+            }`}
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            Обзор системы
+          </button>
+        </nav>
+
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <select
+            id="header-model-dropdown"
+            value={selectedModel}
+            onChange={(e) => setSelectedModel?.(e.target.value)}
+            className={`hidden md:block max-w-[140px] rounded-full border bg-transparent px-2.5 py-1.5 text-[11px] font-semibold focus:outline-none ${
+              isDark ? 'border-[#3A404A] text-zinc-200' : 'border-[#E6E8EC] text-zinc-700'
+            }`}
+            title="Модель LLM"
+          >
+            <option value="qwen3.6-27b">qwen3.6-27b</option>
+            <option value="gpt-4o">gpt-4o</option>
+            <option value="gemma4:e4b">gemma4:e4b</option>
+            <option value="deepseek-reasoner">deepseek-reasoner</option>
+            <option value="nemotron-3-ultra-550b-a55b">nemotron-3-ultra</option>
+          </select>
+
+          <button
+            id="header-github-token-btn"
+            type="button"
+            onClick={onOpenTokenModal}
+            className={`hidden sm:inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold ${
+              githubToken
+                ? isDark
+                  ? 'border-emerald-800/60 text-emerald-300'
+                  : 'border-emerald-200 text-emerald-800'
+                : isDark
+                ? 'border-[#3A404A] text-zinc-300'
+                : 'border-[#E6E8EC] text-zinc-700'
+            }`}
+            title="Войти / токен модели"
+          >
+            <Key className="h-3.5 w-3.5" />
+            Войти
+          </button>
+
+          {sessionRole !== 'guest' && (
             <button
-              id="header-tab-home"
-              onClick={() => setActiveTab('home')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-                activeTab === 'home'
-                  ? isDark
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                    : 'bg-blue-950 text-white font-extrabold shadow-sm'
-                  : isDark
-                  ? 'text-slate-400 hover:text-white hover:bg-white/5'
-                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
-              }`}
-            >
-              <Home className="h-3.5 w-3.5" />
-              <span>Главная</span>
-            </button>
-
-            {/* 2. Каналы */}
-            <button
-              id="header-tab-channels"
-              onClick={() => setActiveTab('channels')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-                activeTab === 'channels' || activeTab === 'console'
-                  ? isDark
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                    : 'bg-blue-950 text-white font-extrabold shadow-sm'
-                  : isDark
-                  ? 'text-slate-400 hover:text-white hover:bg-white/5'
-                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
-              }`}
-            >
-              <Send className="h-3.5 w-3.5" />
-              <span>Каналы</span>
-            </button>
-
-            {/* 3. Демо-стенд */}
-            <button
-              id="header-tab-console"
-              onClick={() => setActiveTab('console')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-                activeTab === 'console'
-                  ? isDark
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                    : 'bg-blue-950 text-white font-extrabold shadow-sm'
-                  : isDark
-                  ? 'text-slate-400 hover:text-white hover:bg-white/5'
-                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
-              }`}
-            >
-              <Zap className="h-3.5 w-3.5" />
-              <span>Демо-стенд</span>
-            </button>
-
-            {/* 4. Диспетчер (Pulsing Red Attention Badge if pending tickets exist) */}
-            <button
-              id="header-tab-operator"
-              onClick={() => setActiveTab('operator')}
-              className={`relative px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-                activeTab === 'operator'
-                  ? isDark
-                    ? 'bg-red-500/20 text-red-300 border border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
-                    : 'bg-red-950 text-white font-extrabold shadow-sm'
-                  : isDark
-                  ? pendingOperatorCount > 0
-                    ? 'text-red-400 hover:bg-red-500/10 border border-red-500/30'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  : pendingOperatorCount > 0
-                  ? 'text-red-800 bg-red-100/90 border border-red-300 font-extrabold'
-                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
-              }`}
-            >
-              <User className="h-3.5 w-3.5" />
-              <span>Диспетчер</span>
-              {pendingOperatorCount > 0 && (
-                <span className="h-2 w-2 rounded-full bg-red-500 animate-ping absolute -top-0.5 -right-0.5"></span>
-              )}
-            </button>
-
-            {/* 5. Реестр */}
-            <button
-              id="header-tab-database"
-              onClick={() => setActiveTab('database')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-                activeTab === 'database'
-                  ? isDark
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                    : 'bg-blue-950 text-white font-extrabold shadow-sm'
-                  : isDark
-                  ? 'text-slate-400 hover:text-white hover:bg-white/5'
-                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
-              }`}
-            >
-              <Database className="h-3.5 w-3.5" />
-              <span>Реестр</span>
-            </button>
-
-            {/* 6. Логи & Трейсы */}
-            <button
-              id="header-tab-logs-traces"
-              onClick={() => setActiveTab('logs_traces')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-                activeTab === 'logs_traces'
-                  ? isDark
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                    : 'bg-blue-950 text-white font-extrabold shadow-sm'
-                  : isDark
-                  ? 'text-slate-400 hover:text-white hover:bg-white/5'
-                  : 'text-slate-900 hover:text-blue-950 hover:bg-slate-200/80 font-bold'
-              }`}
-            >
-              <Activity className="h-3.5 w-3.5" />
-              <span>Логи & Трейсы</span>
-            </button>
-          </nav>
-
-          {/* Controls: Model Selector, GITHUB_MODELS_TOKEN, Architecture Book & Theme Toggle */}
-          <div className="flex items-center space-x-2 text-xs font-mono">
-            <div
-              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-semibold ${
-                isDark
-                  ? 'bg-cyan-950/60 border-cyan-500/40 text-cyan-300'
-                  : 'bg-blue-50 border-blue-200 text-blue-950 font-bold'
-              }`}
-            >
-              <Zap className={`h-3.5 w-3.5 animate-pulse ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-              <select
-                id="header-model-dropdown"
-                value={selectedModel}
-                onChange={(e) => {
-                  const newModel = e.target.value;
-                  if (setSelectedModel) setSelectedModel(newModel);
-                }}
-                className={`bg-transparent text-xs font-mono font-bold focus:outline-none cursor-pointer ${
-                  isDark
-                    ? 'text-cyan-300 [&>option]:bg-[#060612] [&>option]:text-white'
-                    : 'text-blue-950 [&>option]:bg-white [&>option]:text-slate-900'
-                }`}
-              >
-                <option value="qwen3.6-27b">qwen3.6-27b</option>
-                <option value="gpt-4o">gpt-4o</option>
-                <option value="gemma4:e4b">gemma4:e4b</option>
-                <option value="deepseek-reasoner">deepseek-reasoner</option>
-                <option value="nemotron-3-ultra-550b-a55b">nemotron-3-ultra-550b-a55b</option>
-              </select>
-            </div>
-
-            <button
-              id="header-github-token-btn"
               type="button"
-              onClick={onOpenTokenModal}
-              className={`px-2.5 py-1 rounded-lg border font-mono font-bold text-[11px] transition flex items-center space-x-1 ${
-                githubToken
-                  ? isDark
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
-                    : 'bg-emerald-100 text-emerald-950 border-emerald-400 font-extrabold hover:bg-emerald-200'
-                  : isDark
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30 animate-pulse'
-                  : 'bg-amber-100 text-amber-950 border-amber-400 font-extrabold hover:bg-amber-200 animate-pulse'
+              onClick={() => {
+                go('home');
+                onResetRole?.();
+              }}
+              className={`hidden lg:inline-flex items-center rounded-full border px-2.5 py-1.5 text-[11px] font-semibold ${
+                isDark ? 'border-[#3A404A] text-zinc-300 hover:bg-white/5' : 'border-[#E6E8EC] text-zinc-600 hover:bg-zinc-50'
               }`}
-              title="Настроить GITHUB_MODELS_TOKEN"
             >
-              <Key className="h-3 w-3" />
-              <span>{githubToken ? 'G_TOKEN: ✅' : 'G_TOKEN: 🔑'}</span>
+              Сменить роль
             </button>
+          )}
 
+          {sessionRole === 'dispatcher' ? (
             <button
-              id="header-architecture-btn"
-              onClick={() => setActiveTab('architecture')}
-              className={`p-2 rounded-lg border transition-all ${
-                activeTab === 'architecture'
-                  ? isDark
-                    ? 'bg-cyan-500/20 border-cyan-500/60 text-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.4)]'
-                    : 'bg-blue-950 text-white border-blue-900'
-                  : isDark
-                  ? 'bg-white/5 hover:bg-cyan-500/20 border-white/10 text-cyan-400'
-                  : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-blue-950'
-              }`}
-              title="Открыть архитектурный отчёт и C4 схемы"
+              type="button"
+              onClick={() => go('operator')}
+              className="hidden sm:inline-flex items-center rounded-full bg-zinc-700 px-4 py-2 text-[13px] font-bold text-white hover:bg-zinc-800"
             >
-              <BookOpen className="h-4 w-4" />
+              К заявкам
             </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => go('console')}
+              className="hidden sm:inline-flex items-center rounded-full bg-zinc-700 px-4 py-2 text-[13px] font-bold text-white hover:bg-zinc-800"
+            >
+              Пробный запуск
+            </button>
+          )}
 
-            <button
-              id="header-theme-btn"
-              onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className={`p-2 rounded-lg border transition-all ${
-                isDark
-                  ? 'bg-white/5 hover:bg-white/10 border-white/10 text-amber-400'
-                  : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-blue-950'
-              }`}
-              title="Переключить тему"
-            >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-          </div>
+          <button
+            id="header-theme-btn"
+            type="button"
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            className={`rounded-full border p-2 ${isDark ? 'border-[#3A404A]' : 'border-[#E6E8EC]'}`}
+            title="Тема"
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+
+          <button
+            type="button"
+            className={`lg:hidden rounded-full border p-2 ${isDark ? 'border-[#3A404A]' : 'border-[#E6E8EC]'}`}
+            onClick={() => setOpenMenu(openMenu === 'mobile' ? null : 'mobile')}
+            aria-label="Меню"
+          >
+            {openMenu === 'mobile' ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
         </div>
       </div>
+
+      {openMenu === 'mobile' && (
+        <div className={`lg:hidden border-t px-4 py-4 space-y-1 ${isDark ? 'border-[#2C3139]' : 'border-[#E6E8EC]'}`}>
+          {navLink('home', 'Главная', <Home className="h-4 w-4" />)}
+          {navLink('channels', 'Каналы', <Send className="h-4 w-4" />)}
+          {navLink('console', 'Демо-стенд', <Zap className="h-4 w-4" />)}
+          {navLink('operator', 'Диспетчер', <User className="h-4 w-4" />, pendingOperatorCount)}
+          {navLink('database', 'Реестр', <Database className="h-4 w-4" />)}
+          {navLink('logs_traces', 'Логи', <Activity className="h-4 w-4" />)}
+          {navLink('architecture', 'Обзор системы', <BookOpen className="h-4 w-4" />)}
+          <button
+            type="button"
+            onClick={() => {
+              setOpenMenu(null);
+              onRequestDemo?.();
+            }}
+            className={`w-full rounded-2xl px-3 py-2 text-left text-[13px] font-semibold ${
+              isDark ? 'hover:bg-white/5' : 'hover:bg-zinc-50'
+            }`}
+          >
+            Запросить показ
+          </button>
+          {sessionRole !== 'guest' && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpenMenu(null);
+                onResetRole?.();
+              }}
+              className={`w-full rounded-2xl px-3 py-2 text-left text-[13px] font-semibold ${
+                isDark ? 'hover:bg-white/5' : 'hover:bg-zinc-50'
+              }`}
+            >
+              Сменить роль
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => go(sessionRole === 'dispatcher' ? 'operator' : 'console')}
+            className="mt-2 w-full rounded-full bg-zinc-700 px-4 py-2.5 text-sm font-bold text-white"
+          >
+            {sessionRole === 'dispatcher' ? 'К заявкам' : 'Пробный запуск'}
+          </button>
+        </div>
+      )}
     </header>
   );
 };

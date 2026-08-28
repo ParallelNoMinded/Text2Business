@@ -47,13 +47,13 @@ export const ArchitectureView: React.FC<ArchitectureViewProps> = ({ theme }) => 
 !include <C4/C4_Context>
 LAYOUT_TOP_DOWN()
 
-title C1 — System Context: Text2Business AI-Диспетчер (Текущая реализация / As-Is)
+title C1 — System Context: NeuroBiz AI-Диспетчер (Текущая реализация / As-Is)
 
 Person(client, "B2B Заявитель / Клиент", "Отправляет сервисные обращения через Telegram, Email, Голосовую телефонию или REST API")
 Person(operator, "Диспетчер-Оператор (HITL)", "Контролирует неопределенные обращения, ведет диалог с клиентом в боте, дозаполняет факты")
 Person(tech_lead, "AI Solution Architect / Tech Lead", "Анализирует трассировку вызовов, проверяет метрики точности LLM, правила SLA и Guardrails")
 
-System(dispatcher_app, "AI-Диспетчер (Text2Business)", "Монолитное веб-приложение: прием сообщений, извлечение фактов, детерминированная диспетчеризация, расчёт SLA и регистрация заявок")
+System(dispatcher_app, "AI-Диспетчер (NeuroBiz)", "Монолитное веб-приложение: прием сообщений, извлечение фактов, детерминированная диспетчеризация, расчёт SLA и регистрация заявок")
 
 System_Ext(github_models, "GitHub Models API / Gemini API", "LLM инференс (gpt-4o, qwen3.6-27b, deepseek) с гарантией вывода в JSON Mode (Structured Output)")
 System_Ext(telegram_api, "Telegram Bot API", "Серверная платформа Telegram для приема обновлений (Long Polling / Webhook) и отправки ответов")
@@ -77,12 +77,12 @@ SHOW_LEGEND()
 !include <C4/C4_Container>
 LAYOUT_TOP_DOWN()
 
-title C2 — Container: Text2Business AI-Диспетчер (Текущая реализация / As-Is)
+title C2 — Container: NeuroBiz AI-Диспетчер (Текущая реализация / As-Is)
 
 Person(client, "B2B Заявитель", "Email / Telegram / Voice")
 Person(operator, "Диспетчер (HITL)", "Оператор системы")
 
-System_Boundary(monolith_app, "Text2Business Full-Stack Container (Port 3000)") {
+System_Boundary(monolith_app, "NeuroBiz Full-Stack Container (Port 3000)") {
   Container(frontend_spa, "React SPA UI", "React 19, TypeScript, Vite, Tailwind CSS", "Одностраничное веб-приложение: Рабочее место HITL, Запуск пресетов, Инспектор БД, Логи/Трейсы, Архитектура")
   
   Container(express_server, "Express Web Server & API Gateway", "Node.js 20, Express, TypeScript (server.ts)", "Прием Webhooks (Telegram, Email, Telephony, REST), Long Polling цикл Telegram, HTTP роутинг, 1C OData эмулятор")
@@ -123,7 +123,7 @@ SHOW_LEGEND()
 !include <C4/C4_Component>
 LAYOUT_TOP_DOWN()
 
-title C3 — Component: Text2Business AI-Диспетчер (Детализация модулей кода As-Is)
+title C3 — Component: NeuroBiz AI-Диспетчер (Детализация модулей кода As-Is)
 
 Container_Boundary(express_app, "Express Backend & Decision Engine (server.ts & dispatcherEngine.ts)") {
   Component(ingress_router, "Ingress Webhook Router", "Express Router (\`server.ts\`)", "Принимает входящие запросы \`/api/webhooks/dispatch\`, \`/api/webhooks/telegram\`, \`/api/webhooks/email\`, \`/api/webhooks/telephony\`")
@@ -395,13 +395,13 @@ SHOW_LEGEND()
 !include <C4/C4_Context>
 LAYOUT_TOP_DOWN()
 
-title C1 — System Context: Text2Business AI-Платформа (Целевая архитектура / To-Be)
+title C1 — System Context: NeuroBiz AI-Платформа (Целевая архитектура / To-Be)
 
 Person(client, "B2B Клиент / Заявитель", "Отправляет обращения через Telegram, Email, Голосовые вызовы (SIP), Веб-Портал или REST API")
 Person(operator, "Диспетчер-Оператор (HITL)", "Контролирует неопределенности, утверждает действия при рисках и ведет диалог с клиентом")
 Person(tech_lead, "AI Tech Lead / SRE Инженер", "Мониторит дрейф моделей (Model Drift), задержки P99, OpenTelemetry трейсы и метрики SLA в Arize AI")
 
-System(target_platform, "Text2Business Enterprise Platform", "Событийно-ориентированная платформа диспетчеризации: Envoy Ingress, Kafka, STT, AI LangGraph, Go Temporal, Postgres 18")
+System(target_platform, "NeuroBiz Enterprise Platform", "Событийно-ориентированная платформа диспетчеризации: Envoy Ingress, Kafka, STT, AI LangGraph, Go Temporal, Postgres 18")
 
 System_Ext(telegram_cloud, "Telegram Bot API", "Мессенджер-платформа (Webhook Ingress)")
 System_Ext(sip_pbx, "Виртуальная АТС / SIP Trunk", "Телефонная сеть и аудиопотоки RTP / gRPC")
@@ -434,7 +434,7 @@ title C2 — Container: Архитектура контейнеров Целев
 Person(client, "B2B Клиент", "Заявитель")
 Person(operator, "Диспетчер (HITL)", "Оператор консоли")
 
-System_Boundary(platform_boundary, "Text2Business Target Platform") {
+System_Boundary(platform_boundary, "NeuroBiz Target Platform") {
   Container(envoy, "Envoy Ingress Gateway", "Envoy / C++", "TLS Termination, Rate Limiting, API Routing")
   Container(kafka, "Event Bus (Kafka)", "Apache Kafka Strimzi", "Шина асинхронных событий обращений")
   Container(stt_service, "Service 1: Speech-to-Text", "Go / Yandex SpeechKit", "Обработка и транскрипция аудиопотоков")
@@ -894,20 +894,20 @@ end
       <div
         className={`p-6 rounded-2xl border backdrop-blur-md shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
           isDark
-            ? 'bg-gradient-to-r from-[#030712] via-[#09152a] to-[#030712] border-cyan-500/40 text-white shadow-[0_0_30px_rgba(34,211,238,0.15)]'
-            : 'bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 border-blue-800 text-white shadow-xl'
+            ? 'bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 border-[#2C3139] text-white '
+            : 'bg-gradient-to-r from-zinc-800 via-zinc-800 to-zinc-900 border-zinc-700 text-white shadow-xl'
         }`}
       >
         <div className="flex items-center space-x-3.5">
-          <div className="p-3 rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-inner">
+          <div className="p-3 rounded-2xl bg-[#52525B]/10 text-zinc-200 border border-[#2C3139] shadow-inner">
             <BookOpen className="h-7 w-7" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-400 text-slate-950 uppercase">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-zinc-500 text-slate-950 uppercase">
                 ArcSpace Registry
               </span>
-              <span className="text-xs font-mono text-cyan-300">/architecture/</span>
+              <span className="text-xs font-mono text-zinc-200">/architecture/</span>
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold font-mono tracking-tight mt-1">
               Архитектурный Центральный Реестр
@@ -919,15 +919,15 @@ end
         </div>
 
         {/* Primary Architecture Switcher: AS-IS vs TO-BE */}
-        <div className="flex items-center p-1 rounded-xl bg-[#010309] border border-cyan-500/40 shadow-inner font-mono text-xs">
+        <div className="flex items-center p-1 rounded-2xl bg-[#121417] border border-[#2C3139] shadow-inner font-mono text-xs">
           <button
             onClick={() => {
               setMainMode('as_is');
               if (selectedPuml === 'eda') setSelectedPuml('c2');
             }}
-            className={`px-4 py-2 rounded-lg font-extrabold transition flex items-center space-x-2 ${
+            className={`px-4 py-2 rounded-xl font-extrabold transition flex items-center space-x-2 ${
               mainMode === 'as_is'
-                ? 'bg-amber-500 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.5)]'
+                ? 'bg-zinc-600 text-slate-950 '
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -940,9 +940,9 @@ end
               setMainMode('to_be');
               setSelectedPuml('eda');
             }}
-            className={`px-4 py-2 rounded-lg font-extrabold transition flex items-center space-x-2 ${
+            className={`px-4 py-2 rounded-xl font-extrabold transition flex items-center space-x-2 ${
               mainMode === 'to_be'
-                ? 'bg-cyan-400 text-slate-950 shadow-[0_0_15px_rgba(34,211,238,0.5)]'
+                ? 'bg-zinc-500 text-slate-950 '
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -954,18 +954,18 @@ end
 
       {/* Mode Status Indicator Bar */}
       <div
-        className={`p-3.5 rounded-xl border flex items-center justify-between font-mono text-xs ${
+        className={`p-3.5 rounded-2xl border flex items-center justify-between font-mono text-xs ${
           mainMode === 'as_is'
             ? isDark
-              ? 'bg-amber-950/20 border-amber-500/40 text-amber-300'
-              : 'bg-amber-50 border-amber-300 text-amber-900'
+              ? 'bg-zinc-200/10 border-zinc-500/40 text-zinc-300'
+              : 'bg-zinc-100 border-zinc-300 text-zinc-800'
             : isDark
-            ? 'bg-cyan-950/20 border-cyan-500/40 text-cyan-300'
-            : 'bg-cyan-50 border-cyan-300 text-cyan-900'
+            ? 'bg-zinc-500/10 border-[#2C3139] text-zinc-200'
+            : 'bg-zinc-100 border-zinc-300 text-zinc-700'
         }`}
       >
         <div className="flex items-center space-x-2">
-          <span className={`h-2.5 w-2.5 rounded-full ${mainMode === 'as_is' ? 'bg-amber-400' : 'bg-cyan-400'} animate-pulse`}></span>
+          <span className={`h-2.5 w-2.5 rounded-full ${mainMode === 'as_is' ? 'bg-zinc-500' : 'bg-zinc-500'} animate-pulse`}></span>
           <span className="font-bold uppercase tracking-wider">
             {mainMode === 'as_is' ? 'БЛОК 1: ТЕКУЩАЯ АРХИТЕКТУРА (AS-IS / MVP)' : 'БЛОК 2: ЦЕЛЕВАЯ АРХИТЕКТУРА (TO-BE / ENTERPRISE)'}
           </span>
@@ -979,17 +979,17 @@ end
 
       {/* Sub-Navigation Tabs */}
       <div
-        className={`flex items-center space-x-2 p-1.5 rounded-xl border overflow-x-auto no-scrollbar font-mono text-xs ${
-          isDark ? 'bg-[#060612] border-cyan-500/30' : 'bg-white border-slate-300 shadow-sm'
+        className={`flex items-center space-x-2 p-1.5 rounded-2xl border overflow-x-auto no-scrollbar font-mono text-xs ${
+          isDark ? 'bg-[#1A1D22] border-[#2C3139]' : 'bg-white border-slate-300 shadow-sm'
         }`}
       >
         {mainMode === 'as_is' ? (
           <>
             <button
               onClick={() => setAsIsSubTab('diagrams')}
-              className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 asIsSubTab === 'diagrams'
-                  ? 'bg-amber-500 text-slate-950 font-black'
+                  ? 'bg-zinc-700 text-white font-black'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -998,9 +998,9 @@ end
             </button>
             <button
               onClick={() => setAsIsSubTab('components')}
-              className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 asIsSubTab === 'components'
-                  ? 'bg-amber-500 text-slate-950 font-black'
+                  ? 'bg-zinc-700 text-white font-black'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -1009,9 +1009,9 @@ end
             </button>
             <button
               onClick={() => setAsIsSubTab('data_flow')}
-              className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 asIsSubTab === 'data_flow'
-                  ? 'bg-amber-500 text-slate-950 font-black'
+                  ? 'bg-zinc-700 text-white font-black'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -1020,9 +1020,9 @@ end
             </button>
             <button
               onClick={() => setAsIsSubTab('openapi')}
-              className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 asIsSubTab === 'openapi'
-                  ? 'bg-amber-500 text-slate-950 font-black'
+                  ? 'bg-zinc-700 text-white font-black'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -1031,9 +1031,9 @@ end
             </button>
             <button
               onClick={() => setAsIsSubTab('report')}
-              className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 asIsSubTab === 'report'
-                  ? 'bg-amber-500 text-slate-950 font-black'
+                  ? 'bg-zinc-700 text-white font-black'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -1045,9 +1045,9 @@ end
           <>
             <button
               onClick={() => setToBeSubTab('diagrams')}
-              className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 toBeSubTab === 'diagrams'
-                  ? 'bg-cyan-400 text-slate-950 font-black'
+                  ? 'bg-zinc-700 text-white font-black'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -1056,9 +1056,9 @@ end
             </button>
             <button
               onClick={() => setToBeSubTab('components')}
-              className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 toBeSubTab === 'components'
-                  ? 'bg-cyan-400 text-slate-950 font-black'
+                  ? 'bg-zinc-700 text-white font-black'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -1067,9 +1067,9 @@ end
             </button>
             <button
               onClick={() => setToBeSubTab('migration')}
-              className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 toBeSubTab === 'migration'
-                  ? 'bg-cyan-400 text-slate-950 font-black'
+                  ? 'bg-zinc-700 text-white font-black'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -1078,9 +1078,9 @@ end
             </button>
             <button
               onClick={() => setToBeSubTab('adrs')}
-              className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 toBeSubTab === 'adrs'
-                  ? 'bg-cyan-400 text-slate-950 font-black'
+                  ? 'bg-zinc-700 text-white font-black'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -1089,9 +1089,9 @@ end
             </button>
             <button
               onClick={() => setToBeSubTab('openapi')}
-              className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 toBeSubTab === 'openapi'
-                  ? 'bg-cyan-400 text-slate-950 font-black'
+                  ? 'bg-zinc-700 text-white font-black'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -1100,9 +1100,9 @@ end
             </button>
             <button
               onClick={() => setToBeSubTab('report')}
-              className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center space-x-2 whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                 toBeSubTab === 'report'
-                  ? 'bg-cyan-400 text-slate-950 font-black'
+                  ? 'bg-zinc-700 text-white font-black'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -1118,8 +1118,8 @@ end
         <div className="space-y-6">
           {/* Controls Bar for Diagrams */}
           <div
-            className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-mono text-xs ${
-              isDark ? 'bg-[#060612] border-slate-800' : 'bg-white border-slate-300'
+            className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-mono text-xs ${
+              isDark ? 'bg-[#1A1D22] border-slate-800' : 'bg-white border-slate-300'
             }`}
           >
             {/* Diagram Switcher */}
@@ -1128,9 +1128,9 @@ end
                 <>
                   <button
                     onClick={() => setSelectedPuml('eda')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'eda'
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
+                        ? 'bg-zinc-700 text-white border border-zinc-600'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1138,9 +1138,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('c1')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'c1'
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
+                        ? 'bg-zinc-700 text-white border border-zinc-600'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1148,9 +1148,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('c2')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'c2'
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
+                        ? 'bg-zinc-700 text-white border border-zinc-600'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1158,9 +1158,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('c3')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'c3'
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
+                        ? 'bg-zinc-700 text-white border border-zinc-600'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1168,9 +1168,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('deployment')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'deployment'
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
+                        ? 'bg-zinc-700 text-white border border-zinc-600'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1178,9 +1178,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('sequence')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'sequence'
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
+                        ? 'bg-zinc-700 text-white border border-zinc-600'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1188,9 +1188,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('er')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'er'
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
+                        ? 'bg-zinc-700 text-white border border-zinc-600'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1198,9 +1198,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('api')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'api'
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
+                        ? 'bg-zinc-700 text-white border border-zinc-600'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1211,9 +1211,9 @@ end
                 <>
                   <button
                     onClick={() => setSelectedPuml('c1')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'c1'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                        ? 'bg-zinc-600/20 text-zinc-300 border border-zinc-500/50'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1221,9 +1221,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('c2')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'c2'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                        ? 'bg-zinc-600/20 text-zinc-300 border border-zinc-500/50'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1231,9 +1231,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('c3')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'c3'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                        ? 'bg-zinc-600/20 text-zinc-300 border border-zinc-500/50'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1241,9 +1241,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('deployment')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'deployment'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                        ? 'bg-zinc-600/20 text-zinc-300 border border-zinc-500/50'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1251,9 +1251,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('sequence')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'sequence'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                        ? 'bg-zinc-600/20 text-zinc-300 border border-zinc-500/50'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1261,9 +1261,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('er')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'er'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                        ? 'bg-zinc-600/20 text-zinc-300 border border-zinc-500/50'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1271,9 +1271,9 @@ end
                   </button>
                   <button
                     onClick={() => setSelectedPuml('api')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap ${
                       selectedPuml === 'api'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                        ? 'bg-zinc-600/20 text-zinc-300 border border-zinc-500/50'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1286,11 +1286,11 @@ end
             {/* View Mode Switcher: Code vs Visual SVG */}
             <div className="flex items-center space-x-2">
               <span className="text-slate-400 text-[11px]">Режим показа:</span>
-              <div className="flex items-center p-1 rounded-lg bg-[#010309] border border-slate-700">
+              <div className="flex items-center p-1 rounded-xl bg-[#121417] border border-slate-700">
                 <button
                   onClick={() => setPumlRenderMode('visual')}
                   className={`px-2.5 py-1 rounded text-[11px] font-bold ${
-                    pumlRenderMode === 'visual' ? 'bg-cyan-500/30 text-cyan-300' : 'text-slate-400'
+                    pumlRenderMode === 'visual' ? 'bg-zinc-1000/30 text-zinc-200' : 'text-slate-400'
                   }`}
                 >
                   Визуал (SVG)
@@ -1298,7 +1298,7 @@ end
                 <button
                   onClick={() => setPumlRenderMode('code')}
                   className={`px-2.5 py-1 rounded text-[11px] font-bold ${
-                    pumlRenderMode === 'code' ? 'bg-cyan-500/30 text-cyan-300' : 'text-slate-400'
+                    pumlRenderMode === 'code' ? 'bg-zinc-1000/30 text-zinc-200' : 'text-slate-400'
                   }`}
                 >
                   Код PlantUML
@@ -1306,7 +1306,7 @@ end
                 <button
                   onClick={() => setPumlRenderMode('both')}
                   className={`px-2.5 py-1 rounded text-[11px] font-bold ${
-                    pumlRenderMode === 'both' ? 'bg-cyan-500/30 text-cyan-300' : 'text-slate-400'
+                    pumlRenderMode === 'both' ? 'bg-zinc-1000/30 text-zinc-200' : 'text-slate-400'
                   }`}
                 >
                   Оба
@@ -1315,7 +1315,7 @@ end
 
               <button
                 onClick={() => handleCopyCode(getActivePumlCode())}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+                className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
                 title="Скопировать исходный код PlantUML"
               >
                 {copiedCode ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
@@ -1328,12 +1328,12 @@ end
             {(pumlRenderMode === 'visual' || pumlRenderMode === 'both') && (
               <div
                 className={`p-6 rounded-2xl border shadow-xl relative overflow-hidden ${
-                  isDark ? 'bg-[#030712] border-cyan-500/40 text-cyan-300' : 'bg-slate-900 border-slate-700 text-cyan-300'
+                  isDark ? 'bg-[#121417] border-[#2C3139] text-zinc-200' : 'bg-slate-900 border-slate-700 text-zinc-200'
                 }`}
               >
                 <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4 font-mono text-xs">
                   <span className="font-bold text-white uppercase tracking-wider flex items-center space-x-2">
-                    <Code className="h-4 w-4 text-cyan-400" />
+                    <Code className="h-4 w-4 text-zinc-400" />
                     <span>
                       Рендеринг PlantUML — {selectedPuml.toUpperCase()} ({mainMode.toUpperCase()})
                     </span>
@@ -1342,18 +1342,18 @@ end
                     href={getKrokiUrl(getActivePumlCode())}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-[11px] text-cyan-400 hover:underline flex items-center space-x-1"
+                    className="text-[11px] text-zinc-400 hover:text-zinc-200 hover:underline flex items-center space-x-1"
                   >
                     <span>Открыть SVG в новой вкладке</span>
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
 
-                <div className="flex justify-center items-center min-h-[300px] bg-[#010309] rounded-xl border border-cyan-500/30 p-4 overflow-x-auto">
+                <div className="flex justify-center items-center min-h-[300px] bg-[#121417] rounded-2xl border border-[#2C3139] p-4 overflow-x-auto">
                   <img
                     src={getKrokiUrl(getActivePumlCode())}
                     alt="PlantUML Diagram Render"
-                    className="max-w-full h-auto rounded-lg shadow-2xl transition-all hover:scale-[1.01]"
+                    className="max-w-full h-auto rounded-xl shadow-2xl transition-all hover:scale-[1.01]"
                     onError={(e) => {
                       // Fallback text if Kroki is blocked or offline
                       e.currentTarget.style.display = 'none';
@@ -1367,14 +1367,14 @@ end
             {(pumlRenderMode === 'code' || pumlRenderMode === 'both') && (
               <div
                 className={`p-6 rounded-2xl border font-mono space-y-3 ${
-                  isDark ? 'bg-[#060612] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
+                  isDark ? 'bg-[#1A1D22] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
                 }`}
               >
                 <div className="flex items-center justify-between border-b border-slate-700 pb-2">
-                  <span className="text-xs font-bold text-cyan-400">PlantUML Source Code (.puml)</span>
+                  <span className="text-xs font-bold text-[#52525B]">PlantUML Source Code (.puml)</span>
                   <span className="text-[10px] text-slate-400">Используйте java -jar plantuml.jar для сборки</span>
                 </div>
-                <pre className="p-4 rounded-xl bg-[#010309] border border-cyan-500/30 text-cyan-300 text-xs overflow-x-auto leading-relaxed">
+                <pre className="p-4 rounded-2xl bg-[#121417] border border-[#2C3139] text-zinc-200 text-xs overflow-x-auto leading-relaxed">
                   {getActivePumlCode()}
                 </pre>
               </div>
@@ -1388,10 +1388,10 @@ end
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
           <div
             className={`p-5 rounded-2xl border space-y-3 ${
-              isDark ? 'bg-[#060612] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+              isDark ? 'bg-[#1A1D22] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
-            <h3 className="text-sm font-bold text-amber-400 border-b pb-2 border-slate-700">1. Backend Gateway (`server.ts`)</h3>
+            <h3 className="text-sm font-bold text-zinc-400 border-b pb-2 border-slate-700">1. Backend Gateway (`server.ts`)</h3>
             <p className="text-slate-300 text-[11px] leading-relaxed">
               Монолитный Express.js сервер, обслуживающий REST Webhook ручки, связь с GitHub Models / Gemini и OData эмулятор 1С.
             </p>
@@ -1404,10 +1404,10 @@ end
 
           <div
             className={`p-5 rounded-2xl border space-y-3 ${
-              isDark ? 'bg-[#060612] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+              isDark ? 'bg-[#1A1D22] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
-            <h3 className="text-sm font-bold text-amber-400 border-b pb-2 border-slate-700">2. Deterministic Engine (`dispatcherEngine.ts`)</h3>
+            <h3 className="text-sm font-bold text-zinc-400 border-b pb-2 border-slate-700">2. Deterministic Engine (`dispatcherEngine.ts`)</h3>
             <p className="text-slate-300 text-[11px] leading-relaxed">
               Детерминированный 8-шаговый пайплайн: проверкa Guardrails, сопоставление контрагентов и расчет дедлайнов SLA.
             </p>
@@ -1424,11 +1424,11 @@ end
       {mainMode === 'as_is' && asIsSubTab === 'data_flow' && (
         <div
           className={`p-6 rounded-2xl border font-mono space-y-4 ${
-            isDark ? 'bg-[#060612] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
+            isDark ? 'bg-[#1A1D22] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
           }`}
         >
-          <h3 className="text-sm font-bold text-amber-400 border-b pb-2 border-slate-700">Пайплайн Обработки Обращения (As-Is MVP)</h3>
-          <pre className="p-4 rounded-xl bg-[#010309] border border-amber-500/30 text-amber-300 text-xs overflow-x-auto leading-relaxed">
+          <h3 className="text-sm font-bold text-zinc-400 border-b pb-2 border-slate-700">Пайплайн Обработки Обращения (As-Is MVP)</h3>
+          <pre className="p-4 rounded-2xl bg-[#121417] border border-zinc-500/30 text-zinc-300 text-xs overflow-x-auto leading-relaxed">
 {`[ Telegram / Email / Voice ]
              │
              ▼
@@ -1455,10 +1455,10 @@ end
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
           <div
             className={`p-5 rounded-2xl border space-y-3 ${
-              isDark ? 'bg-[#060612] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+              isDark ? 'bg-[#1A1D22] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
-            <div className="flex items-center space-x-2 text-cyan-400 font-bold border-b pb-2 border-slate-700">
+            <div className="flex items-center space-x-2 text-[#52525B] font-bold border-b pb-2 border-slate-700">
               <Server className="h-4 w-4" />
               <span>1. Envoy Ingress Gateway</span>
             </div>
@@ -1469,10 +1469,10 @@ end
 
           <div
             className={`p-5 rounded-2xl border space-y-3 ${
-              isDark ? 'bg-[#060612] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+              isDark ? 'bg-[#1A1D22] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
-            <div className="flex items-center space-x-2 text-cyan-400 font-bold border-b pb-2 border-slate-700">
+            <div className="flex items-center space-x-2 text-[#52525B] font-bold border-b pb-2 border-slate-700">
               <Zap className="h-4 w-4" />
               <span>2. Apache Kafka Event Bus</span>
             </div>
@@ -1483,10 +1483,10 @@ end
 
           <div
             className={`p-5 rounded-2xl border space-y-3 ${
-              isDark ? 'bg-[#060612] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+              isDark ? 'bg-[#1A1D22] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
-            <div className="flex items-center space-x-2 text-cyan-400 font-bold border-b pb-2 border-slate-700">
+            <div className="flex items-center space-x-2 text-[#52525B] font-bold border-b pb-2 border-slate-700">
               <Database className="h-4 w-4" />
               <span>3. Go + Temporal Decision Engine</span>
             </div>
@@ -1501,16 +1501,16 @@ end
       {mainMode === 'to_be' && toBeSubTab === 'migration' && (
         <div
           className={`p-6 rounded-2xl border font-mono space-y-6 ${
-            isDark ? 'bg-[#060612] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
+            isDark ? 'bg-[#1A1D22] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
           }`}
         >
-          <h3 className="text-sm font-bold text-cyan-400 border-b pb-2 border-slate-700">
+          <h3 className="text-sm font-bold text-[#52525B] border-b pb-2 border-slate-700">
             План Миграции: От As-Is Монолита к To-Be EDA Платформе
           </h3>
 
           <div className="space-y-4 text-xs">
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold text-[10px]">
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
+              <span className="px-2 py-0.5 rounded bg-[#52525B]/10 text-zinc-200 font-bold text-[10px]">
                 ФАЗА 1 (Месяц 1): Слой Данных и Контейнеризация
               </span>
               <ul className="space-y-1 text-slate-300 text-[11px]">
@@ -1525,8 +1525,8 @@ end
               </ul>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold text-[10px]">
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
+              <span className="px-2 py-0.5 rounded bg-[#52525B]/10 text-zinc-200 font-bold text-[10px]">
                 ФАЗА 2 (Месяцы 2-3): Event Bus & AI Microservice
               </span>
               <ul className="space-y-1 text-slate-300 text-[11px]">
@@ -1541,8 +1541,8 @@ end
               </ul>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold text-[10px]">
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
+              <span className="px-2 py-0.5 rounded bg-[#52525B]/10 text-zinc-200 font-bold text-[10px]">
                 ФАЗА 3 (Месяцы 4-5): Go + Temporal Workflow Engine
               </span>
               <ul className="space-y-1 text-slate-300 text-[11px]">
@@ -1559,17 +1559,17 @@ end
       {/* ADR INDEX */}
       {((mainMode === 'as_is' && asIsSubTab === 'report') || (mainMode === 'to_be' && toBeSubTab === 'adrs')) && (
         <div className="space-y-4 font-mono">
-          <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Архитектурные Решения (ADR Index)</h3>
+          <h3 className="text-xs font-bold text-[#52525B] uppercase tracking-wider">Архитектурные Решения (ADR Index)</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {adrList.map((adr) => (
               <div
                 key={adr.id}
                 className={`p-5 rounded-2xl border transition-all ${
-                  isDark ? 'bg-[#060612] border-slate-800 text-slate-300 hover:border-cyan-500/50' : 'bg-white border-slate-200 text-slate-800 shadow-md'
+                  isDark ? 'bg-[#1A1D22] border-slate-800 text-slate-300 hover:border-[#52525B]/40' : 'bg-white border-slate-200 text-slate-800 shadow-md'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#52525B]/10 text-zinc-200 border border-[#2C3139]">
                     {adr.id}
                   </span>
                   <span className="text-[10px] text-emerald-400 font-bold">{adr.status}</span>
@@ -1593,20 +1593,20 @@ end
       {((mainMode === 'as_is' && asIsSubTab === 'openapi') || (mainMode === 'to_be' && toBeSubTab === 'openapi')) && (
         <div
           className={`p-6 rounded-2xl border font-mono space-y-4 ${
-            isDark ? 'bg-[#060612] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
+            isDark ? 'bg-[#1A1D22] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
           }`}
         >
           <div className="flex items-center justify-between border-b border-slate-700 pb-3">
-            <h3 className="text-sm font-bold text-cyan-400">
+            <h3 className="text-sm font-bold text-[#52525B]">
               OpenAPI 3.0 Спецификация ({mainMode === 'as_is' ? '/architecture/api/openapi_current.yaml' : '/architecture/api/openapi_target.yaml'})
             </h3>
             <span className="text-xs text-emerald-400">REST & Webhook Spec</span>
           </div>
-          <pre className="p-4 rounded-xl bg-[#010309] border border-cyan-500/30 text-cyan-300 text-xs overflow-x-auto">
+          <pre className="p-4 rounded-2xl bg-[#121417] border border-[#2C3139] text-zinc-200 text-xs overflow-x-auto">
 {mainMode === 'as_is'
   ? `openapi: 3.0.3
 info:
-  title: Text2Business AI-Dispatcher API (As-Is Express Monolith)
+  title: NeuroBiz AI-Dispatcher API (As-Is Express Monolith)
   version: 1.0.0
 paths:
   /api/webhooks/dispatch:
@@ -1620,7 +1620,7 @@ paths:
       summary: OData REST реестр ЗаявокНаРемонт`
   : `openapi: 3.0.3
 info:
-  title: Text2Business AI-Dispatcher Platform API (To-Be Envoy Gateway)
+  title: NeuroBiz AI-Dispatcher Platform API (To-Be Envoy Gateway)
   version: 2.0.0
 paths:
   /v1/ingress/telegram:
@@ -1640,10 +1640,10 @@ paths:
       {((mainMode === 'as_is' && asIsSubTab === 'report') || (mainMode === 'to_be' && toBeSubTab === 'report')) && (
         <div
           className={`p-6 rounded-2xl border font-mono space-y-6 ${
-            isDark ? 'bg-[#060612] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
+            isDark ? 'bg-[#1A1D22] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
           }`}
         >
-          <h3 className="text-sm font-bold text-cyan-400 border-b pb-2 border-slate-700">
+          <h3 className="text-sm font-bold text-[#52525B] border-b pb-2 border-slate-700">
             {mainMode === 'as_is' ? 'Технический Отчет по Текущей Версии (As-Is)' : 'Технический Отчет по Целевой Системе (To-Be)'}
           </h3>
           <p className="text-xs text-slate-300 leading-relaxed">

@@ -1,344 +1,396 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TabType } from './Header';
-import { ParticleSwarmCanvas } from './ParticleSwarmCanvas';
 import {
-  Send,
-  UserCheck,
-  Database,
-  Activity,
-  Cpu,
   ArrowRight,
+  Activity,
+  Database,
+  Send,
+  ShieldCheck,
+  UserCheck,
+  Workflow,
+  Zap,
+  Lock,
+  ChevronDown,
+  MapPin,
+  Clock,
 } from 'lucide-react';
+import { AppRole, canAccessTab } from '../roles';
 
 interface LandingHomeProps {
   setActiveTab: (tab: TabType) => void;
   theme?: 'dark' | 'light';
-  onRunPreset?: (presetId: string) => void;
+  onRequestDemo?: () => void;
+  sessionRole?: AppRole;
+  onResetRole?: () => void;
 }
+
+const STEPS: Array<{ tab: TabType; n: string; title: string; text: string }> = [
+  {
+    tab: 'channels',
+    n: '01',
+    title: 'Подключите каналы',
+    text: 'Telegram, почта, голос и приём из внешних систем — одна очередь обращений.',
+  },
+  {
+    tab: 'console',
+    n: '02',
+    title: 'Прогоните готовые сценарии',
+    text: 'Четыре контрольных случая: разбор фактов, сроки реакции, пробный прогон и подтверждение.',
+  },
+  {
+    tab: 'operator',
+    n: '03',
+    title: 'Закройте неоднозначное',
+    text: 'Диспетчер уточняет поля и передаёт заявку в реестр и 1С.',
+  },
+];
+
+const FLOW = [
+  {
+    n: '01',
+    title: 'Входящее обращение',
+    text: 'Сообщение из чата, письма или звонка попадает в общую очередь без ручной сортировки.',
+  },
+  {
+    n: '02',
+    title: 'Разбор фактов',
+    text: 'Система выделяет клиента, объект, оборудование и суть проблемы — с цитатой из текста.',
+  },
+  {
+    n: '03',
+    title: 'Решение',
+    text: 'Создать заявку, запросить уточнение или передать диспетчеру — по правилам сервиса.',
+  },
+  {
+    n: '04',
+    title: 'Реестр и учёт',
+    text: 'После подтверждения запись сохраняется и уходит в 1С:ERP.',
+  },
+];
+
+const PREVIEWS = [
+  {
+    k: 'Карта заявок',
+    d: 'Объекты и выезды на одной схеме',
+    lines: ['ТЦ «Север» · чиллер ХУ-17', 'Склад №2 · холодильная камера', 'БЦ «Орбита» · вентиляция'],
+  },
+  {
+    k: 'Диспетчер',
+    d: 'Уточнение без потери контекста',
+    lines: ['Не хватает кода оборудования', 'Черновик ответа клиенту', 'Передача в 1С после проверки'],
+  },
+  {
+    k: 'Поле',
+    d: 'Выездные инженеры и обходы',
+    lines: ['Назначение на объект', 'Срок прибытия по нормативу', 'Закрытие с актом'],
+  },
+  {
+    k: 'Аналитика',
+    d: 'Сроки, очередь, журнал обработки',
+    lines: ['Очередь: 3 на уточнении', 'Срок реакции: 2 ч 15 мин', 'Автоматически закрыто: 86%'],
+  },
+];
+
+const FAQ = [
+  {
+    q: 'Что происходит с обращением?',
+    a: 'Текст разбирается на факты, система предлагает действие и показывает цепочку шагов. В реестр запись попадает только после подтверждения.',
+  },
+  {
+    q: 'Зачем выбирать роль?',
+    a: 'Демонстрационный стенд и рабочее место диспетчера разделены: в одной сессии открыт один контур, чтобы не смешивать сценарии.',
+  },
+  {
+    q: 'Можно ли пробовать без записи в учёт?',
+    a: 'Да. Пробный прогон ничего не сохраняет. Сохранение в реестр — отдельная кнопка «Подтвердить».',
+  },
+];
 
 export const LandingHome: React.FC<LandingHomeProps> = ({
   setActiveTab,
-  theme = 'dark',
+  theme = 'light',
+  onRequestDemo,
+  sessionRole = 'guest' as AppRole,
+  onResetRole,
 }) => {
   const isDark = theme === 'dark';
+  const card = isDark
+    ? 'bg-[#1A1D22] border-[#2C3139]'
+    : 'bg-white border-[#E6E8EC] shadow-[0_12px_40px_rgba(16,24,40,0.05)]';
+  const [flowIndex, setFlowIndex] = useState(0);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  const goIfAllowed = (tab: TabType) => {
+    if (canAccessTab(sessionRole, tab)) setActiveTab(tab);
+  };
 
   return (
-    <div className="relative w-full max-w-7xl mx-auto flex flex-col justify-between gap-4 sm:gap-6 animate-fadeIn py-2 sm:py-4">
-      {/* GLOBAL PARTICLE SWARM BACKGROUND */}
-      <ParticleSwarmCanvas theme={theme} className="opacity-90 dark:opacity-100" />
+    <div className="w-full overflow-x-clip">
+      <section className="relative mx-auto max-w-5xl px-4 sm:px-6 pt-10 sm:pt-16 pb-8 text-center">
+        <p className={`mb-4 text-xs font-semibold uppercase tracking-[0.14em] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+          NeuroBiz
+        </p>
+        <h1 className="text-[28px] sm:text-4xl lg:text-[44px] font-extrabold tracking-tight leading-[1.15] text-balance">
+          Платформа для сервиса: от поддержки до выездных работ
+        </h1>
+        <p className={`mx-auto mt-5 max-w-2xl text-sm sm:text-base leading-relaxed ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+          NeuroBiz принимает обращения из чатов, писем и звонков, считает сроки реакции без ручной раздачи заявок
+          и передаёт работу в реестр и 1С:ERP. Выберите роль — интерфейс останется в ней до конца сессии.
+        </p>
 
-      {/* 1. HERO SECTION */}
-      <div
-        className={`relative z-10 rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 border text-center flex-1 flex flex-col items-center justify-center transition-all ${
-          isDark
-            ? 'bg-[#060612]/60 border-cyan-500/30 shadow-[0_10px_30px_rgba(0,0,0,0.7)] backdrop-blur-sm'
-            : 'bg-white/70 border-blue-900/30 shadow-md backdrop-blur-sm'
-        }`}
-      >
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px] rounded-2xl sm:rounded-3xl" />
-
-        <div className="relative z-30 max-w-3xl mx-auto space-y-3 sm:space-y-5 my-auto">
-          {/* Brand Header */}
-          <div className="inline-flex items-center justify-center space-x-2.5 sm:space-x-3 mb-0.5">
-            <div
-              className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl flex items-center justify-center ${
-                isDark
-                  ? 'bg-gradient-to-br from-cyan-400 via-indigo-500 to-purple-600 p-0.5 shadow-lg'
-                  : 'bg-transparent'
-              }`}
-            >
-              <div
-                className={`h-full w-full rounded-[10px] sm:rounded-[14px] flex items-center justify-center ${
-                  isDark ? 'bg-[#030712]' : 'bg-transparent'
-                }`}
-              >
-                <Cpu className={`h-6 w-6 sm:h-7 sm:w-7 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`} />
-              </div>
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto text-left">
+          <button
+            type="button"
+            disabled={sessionRole === 'dispatcher'}
+            onClick={() => goIfAllowed('console')}
+            className={`rounded-3xl border p-5 transition hover:-translate-y-0.5 ${card} ${
+              sessionRole === 'dispatcher' ? 'opacity-40 cursor-not-allowed' : ''
+            } ${sessionRole === 'demo' ? 'ring-2 ring-zinc-400/60' : ''}`}
+          >
+            <div className="flex items-center gap-2 font-extrabold">
+              <Zap className="h-4 w-4 text-[#52525B]" />
+              Демонстрационный стенд
+              {sessionRole === 'dispatcher' && <Lock className="h-3.5 w-3.5 ml-auto text-zinc-400" />}
             </div>
-            <div className="text-left flex flex-col">
-              <span
-                className={`text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight font-mono uppercase leading-none ${
-                  isDark ? 'text-white' : 'text-blue-950'
-                }`}
-              >
-                TEXT2BUSINESS
-              </span>
-              <span
-                className={`text-[11px] sm:text-xs font-mono font-bold tracking-widest uppercase mt-0.5 sm:mt-1 leading-none ${
-                  isDark ? 'text-cyan-400' : 'text-blue-700'
-                }`}
-              >
-                AI-ДИСПЕТЧЕР
-              </span>
+            <p className={`text-sm mt-2 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+              Готовые сценарии, факты и решение. Рабочее место диспетчера в этой сессии будет закрыто.
+            </p>
+          </button>
+          <button
+            type="button"
+            disabled={sessionRole === 'demo'}
+            onClick={() => goIfAllowed('operator')}
+            className={`rounded-3xl border p-5 transition hover:-translate-y-0.5 ${card} ${
+              sessionRole === 'demo' ? 'opacity-40 cursor-not-allowed' : ''
+            } ${sessionRole === 'dispatcher' ? 'ring-2 ring-zinc-400/60' : ''}`}
+          >
+            <div className="flex items-center gap-2 font-extrabold">
+              <UserCheck className="h-4 w-4 text-[#52525B]" />
+              Диспетчер
+              {sessionRole === 'demo' && <Lock className="h-3.5 w-3.5 ml-auto text-zinc-400" />}
             </div>
-          </div>
+            <p className={`text-sm mt-2 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+              Очередь уточнений и передача в 1С. Стенд в этой сессии будет закрыт.
+            </p>
+          </button>
+        </div>
 
-          {/* Hero Headline */}
-          <h1
-            className={`text-lg sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-tight ${
-              isDark ? 'text-white' : 'text-blue-950'
+        {sessionRole !== 'guest' && (
+          <button
+            type="button"
+            onClick={onResetRole}
+            className={`mt-4 text-xs font-semibold underline-offset-4 hover:underline ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}
+          >
+            Сменить роль
+          </button>
+        )}
+
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={onRequestDemo}
+            className={`w-full sm:w-auto rounded-full border px-7 py-3 text-sm font-bold ${
+              isDark ? 'border-[#3A404A] hover:bg-white/5' : 'border-[#E6E8EC] bg-white hover:bg-zinc-50'
             }`}
           >
-            <span
-              className={
-                isDark
-                  ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-blue-400'
-                  : 'text-blue-900'
-              }
-            >
-              Превращаем хаос входящих обращений
-            </span>{' '}
-            в управляемый сервис
-          </h1>
+            Запросить показ
+          </button>
+        </div>
+      </section>
 
-          <p
-            className={`text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed font-sans ${
-              isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'
-            }`}
-          >
-            Умный AI-диспетчер для холодильного оборудования. Понимает контекст в письмах, чатах и звонках, рассчитывает SLA без ошибок и передает тикет напрямую в 1С:ERP.
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 pb-6">
+        <h2 className="text-center text-xl sm:text-2xl font-extrabold mb-2">Как проходит обращение</h2>
+        <p className={`text-center text-sm mb-6 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+          Нажмите шаг — откроется короткое пояснение.
+        </p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          {FLOW.map((step, i) => {
+            const active = flowIndex === i;
+            return (
+              <button
+                key={step.n}
+                type="button"
+                onClick={() => setFlowIndex(i)}
+                className={`rounded-2xl border p-4 text-left transition ${card} ${
+                  active ? 'ring-2 ring-zinc-400/50' : 'hover:-translate-y-0.5'
+                }`}
+              >
+                <div className="text-[#52525B] text-[11px] font-bold tracking-widest">{step.n}</div>
+                <div className="mt-1 text-sm font-extrabold leading-snug">{step.title}</div>
+              </button>
+            );
+          })}
+        </div>
+        <div className={`mt-3 rounded-3xl border p-5 animate-fadeIn ${card}`}>
+          <p className="text-sm font-extrabold">{FLOW[flowIndex].title}</p>
+          <p className={`mt-2 text-sm leading-relaxed ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+            {FLOW[flowIndex].text}
           </p>
+          <div className="mt-4 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFlowIndex((i) => (i === 0 ? FLOW.length - 1 : i - 1))}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                isDark ? 'border-[#3A404A] hover:bg-white/5' : 'border-[#E6E8EC] hover:bg-zinc-50'
+              }`}
+            >
+              Назад
+            </button>
+            <button
+              type="button"
+              onClick={() => setFlowIndex((i) => (i + 1) % FLOW.length)}
+              className="rounded-full bg-zinc-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800"
+            >
+              Дальше
+            </button>
+            <span className={`ml-auto text-[11px] font-semibold ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+              {flowIndex + 1} из {FLOW.length}
+            </span>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* 2. NAVIGATION TILES (4 BLOCKS) */}
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4.5">
-        {/* Tile 1: Channels Config */}
-        <div
-          id="home-tile-channels"
-          onClick={() => setActiveTab('channels')}
-          className={`relative z-10 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between group ${
-            isDark
-              ? 'bg-[#060612]/60 border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-sm'
-              : 'bg-white border-slate-300 hover:border-blue-900 shadow-md backdrop-blur-sm'
-          }`}
-        >
-          <div className="relative z-30">
-            <div className="flex items-center justify-between mb-2">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                  isDark
-                    ? 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-400'
-                    : 'bg-blue-100 border border-blue-300 text-blue-950'
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-10">
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x">
+          {PREVIEWS.map((item, i) => {
+            const active = previewIndex === i;
+            return (
+              <button
+                key={item.k}
+                type="button"
+                onClick={() => setPreviewIndex(i)}
+                className={`min-w-[240px] snap-start rounded-3xl border p-5 text-left transition ${card} ${
+                  active ? 'ring-2 ring-zinc-400/50' : 'hover:-translate-y-0.5'
                 }`}
               >
-                <Send className="h-4 w-4" />
+                <div
+                  className={`rounded-2xl mb-4 p-3 space-y-2 ${isDark ? 'bg-[#121417]' : 'bg-[#F3F4F6]'}`}
+                >
+                  {item.lines.map((line) => (
+                    <div
+                      key={line}
+                      className={`flex items-center gap-2 text-[11px] font-medium ${
+                        isDark ? 'text-zinc-300' : 'text-zinc-600'
+                      }`}
+                    >
+                      {i === 0 ? (
+                        <MapPin className="h-3 w-3 shrink-0 text-[#52525B]" />
+                      ) : (
+                        <Clock className="h-3 w-3 shrink-0 text-[#52525B]" />
+                      )}
+                      <span className="truncate">{line}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="font-extrabold text-sm">{item.k}</div>
+                <div className={`text-xs mt-1 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{item.d}</div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-6">
+        <h2 className="text-center text-xl sm:text-2xl font-extrabold mb-6">Понятный путь пользователя</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {STEPS.map((s) => {
+            const locked = !canAccessTab(sessionRole, s.tab);
+            return (
+              <button
+                key={s.n}
+                type="button"
+                disabled={locked}
+                onClick={() => goIfAllowed(s.tab)}
+                className={`rounded-3xl border p-5 text-left transition ${card} ${
+                  locked ? 'opacity-40 cursor-not-allowed' : 'hover:-translate-y-0.5'
+                }`}
+              >
+                <div className="text-[#52525B] text-xs font-bold tracking-widest">{s.n}</div>
+                <div className="mt-2 font-extrabold">{s.title}</div>
+                <p className={`mt-2 text-sm leading-relaxed ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{s.text}</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#52525B]">
+                  {locked ? 'Закрыто для роли' : 'Перейти'} <ArrowRight className="h-4 w-4" />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { icon: Send, tab: 'channels' as TabType, title: 'Каналы', text: 'Бот, почта, телефония, приём из систем.' },
+            { icon: UserCheck, tab: 'operator' as TabType, title: 'Диспетчер', text: 'Уточнение фактов и эскалация.' },
+            { icon: Database, tab: 'database' as TabType, title: 'Реестр', text: 'Объекты, активы и заявки.' },
+            { icon: Activity, tab: 'logs_traces' as TabType, title: 'Наблюдение', text: 'Журнал, цепочки обработки, сроки.' },
+          ].map((t) => {
+            const locked = !canAccessTab(sessionRole, t.tab);
+            return (
+              <button
+                key={t.title}
+                type="button"
+                disabled={locked}
+                onClick={() => goIfAllowed(t.tab)}
+                className={`rounded-3xl border p-5 text-left group ${card} ${
+                  locked ? 'opacity-40 cursor-not-allowed' : isDark ? 'hover:border-[#52525B]/50' : 'hover:border-[#52525B]/40'
+                }`}
+              >
+                <div className={`h-10 w-10 rounded-2xl flex items-center justify-center mb-3 ${isDark ? 'bg-white/5' : 'bg-zinc-50'}`}>
+                  <t.icon className="h-4 w-4 text-[#52525B]" />
+                </div>
+                <div className="font-extrabold">{t.title}</div>
+                <p className={`text-sm mt-1 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                  {locked ? 'Недоступно в текущей роли' : t.text}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-3xl px-4 sm:px-6 py-6">
+        <h2 className="text-center text-xl sm:text-2xl font-extrabold mb-5">Коротко по делу</h2>
+        <div className="space-y-2">
+          {FAQ.map((item, i) => {
+            const open = openFaq === i;
+            return (
+              <div key={item.q} className={`rounded-2xl border ${card}`}>
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(open ? null : i)}
+                  className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+                  aria-expanded={open}
+                >
+                  <span className="text-sm font-extrabold">{item.q}</span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+                </button>
+                {open && (
+                  <p className={`px-5 pb-4 text-sm leading-relaxed ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                    {item.a}
+                  </p>
+                )}
               </div>
-              <span
-                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                  isDark
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                    : 'bg-blue-950 text-white font-extrabold'
-                }`}
-              >
-                КАНАЛЫ
-              </span>
-            </div>
-            <h3
-              className={`text-sm sm:text-base font-bold font-mono mb-1 ${
-                isDark ? 'text-white' : 'text-blue-950 font-extrabold'
-              }`}
-            >
-              1. Каналы
-            </h3>
-            <p
-              className={`text-xs leading-snug ${
-                isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'
-              }`}
-            >
-              Telegram Бот, Email IMAP/MCP, Голосовая телефония и Swagger REST API.
-            </p>
-          </div>
-
-          <div
-            className={`relative z-30 mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-mono font-bold transition-transform group-hover:translate-x-1 ${
-              isDark
-                ? 'border-white/10 text-cyan-400'
-                : 'border-slate-200 text-blue-950 font-extrabold'
-            }`}
-          >
-            <span>Настроить каналы</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
+            );
+          })}
         </div>
+      </section>
 
-        {/* Tile 2: Operator HITL */}
-        <div
-          id="home-tile-operator"
-          onClick={() => setActiveTab('operator')}
-          className={`relative z-10 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between group ${
-            isDark
-              ? 'bg-[#060612]/60 border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-sm'
-              : 'bg-white border-slate-300 hover:border-blue-900 shadow-md backdrop-blur-sm'
-          }`}
-        >
-          <div className="relative z-30">
-            <div className="flex items-center justify-between mb-2">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                  isDark
-                    ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400'
-                    : 'bg-blue-100 border border-blue-300 text-blue-950'
-                }`}
-              >
-                <UserCheck className="h-4 w-4" />
-              </div>
-              <span
-                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                  isDark
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                    : 'bg-blue-950 text-white font-extrabold'
-                }`}
-              >
-                HITL
-              </span>
-            </div>
-            <h3
-              className={`text-sm sm:text-base font-bold font-mono mb-1 ${
-                isDark ? 'text-white' : 'text-blue-950 font-extrabold'
-              }`}
-            >
-              2. Диспетчер
-            </h3>
-            <p
-              className={`text-xs leading-snug ${
-                isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'
-              }`}
-            >
-              Интерактивный диалог, уточнение данных у клиента в боте и передача в 1С.
-            </p>
-          </div>
-
-          <div
-            className={`relative z-30 mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-mono font-bold transition-transform group-hover:translate-x-1 ${
-              isDark
-                ? 'border-white/10 text-cyan-400'
-                : 'border-slate-200 text-blue-950 font-extrabold'
-            }`}
-          >
-            <span>Открыть место диспетчера</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-8 text-center">
+        <div className="inline-flex items-center gap-2 text-sm font-semibold mb-3">
+          <Workflow className="h-4 w-4 text-[#52525B]" />
+          Контрольные сценарии на месте
         </div>
-
-        {/* Tile 3: Database Registry */}
-        <div
-          id="home-tile-database"
-          onClick={() => setActiveTab('database')}
-          className={`relative z-10 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between group ${
-            isDark
-              ? 'bg-[#060612]/60 border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-sm'
-              : 'bg-white border-slate-300 hover:border-blue-900 shadow-md backdrop-blur-sm'
-          }`}
-        >
-          <div className="relative z-30">
-            <div className="flex items-center justify-between mb-2">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                  isDark
-                    ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
-                    : 'bg-blue-100 border border-blue-300 text-blue-950'
-                }`}
-              >
-                <Database className="h-4 w-4" />
-              </div>
-              <span
-                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                  isDark
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                    : 'bg-blue-950 text-white font-extrabold'
-                }`}
-              >
-                РЕЕСТР
-              </span>
-            </div>
-            <h3
-              className={`text-sm sm:text-base font-bold font-mono mb-1 ${
-                isDark ? 'text-white' : 'text-blue-950 font-extrabold'
-              }`}
-            >
-              3. Реестр
-            </h3>
-            <p
-              className={`text-xs leading-snug ${
-                isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'
-              }`}
-            >
-              Просмотр и CRUD редактирование: контрагенты, объекты, оборудование, открытые и закрытые заявки.
-            </p>
-          </div>
-
-          <div
-            className={`relative z-30 mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-mono font-bold transition-transform group-hover:translate-x-1 ${
-              isDark
-                ? 'border-white/10 text-cyan-400'
-                : 'border-slate-200 text-blue-950 font-extrabold'
-            }`}
-          >
-            <span>Открыть реестр БД</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
+        <p className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+          Сценарии TC-01…TC-04, пробный прогон и подтверждение диспетчером сохранены — сменился только интерфейс.
+        </p>
+        <div className="mt-5 flex justify-center">
+          <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs ${isDark ? 'border-[#2C3139] text-zinc-400' : 'border-[#E6E8EC] text-zinc-500'}`}>
+            <ShieldCheck className="h-4 w-4" /> Пробный режим по умолчанию
+          </span>
         </div>
-
-        {/* Tile 4: Logs & Traces */}
-        <div
-          id="home-tile-logs"
-          onClick={() => setActiveTab('logs_traces')}
-          className={`relative z-10 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between group ${
-            isDark
-              ? 'bg-[#060612]/60 border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-sm'
-              : 'bg-white border-slate-300 hover:border-blue-900 shadow-md backdrop-blur-sm'
-          }`}
-        >
-          <div className="relative z-30">
-            <div className="flex items-center justify-between mb-2">
-              <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                  isDark
-                    ? 'bg-purple-500/10 border border-purple-500/30 text-purple-400'
-                    : 'bg-blue-100 border border-blue-300 text-blue-950'
-                }`}
-              >
-                <Activity className="h-4 w-4" />
-              </div>
-              <span
-                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                  isDark
-                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
-                    : 'bg-blue-950 text-white font-extrabold'
-                }`}
-              >
-                МОНИТОРИНГ
-              </span>
-            </div>
-            <h3
-              className={`text-sm sm:text-base font-bold font-mono mb-1 ${
-                isDark ? 'text-white' : 'text-blue-950 font-extrabold'
-              }`}
-            >
-              4. Логи & Трейсы
-            </h3>
-            <p
-              className={`text-xs leading-snug ${
-                isDark ? 'text-slate-400' : 'text-slate-900 font-semibold'
-              }`}
-            >
-              Живой терминал логов, OpenTelemetry / Arize AI трейсы и дашборды SLA.
-            </p>
-          </div>
-
-          <div
-            className={`relative z-30 mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-mono font-bold transition-transform group-hover:translate-x-1 ${
-              isDark
-                ? 'border-white/10 text-cyan-400'
-                : 'border-slate-200 text-blue-950 font-extrabold'
-            }`}
-          >
-            <span>Смотреть логи & трейсы</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
-        </div>
-      </div>
+      </section>
     </div>
   );
 };

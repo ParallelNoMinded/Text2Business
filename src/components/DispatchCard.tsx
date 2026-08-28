@@ -11,6 +11,7 @@ import {
   Shield,
   Send,
   Zap,
+  ChevronDown,
 } from 'lucide-react';
 
 interface DispatchCardProps {
@@ -30,17 +31,18 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
 }) => {
   const isDark = theme === 'dark';
   const [copied, setCopied] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   if (!result) {
     return (
       <div
-        className={`rounded-2xl p-5 text-center text-xs font-mono border transition-all ${
+        className={`rounded-2xl p-5 text-center text-xs border animate-fadeIn ${
           isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
-            : 'bg-white border-slate-300 text-slate-700 font-semibold shadow-sm'
+            ? 'bg-[#1A1D22] border-[#2C3139] text-slate-500'
+            : 'bg-white border-[#E6E8EC] text-slate-600 shadow-sm'
         }`}
       >
-        // Ожидание выполнения пайплайна...
+        Решение появится после прогона.
       </div>
     );
   }
@@ -56,322 +58,225 @@ export const DispatchCard: React.FC<DispatchCardProps> = ({
   const formatActionLabel = (action: string) => {
     switch (action) {
       case 'CREATE_TICKET':
-        return 'СОЗДАНИЕ ЗАЯВКИ';
+        return 'Создание заявки';
       case 'UPDATE_TICKET':
-        return 'ОБНОВЛЕНИЕ ЗАЯВКИ';
+        return 'Обновление заявки';
       case 'REQUEST_CLARIFICATION':
-        return 'ЗАПРОС УТОЧНЕНИЯ';
+        return 'Запрос уточнения';
       case 'ESCALATE_TO_HUMAN':
-        return 'ЭСКАЛАЦИЯ ОПЕРАТОРУ';
+        return 'Эскалация оператору';
       case 'REJECT':
-        return 'ОТКЛОНЕНИЕ';
+        return 'Отклонение';
       default:
         return action;
     }
   };
 
-  const getActionBadgeClass = (action: string) => {
-    switch (action) {
-      case 'CREATE_TICKET':
-        return isDark
-          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-          : 'bg-emerald-100 text-emerald-950 border-emerald-400 font-extrabold';
-      case 'UPDATE_TICKET':
-        return isDark
-          ? 'bg-amber-500/10 text-amber-300 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-          : 'bg-amber-100 text-amber-950 border-amber-400 font-extrabold';
-      case 'REQUEST_CLARIFICATION':
-        return isDark
-          ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-          : 'bg-blue-100 text-blue-950 border-blue-400 font-extrabold';
-      case 'ESCALATE_TO_HUMAN':
-        return isDark
-          ? 'bg-purple-500/10 text-purple-300 border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
-          : 'bg-purple-100 text-purple-950 border-purple-400 font-extrabold';
-      default:
-        return 'bg-red-500/10 text-red-300 border-red-500/40';
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    if (status === 'AUTO_APPROVED') {
-      return (
-        <span
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-mono font-bold text-xs border ${
-            isDark
-              ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
-              : 'bg-emerald-100 text-emerald-950 border-emerald-400 font-extrabold'
-          }`}
-        >
-          <CheckCircle className="h-4 w-4" />
-          АВТО-УТВЕРЖДЕНО
-        </span>
-      );
-    }
-    if (status === 'REQUIRES_HUMAN_CONFIRMATION') {
-      return (
-        <span
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-mono font-bold text-xs border ${
-            isDark
-              ? 'bg-amber-950/80 text-amber-300 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
-              : 'bg-amber-100 text-amber-950 border-amber-400 font-extrabold'
-          }`}
-        >
-          <AlertTriangle className="h-4 w-4" />
-          ТРЕБУЕТСЯ ПОДТВЕРЖДЕНИЕ
-        </span>
-      );
-    }
-    return (
-      <span
-        className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-mono font-bold text-xs border ${
-          isDark
-            ? 'bg-red-950/80 text-red-300 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.2)]'
-            : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
-        }`}
-      >
-        <XCircle className="h-4 w-4" />
-        ЗАБЛОКИРОВАНО СИСТЕМОЙ ЗАЩИТЫ
-      </span>
-    );
-  };
+  const needsConfirm = result.status === 'REQUIRES_HUMAN_CONFIRMATION';
+  const autoApproved = result.status === 'AUTO_APPROVED';
+  const slaTime = result.ticket_payload?.sla_deadline
+    ? new Date(result.ticket_payload.sla_deadline).toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null;
 
   return (
     <div
       id="dispatch-decision-card"
-      className={`rounded-2xl p-4 sm:p-5 transition-all border space-y-4 ${
-        isDark
-          ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
-          : 'bg-white border-slate-300 shadow-sm text-slate-900'
+      className={`rounded-2xl p-4 sm:p-5 border space-y-4 animate-fadeIn ${
+        isDark ? 'bg-[#1A1D22] border-[#2C3139] text-white' : 'bg-white border-[#E6E8EC] text-zinc-900 shadow-sm'
       }`}
     >
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-700/30">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Zap className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              2. Принятое решение
-            </h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Zap className={`h-4 w-4 ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`} />
+          <h2 className="text-xs font-bold uppercase tracking-wider">Решение</h2>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${
+              needsConfirm
+                ? 'nb-pulse-warn bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800'
+                : autoApproved
+                ? isDark
+                  ? 'bg-zinc-800 text-zinc-200 border-zinc-600'
+                  : 'bg-zinc-100 text-zinc-800 border-zinc-300'
+                : isDark
+                ? 'bg-zinc-800 text-zinc-200 border-zinc-600'
+                : 'bg-zinc-100 text-zinc-800 border-zinc-300'
+            }`}
+          >
+            {needsConfirm ? <AlertTriangle className="h-3.5 w-3.5" /> : autoApproved ? <CheckCircle className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+            {needsConfirm ? 'Нужно подтверждение' : autoApproved ? 'Авто-утверждено' : 'Заблокировано'}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowDetails((v) => !v)}
+            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold transition ${
+              isDark
+                ? 'border-[#3A404A] text-zinc-300 hover:bg-white/5'
+                : 'border-[#E6E8EC] text-zinc-600 hover:bg-zinc-50'
+            }`}
+          >
+            {showDetails ? 'Скрыть детали' : 'Подробности'}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+        <div
+          className={`rounded-xl border p-3 ${
+            isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-[#F7F8FA] border-[#E6E8EC]'
+          }`}
+        >
+          <div className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+            Действие
           </div>
-          <p className={`text-xs mt-0.5 font-sans ${isDark ? 'text-slate-400' : 'text-slate-700 font-medium'}`}>
-            Решение графа состояний на основе извлеченных фактов и сверки с реестром.
+          <p className="text-sm font-extrabold">{formatActionLabel(result.recommended_action)}</p>
+        </div>
+
+        <div
+          className={`rounded-xl border p-3 ${
+            isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-[#F7F8FA] border-[#E6E8EC]'
+          }`}
+        >
+          <div className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider mb-2 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+            <Clock className="h-3.5 w-3.5" />
+            Дедлайн SLA
+          </div>
+          <p className="text-sm font-extrabold">{slaTime || 'Не вычисляется'}</p>
+          <p className={`text-[11px] mt-1 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+            {result.matched_contract?.plan || 'Gold'}
           </p>
         </div>
 
-        <div>{getStatusBadge(result.status)}</div>
-      </div>
-
-      {/* Main Action & SLA Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-        {/* Business Action Box */}
         <div
-          className={`border rounded-xl p-3 flex flex-col justify-between shadow-inner ${
-            isDark
-              ? 'bg-[#020204]/90 border-cyan-500/20'
-              : 'bg-slate-50 border-slate-300'
+          className={`rounded-xl border p-3 ${
+            isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-[#F7F8FA] border-[#E6E8EC]'
           }`}
         >
-          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            Рекомендуемое Бизнес-Действие
-          </span>
-          <div className="my-2">
-            <span
-              className={`inline-block px-3 py-1.5 rounded-lg border text-xs font-extrabold font-mono tracking-wider ${getActionBadgeClass(
-                result.recommended_action
-              )}`}
-            >
-              {formatActionLabel(result.recommended_action)}
-            </span>
+          <div className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+            Неустойка
           </div>
-          <div className="text-[11px] font-mono flex items-center justify-between pt-2 border-t border-slate-700/20">
-            <span className={isDark ? 'text-slate-400' : 'text-slate-700 font-semibold'}>Уверенность AI:</span>
-            <span className={`font-mono font-extrabold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              {Math.round(result.confidence_score * 100)}%
-            </span>
-          </div>
-        </div>
-
-        {/* Matched Asset & Site */}
-        <div
-          className={`border rounded-xl p-3 space-y-1.5 shadow-inner ${
-            isDark
-              ? 'bg-[#020204]/90 border-cyan-500/20'
-              : 'bg-slate-50 border-slate-300'
-          }`}
-        >
-          <div className={`flex items-center space-x-1.5 text-[10px] font-mono font-bold uppercase ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            <Building className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <span>Привязка в БД</span>
-          </div>
-          <div>
-            <p className={`text-xs font-bold font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {result.matched_site ? (
-                `${result.matched_site.customer_name} (${result.matched_site.site_id})`
-              ) : (
-                <span className="text-amber-600 font-sans font-bold">Объект не привязан</span>
-              )}
-            </p>
-            <p className={`text-[11px] line-clamp-1 mt-0.5 font-sans ${isDark ? 'text-slate-400' : 'text-slate-700 font-medium'}`}>
-              {result.matched_site?.address || 'Необходим запрос уточнения'}
-            </p>
-          </div>
-          <div className="pt-1.5 border-t border-slate-700/20 text-[11px] font-mono flex items-center justify-between">
-            <span className={isDark ? 'text-slate-300' : 'text-slate-700 font-semibold'}>Оборудование:</span>
-            <span className={`font-mono font-extrabold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              {result.matched_asset ? result.matched_asset.local_code : 'Не определено'}
-            </span>
-          </div>
-        </div>
-
-        {/* SLA & Deadlines */}
-        <div
-          className={`border rounded-xl p-3 space-y-1.5 shadow-inner ${
-            isDark
-              ? 'bg-[#020204]/90 border-cyan-500/20'
-              : 'bg-slate-50 border-slate-300'
-          }`}
-        >
-          <div className={`flex items-center space-x-1.5 text-[10px] font-mono font-bold uppercase ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            <Clock className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <span>SLA и Сроки (Договор)</span>
-          </div>
-          <div>
-            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono">
-              План: {result.matched_contract?.plan || 'Gold (24x7)'}
-            </p>
-            <p className={`text-[11px] mt-0.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
-              Дедлайн:{' '}
-              {result.ticket_payload?.sla_deadline ? (
-                <span className={`font-mono font-extrabold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-                  {new Date(result.ticket_payload.sla_deadline).toLocaleTimeString('ru-RU', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              ) : (
-                'Не вычисляется'
-              )}
-            </p>
-          </div>
-          <div className="pt-1.5 border-t border-slate-700/20 text-[11px] font-mono flex items-center justify-between">
-            <span className={isDark ? 'text-slate-400' : 'text-slate-700 font-semibold'}>Неустойка:</span>
-            <span className="font-mono text-xs text-rose-600 dark:text-rose-400 font-extrabold">
-              {result.matched_contract?.penalty_per_hour || '50 000 руб./час'}
-            </span>
-          </div>
+          <p className="text-sm font-extrabold">{result.matched_contract?.penalty_per_hour || '50 000 руб./час'}</p>
         </div>
       </div>
 
-      {/* Decision Rationale */}
-      <div
-        className={`border rounded-xl p-3 ${
-          isDark
-            ? 'bg-[#020204]/80 border-cyan-500/20'
-            : 'bg-slate-50 border-slate-300'
-        }`}
-      >
-        <h3 className={`text-[10px] font-mono font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-          <Shield className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-          Аргументация Движка Принятия Решений
-        </h3>
-        <ul className={`space-y-1 text-xs font-sans ${isDark ? 'text-slate-300' : 'text-slate-800 font-medium'}`}>
-          {result.decision_reasoning.map((reason, idx) => (
-            <li key={idx} className="flex items-start space-x-2">
-              <span className={`h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0 ${isDark ? 'bg-cyan-400' : 'bg-blue-900'}`}></span>
-              <span className="leading-relaxed">{reason}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* AI Customer Reply Draft */}
-      <div
-        className={`border rounded-xl p-3 ${
-          isDark
-            ? 'bg-[#020204]/80 border-cyan-500/20'
-            : 'bg-slate-50 border-slate-300'
-        }`}
-      >
-        <div className="flex items-center justify-between mb-1.5">
-          <label className={`text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            <Send className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            3. Проект ответа клиенту
-          </label>
-          <button
-            type="button"
-            onClick={handleCopyReply}
-            className={`flex items-center space-x-1 px-2.5 py-1 text-[10px] font-mono border rounded-lg transition ${
-              isDark
-                ? 'text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/10'
-                : 'text-slate-800 hover:text-blue-950 bg-white hover:bg-slate-100 border-slate-300 font-bold'
+      {showDetails && (
+        <div className="space-y-3 animate-fadeIn">
+          <div
+            className={`rounded-xl border p-3 ${
+              isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-[#F7F8FA] border-[#E6E8EC]'
             }`}
           >
-            {copied ? (
-              <>
-                <Check className={`h-3 w-3 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-                <span className={`font-mono ${isDark ? 'text-cyan-400' : 'text-blue-900'}`}>Скопировано</span>
-              </>
-            ) : (
-              <>
-                <Copy className="h-3 w-3 text-slate-500" />
-                <span>Копировать</span>
-              </>
-            )}
-          </button>
-        </div>
-        <div
-          className={`p-3 border rounded-lg text-xs font-sans leading-relaxed ${
-            isDark
-              ? 'bg-[#080810] border-cyan-500/20 text-slate-200'
-              : 'bg-white border-slate-300 text-slate-900 font-medium'
-          }`}
-        >
-          {result.customer_response_draft}
-        </div>
-      </div>
+            <div className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider mb-2 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+              <Building className="h-3.5 w-3.5" />
+              Привязка в реестре
+            </div>
+            <p className="text-sm font-bold">
+              {result.matched_site
+                ? `${result.matched_site.customer_name} (${result.matched_site.site_id})`
+                : 'Объект не привязан'}
+            </p>
+            <p className={`text-[12px] mt-1 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+              {result.matched_site?.address || 'Нужно уточнение'}
+            </p>
+            <p className="text-[12px] mt-2 font-semibold">
+              Оборудование: {result.matched_asset ? result.matched_asset.local_code : 'Не определено'}
+            </p>
+            <p className={`text-[11px] mt-2 ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+              Уверенность AI: {Math.round(result.confidence_score * 100)}%
+            </p>
+          </div>
 
-      {/* Commit & Execution Actions */}
-      <div className="pt-2 border-t border-slate-700/30 flex flex-col sm:flex-row items-center justify-between gap-3 font-mono">
-        <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-700 font-bold'}`}>
-          Режим выполнения:{' '}
-          <span className={`font-mono font-extrabold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            {result.is_dry_run ? 'ТЕСТОВЫЙ РЕЖИМ (Черновик)' : 'ЖИВАЯ ЗАПИСЬ (Запись в БД)'}
-          </span>
-        </div>
-
-        <div className="flex items-center space-x-3 w-full sm:w-auto">
-          <button
-            id="commit-live-btn"
-            type="button"
-            onClick={onCommitLive}
-            disabled={isCommitting || !result.ticket_payload}
-            className={`w-full sm:w-auto flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-mono font-extrabold uppercase tracking-wider transition ${
-              isCommitting || !result.ticket_payload
-                ? 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-50'
-                : isDark
-                ? 'bg-cyan-400 hover:bg-cyan-300 text-black shadow-[0_0_15px_rgba(34,211,238,0.4)] border border-cyan-200'
-                : 'bg-blue-900 hover:bg-blue-950 text-white shadow-blue-900/20'
+          <div
+            className={`rounded-xl border p-3 ${
+              isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-[#F7F8FA] border-[#E6E8EC]'
             }`}
           >
-            {isCommitting ? (
-              <span>Сохранение в БД...</span>
-            ) : (
-              <>
-                <CheckCircle className="h-4 w-4 fill-current" />
-                <span>✅ Подтвердить</span>
-              </>
-            )}
-          </button>
+            <h3 className={`text-[10px] font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+              <Shield className="h-3.5 w-3.5" />
+              Почему так
+            </h3>
+            <ul className={`space-y-1 text-xs ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
+              {result.decision_reasoning.map((reason, idx) => (
+                <li key={idx} className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0 bg-zinc-500" />
+                  <span className="leading-relaxed">{reason}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div
+            className={`rounded-xl border p-3 ${
+              isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-[#F7F8FA] border-[#E6E8EC]'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <label className={`text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+                <Send className="h-3.5 w-3.5" />
+                Черновик ответа клиенту
+              </label>
+              <button
+                type="button"
+                onClick={handleCopyReply}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold border rounded-full ${
+                  isDark
+                    ? 'text-zinc-300 border-white/10 hover:bg-white/5'
+                    : 'text-zinc-700 border-[#E6E8EC] bg-white hover:bg-zinc-50'
+                }`}
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-3 w-3" />
+                    Скопировано
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3" />
+                    Копировать
+                  </>
+                )}
+              </button>
+            </div>
+            <p className="text-xs leading-relaxed">{result.customer_response_draft}</p>
+          </div>
         </div>
+      )}
+
+      <div className="pt-2 border-t border-zinc-200/50 dark:border-[#2C3139] flex flex-col sm:flex-row items-center justify-between gap-3">
+        <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+          {result.is_dry_run ? 'Тестовый режим — в реестр после подтверждения' : 'Живая запись в БД'}
+        </p>
+        <button
+          id="commit-live-btn"
+          type="button"
+          onClick={onCommitLive}
+          disabled={isCommitting || !result.ticket_payload}
+          className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition ${
+            isCommitting || !result.ticket_payload
+              ? 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-50'
+              : isDark
+              ? 'bg-zinc-200 hover:bg-zinc-100 text-zinc-900'
+              : 'bg-zinc-800 hover:bg-zinc-900 text-white'
+          }`}
+        >
+          <CheckCircle className="h-4 w-4" />
+          {isCommitting ? 'Сохранение…' : 'Подтвердить'}
+        </button>
       </div>
 
       {commitSuccessMsg && (
-        <div className={`p-3 rounded-xl text-xs font-mono font-extrabold flex items-center gap-2 border ${
-          isDark
-            ? 'bg-cyan-950/80 border-cyan-500/50 text-cyan-300 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
-            : 'bg-emerald-100 border-emerald-400 text-emerald-950'
-        }`}>
+        <div
+          className={`p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 border animate-fadeIn ${
+            isDark
+              ? 'bg-[#52525B]/10 border-[#52525B]/40 text-zinc-200'
+              : 'bg-zinc-100 border-zinc-300 text-zinc-800'
+          }`}
+        >
           <CheckCircle className="h-4 w-4 flex-shrink-0" />
           <span>{commitSuccessMsg}</span>
         </div>

@@ -258,8 +258,7 @@ export function extractFactsFromText(
     assetConf = 0.92;
   }
 
-  // Problem Summary
-  const problemSummaryVal = text.length > 120 ? text.slice(0, 120) + '...' : text;
+  const problemSummaryVal = text.trim();
 
   // Deadline mention
   let deadlineVal: string | null = null;

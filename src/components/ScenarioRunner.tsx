@@ -1,14 +1,7 @@
 import React from 'react';
 import { SCENARIO_PRESETS } from '../scenarios';
-import {
-  Play,
-  RotateCcw,
-  Mail,
-  PhoneCall,
-  Send,
-  Globe,
-  Clock,
-} from 'lucide-react';
+import { Play, RotateCcw, Mail, PhoneCall, Send, Globe, Clock } from 'lucide-react';
+import { cardClass, inputClass, labelClass, primaryBtnClass } from '../theme';
 
 interface ScenarioRunnerProps {
   selectedPresetId: string;
@@ -39,11 +32,10 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
   onRunDispatch,
   isLoading,
   onResetInput,
-  theme = 'dark',
+  theme = 'light',
 }) => {
   const isDark = theme === 'dark';
 
-  // Keydown listener for Ctrl+Enter / Cmd+Enter
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
@@ -67,59 +59,30 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
   };
 
   return (
-    <div
-      id="scenario-runner-panel"
-      className={`rounded-2xl p-4 sm:p-5 transition-all border ${
-        isDark
-          ? 'bg-[#06060e]/95 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
-          : 'bg-white border-slate-300 shadow-sm text-slate-900'
-      }`}
-    >
-      {/* Header Bar */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
+    <div id="scenario-runner-panel" className={cardClass(isDark, 'p-4 sm:p-5')}>
+      <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-[#2C3139]' : 'border-[#E6E8EC]'}`}>
         <div>
-          <div className="flex items-center space-x-2">
-            <span className={`h-2 w-2 rounded-full ${isDark ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-blue-900'}`}></span>
-            <h2 className={`text-xs font-mono font-extrabold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              Обращение
-            </h2>
-          </div>
-          <p
-            className={`text-xs mt-0.5 font-sans ${
-              isDark ? 'text-slate-400' : 'text-slate-700 font-medium'
-            }`}
-          >
-            Выберите пресет быстрой загрузки или введите сообщение
+          <h2 className="text-sm font-extrabold">Обращение</h2>
+          <p className={`text-xs mt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+            Выберите готовый сценарий или введите сообщение
           </p>
         </div>
-
-        {/* Reset Button */}
         <button
           id="reset-input-btn"
           type="button"
           onClick={onResetInput}
-          className={`flex items-center space-x-1 px-2.5 py-1 text-[11px] font-mono border rounded-lg transition ${
-            isDark
-              ? 'text-slate-400 hover:text-white bg-[#080810] hover:bg-white/10 border-white/10'
-              : 'text-slate-700 hover:text-blue-950 bg-slate-100 hover:bg-slate-200 border-slate-300 font-bold'
+          className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold border rounded-full ${
+            isDark ? 'border-[#3A404A] hover:bg-white/5' : 'border-[#E6E8EC] hover:bg-zinc-50'
           }`}
-          title="Сбросить введенные данные к значениям пресета"
         >
           <RotateCcw className="h-3 w-3" />
-          <span>Сброс</span>
+          Сброс
         </button>
       </div>
 
-      {/* Preset Pills */}
-      <div className="my-3 space-y-1.5">
-        <label
-          className={`block text-[10px] font-mono font-bold uppercase tracking-wider ${
-            isDark ? 'text-slate-400' : 'text-blue-950'
-          }`}
-        >
-          Быстрые кейсы
-        </label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+      <div className="my-4 space-y-1.5">
+        <label className={labelClass(isDark)}>Быстрые кейсы</label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {SCENARIO_PRESETS.map((preset) => {
             const isSelected = selectedPresetId === preset.id;
             return (
@@ -127,37 +90,35 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                 key={preset.id}
                 id={`preset-pill-${preset.id}`}
                 onClick={() => onSelectPreset(preset.id)}
-                className={`text-left px-3 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col justify-between ${
+                className={`text-left px-3 py-2.5 rounded-2xl border text-xs transition ${
                   isSelected
-                    ? isDark
-                      ? 'bg-cyan-950/60 border-cyan-500/80 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.2)] ring-1 ring-cyan-500/40'
-                      : 'bg-blue-900 border-blue-950 text-white font-extrabold ring-1 ring-blue-900 shadow-sm'
+                    ? 'bg-zinc-700 border-zinc-700 text-white'
                     : isDark
-                    ? 'bg-[#05050a]/80 border-white/10 text-slate-400 hover:border-cyan-500/40 hover:text-slate-200'
-                    : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-blue-900 hover:bg-slate-100 font-semibold'
+                    ? 'bg-[#121417] border-[#2C3139] text-zinc-300 hover:border-zinc-500'
+                    : 'bg-[#F7F8FA] border-[#E6E8EC] text-zinc-700 hover:border-zinc-400'
                 }`}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-1">
                   <span className="font-bold">{preset.code}</span>
                   <span
-                    className={`text-[9px] px-1 py-0.2 rounded font-bold uppercase ${
+                    className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase ${
                       preset.id === 'tc-04'
-                        ? isDark
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                          : 'bg-rose-100 text-rose-950 border border-rose-300 font-extrabold'
+                        ? isSelected
+                          ? 'bg-white/20 text-white'
+                          : isDark
+                          ? 'bg-white/10 text-zinc-400'
+                          : 'bg-zinc-100 text-zinc-600'
                         : isSelected
-                        ? isDark
-                          ? 'bg-cyan-500/20 text-cyan-300'
-                          : 'bg-blue-800 text-white'
+                        ? 'bg-white/20 text-white'
                         : isDark
-                        ? 'bg-slate-700/30 text-slate-400'
-                        : 'bg-slate-200 text-slate-700'
+                        ? 'bg-white/10 text-zinc-400'
+                        : 'bg-white text-zinc-500'
                     }`}
                   >
                     {preset.badge}
                   </span>
                 </div>
-                <span className={`text-[10px] truncate mt-1 ${isSelected && !isDark ? 'text-blue-100' : 'text-slate-500'}`}>
+                <span className={`text-[10px] line-clamp-2 mt-1 ${isSelected ? 'text-white/80' : 'text-zinc-500'}`}>
                   {preset.title}
                 </span>
               </button>
@@ -166,83 +127,46 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
         </div>
       </div>
 
-      {/* Inputs Form */}
       <div className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label
-              className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${
-                isDark ? 'text-cyan-400' : 'text-blue-950'
-              }`}
-            >
-              Канал связи
-            </label>
+            <label className={labelClass(isDark)}>Канал связи</label>
             <div className="relative">
               <select
                 id="channel-select"
                 value={channel}
                 onChange={(e) => setChannel(e.target.value)}
-                className={`w-full border rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none appearance-none pr-8 ${
-                  isDark
-                    ? 'bg-[#080810] border-cyan-500/30 text-white focus:border-cyan-400'
-                    : 'bg-slate-50 border-slate-300 text-blue-950 font-bold focus:border-blue-900'
-                }`}
+                className={inputClass(isDark, 'appearance-none pr-8')}
               >
-                <option value="email">Email (Электронная почта)</option>
-                <option value="call_transcript">
-                  Транскрипт звонка (Call Transcript)
-                </option>
-                <option value="telegram">Telegram Бот / Чат</option>
-                <option value="portal">Сервисный Веб-Портал</option>
+                <option value="email">Email</option>
+                <option value="call_transcript">Транскрипт звонка</option>
+                <option value="telegram">Telegram</option>
+                <option value="portal">Сервисный портал</option>
               </select>
-              <div className={`absolute right-2.5 top-2.5 pointer-events-none ${isDark ? 'text-cyan-500' : 'text-blue-900'}`}>
+              <div className={`absolute right-3 top-2.5 pointer-events-none ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
                 {getChannelIcon(channel)}
               </div>
             </div>
           </div>
-
           <div>
-            <label
-              className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${
-                isDark ? 'text-cyan-400' : 'text-blue-950'
-              }`}
-            >
-              Время получения (Timestamp)
-            </label>
+            <label className={labelClass(isDark)}>Время получения</label>
             <div className="relative">
               <input
                 id="incoming-time-input"
                 type="text"
                 value={incomingTime}
                 onChange={(e) => setIncomingTime(e.target.value)}
-                className={`w-full border rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none pr-8 ${
-                  isDark
-                    ? 'bg-[#080810] border-cyan-500/30 text-white focus:border-cyan-400'
-                    : 'bg-slate-50 border-slate-300 text-blue-950 font-bold focus:border-blue-900'
-                }`}
+                className={inputClass(isDark, 'pr-8')}
               />
-              <Clock className={`absolute right-2.5 top-2 h-3.5 w-3.5 pointer-events-none ${isDark ? 'text-cyan-500' : 'text-blue-900'}`} />
+              <Clock className={`absolute right-3 top-2.5 h-3.5 w-3.5 pointer-events-none ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`} />
             </div>
           </div>
         </div>
 
-        {/* Text Area */}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label
-              className={`block text-[10px] font-mono font-bold uppercase tracking-wider ${
-                isDark ? 'text-cyan-400' : 'text-blue-950'
-              }`}
-            >
-              Текст входящего обращения
-            </label>
-            <span
-              className={`text-[10px] font-mono ${
-                isDark ? 'text-slate-400' : 'text-slate-700 font-bold'
-              }`}
-            >
-              Ctrl + Enter для запуска
-            </span>
+            <label className={labelClass(isDark)}>Текст обращения</label>
+            <span className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>Ctrl + Enter</span>
           </div>
           <textarea
             id="raw-text-input"
@@ -251,39 +175,26 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
             onChange={(e) => setRawText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Введите неструктурированный текст обращения..."
-            className={`w-full border rounded-xl p-3 text-xs placeholder-slate-400 focus:outline-none font-sans leading-relaxed shadow-inner resize-none ${
-              isDark
-                ? 'bg-[#080810] border-cyan-500/30 text-slate-100 focus:border-cyan-400'
-                : 'bg-slate-50 border-slate-300 text-slate-900 font-semibold focus:border-blue-900'
-            }`}
+            className={inputClass(isDark, 'resize-none leading-relaxed')}
           />
         </div>
 
-        {/* Primary CTA Button */}
         <button
           id="run-dispatch-btn"
           type="button"
           onClick={onRunDispatch}
           disabled={isLoading || !rawText.trim()}
-          className={`w-full font-extrabold py-3 px-4 rounded-xl shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-[0.99] ${
-            isDark
-              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-cyan-500/10'
-              : 'bg-blue-900 hover:bg-blue-950 text-white shadow-blue-900/20'
-          } ${isLoading || !rawText.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={primaryBtnClass('w-full py-3')}
         >
           {isLoading ? (
             <>
               <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs uppercase tracking-wider font-mono">
-                Идет Обработка AI...
-              </span>
+              Обработка...
             </>
           ) : (
             <>
               <Play className="w-4 h-4 fill-current" />
-              <span className="text-xs uppercase tracking-wider font-mono">
-                ▶ ЗАПУСТИТЬ AI-ДИСПЕТЧЕРИЗАЦИЮ (Ctrl+Enter)
-              </span>
+              Запустить диспетчеризацию
             </>
           )}
         </button>

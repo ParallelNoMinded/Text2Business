@@ -91,7 +91,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       <div
         className={`rounded-2xl p-5 text-center text-xs font-mono border transition-all ${
           isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
+            ? 'bg-[#1A1D22] border-[#2C3139] text-slate-500'
             : 'bg-white border-slate-300 text-slate-700 font-semibold shadow-sm'
         }`}
       >
@@ -311,20 +311,20 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
     <div id="database-inspector-page" className="space-y-4 font-sans">
       {/* Header & Controls */}
       <div
-        className={`rounded-2xl p-4 sm:p-5 transition-all border flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+        className={`rounded-2xl p-4 sm:p-5 transition-all border flex flex-col md:flex-row md:items-start justify-between gap-4 ${
           isDark
-            ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
+            ? 'bg-[#1A1D22] border-[#2C3139]  text-white'
             : 'bg-white border-slate-300 shadow-sm text-slate-900'
         }`}
       >
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="flex items-center space-x-2">
-            <Database className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              Реестр Базы Данных (CRUD & Заявки)
+            <Database className={`h-4 w-4 ${isDark ? 'text-[#52525B]' : 'text-zinc-800'}`} />
+            <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-[#52525B]' : 'text-zinc-900'}`}>
+              Реестр заявок и справочников
             </h2>
           </div>
-          <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-700 font-medium'}`}>
+          <p className={`text-xs mt-0.5 whitespace-normal break-words leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-700 font-medium'}`}>
             Управление контрагентами, объектами, оборудованием, открытыми и закрытыми заявками в реальном времени.
           </p>
         </div>
@@ -333,16 +333,16 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
           <div className="relative w-full md:w-64 font-mono">
             <input
               type="text"
-              placeholder="Поиск по БД..."
+              placeholder="Поиск по реестру..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full border rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none transition ${
+              className={`w-full border rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none transition ${
                 isDark
-                  ? 'bg-[#020204]/90 border-cyan-500/30 text-white focus:border-cyan-400'
-                  : 'bg-slate-50 border-slate-300 text-blue-950 font-bold focus:border-blue-900'
+                  ? 'bg-[#121417] border-[#2C3139] text-white focus:border-zinc-400'
+                  : 'bg-slate-50 border-slate-300 text-zinc-900 font-bold focus:border-zinc-800'
               }`}
             />
-            <Search className={`absolute left-2.5 top-2 h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
+            <Search className={`absolute left-2.5 top-2 h-3.5 w-3.5 ${isDark ? 'text-[#52525B]' : 'text-zinc-800'}`} />
           </div>
 
           <button
@@ -350,13 +350,13 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             type="button"
             onClick={onResetDatabase}
             disabled={isLoading}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-mono font-bold rounded-lg border transition ${
+            className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-mono font-bold rounded-xl border transition ${
               isDark
                 ? 'bg-white/5 hover:bg-white/10 text-slate-200 border-white/10'
                 : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
             }`}
           >
-            <RotateCcw className={`h-3.5 w-3.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
+            <RotateCcw className={`h-3.5 w-3.5 ${isDark ? 'text-[#52525B]' : 'text-zinc-800'}`} />
             <span>Сбросить БД</span>
           </button>
         </div>
@@ -367,11 +367,11 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setActiveTab('open_tickets')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
+            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-2xl transition whitespace-nowrap ${
               activeTab === 'open_tickets'
                 ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
+                  ? 'bg-[#52525B]/10 text-zinc-200 border border-[#52525B]/40'
+                  : 'bg-zinc-900 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
                 ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
@@ -383,11 +383,11 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
 
           <button
             onClick={() => setActiveTab('closed_tickets')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
+            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-2xl transition whitespace-nowrap ${
               activeTab === 'closed_tickets'
                 ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
+                  ? 'bg-[#52525B]/10 text-zinc-200 border border-[#52525B]/40'
+                  : 'bg-zinc-900 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
                 ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
@@ -399,11 +399,11 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
 
           <button
             onClick={() => setActiveTab('contractors')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
+            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-2xl transition whitespace-nowrap ${
               activeTab === 'contractors'
                 ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
+                  ? 'bg-[#52525B]/10 text-zinc-200 border border-[#52525B]/40'
+                  : 'bg-zinc-900 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
                 ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
@@ -415,11 +415,11 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
 
           <button
             onClick={() => setActiveTab('sites')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
+            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-2xl transition whitespace-nowrap ${
               activeTab === 'sites'
                 ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
+                  ? 'bg-[#52525B]/10 text-zinc-200 border border-[#52525B]/40'
+                  : 'bg-zinc-900 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
                 ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
@@ -431,11 +431,11 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
 
           <button
             onClick={() => setActiveTab('assets')}
-            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
+            className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-2xl transition whitespace-nowrap ${
               activeTab === 'assets'
                 ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
+                  ? 'bg-[#52525B]/10 text-zinc-200 border border-[#52525B]/40'
+                  : 'bg-zinc-900 text-white shadow-md font-extrabold border border-blue-950'
                 : isDark
                 ? 'bg-[#020204]/60 text-slate-400 hover:text-white'
                 : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
@@ -451,10 +451,10 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
           {activeTab === 'contractors' && (
             <button
               onClick={() => setModalType('ADD_CONTRACTOR')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
+              className={`px-3 py-1.5 rounded-xl flex items-center space-x-1 transition text-xs ${
                 isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
+                  ? 'bg-zinc-700 hover:bg-zinc-600 text-white font-bold'
+                  : 'bg-zinc-800 hover:bg-zinc-900 text-white font-extrabold shadow-md border border-zinc-900'
               }`}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -465,10 +465,10 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
           {activeTab === 'sites' && (
             <button
               onClick={() => setModalType('ADD_SITE')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
+              className={`px-3 py-1.5 rounded-xl flex items-center space-x-1 transition text-xs ${
                 isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
+                  ? 'bg-zinc-700 hover:bg-zinc-600 text-white font-bold'
+                  : 'bg-zinc-800 hover:bg-zinc-900 text-white font-extrabold shadow-md border border-zinc-900'
               }`}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -479,10 +479,10 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
           {activeTab === 'assets' && (
             <button
               onClick={() => setModalType('ADD_ASSET')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
+              className={`px-3 py-1.5 rounded-xl flex items-center space-x-1 transition text-xs ${
                 isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
+                  ? 'bg-zinc-700 hover:bg-zinc-600 text-white font-bold'
+                  : 'bg-zinc-800 hover:bg-zinc-900 text-white font-extrabold shadow-md border border-zinc-900'
               }`}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -493,10 +493,10 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
           {activeTab === 'open_tickets' && (
             <button
               onClick={() => setModalType('ADD_TICKET')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
+              className={`px-3 py-1.5 rounded-xl flex items-center space-x-1 transition text-xs ${
                 isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
+                  ? 'bg-zinc-700 hover:bg-zinc-600 text-white font-bold'
+                  : 'bg-zinc-800 hover:bg-zinc-900 text-white font-extrabold shadow-md border border-zinc-900'
               }`}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -507,10 +507,10 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
           {activeTab === 'closed_tickets' && (
             <button
               onClick={() => setModalType('ADD_CLOSED_TICKET')}
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-xs ${
+              className={`px-3 py-1.5 rounded-xl flex items-center space-x-1 transition text-xs ${
                 isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
+                  ? 'bg-zinc-700 hover:bg-zinc-600 text-white font-bold'
+                  : 'bg-zinc-800 hover:bg-zinc-900 text-white font-extrabold shadow-md border border-zinc-900'
               }`}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -525,12 +525,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         <div
           className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
             isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
+              ? 'bg-[#1A1D22] border-[#2C3139] text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
+            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-[#52525B] border-[#2C3139]' : 'bg-zinc-50 text-zinc-900 font-extrabold'}`}>
               <tr>
                 <th className="p-3">ID Контрагента</th>
                 <th className="p-3">Наименование</th>
@@ -544,16 +544,16 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             <tbody className="divide-y divide-slate-700/20 font-sans">
               {filteredContractors.map((c) => (
                 <tr key={c.customer_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono font-bold text-sky-400">{c.customer_id}</td>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-zinc-200' : 'text-zinc-800'}`}>{c.customer_id}</td>
                   <td className="p-3 font-bold">{c.name}</td>
                   <td className="p-3 font-mono">{c.inn}</td>
-                  <td className="p-3 font-mono text-slate-400">{c.contact_phone}</td>
-                  <td className="p-3 font-mono text-slate-400">{c.contact_email}</td>
-                  <td className="p-3 font-mono text-amber-400">{c.contract_number}</td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>{c.contact_phone}</td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>{c.contact_email}</td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-zinc-300' : 'text-zinc-800'}`}>{c.contract_number}</td>
                   <td className="p-3 text-right">
                     <button
                       onClick={() => handleDeleteContractor(c.customer_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
+                      className="p-1.5 rounded text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/10 dark:hover:text-zinc-200"
                       title="Удалить"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -571,12 +571,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         <div
           className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
             isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
+              ? 'bg-[#1A1D22] border-[#2C3139] text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
+            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-[#52525B] border-[#2C3139]' : 'bg-zinc-50 text-zinc-900 font-extrabold'}`}>
               <tr>
                 <th className="p-3">ID Объекта</th>
                 <th className="p-3">Клиент</th>
@@ -589,15 +589,15 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             <tbody className="divide-y divide-slate-700/20 font-sans">
               {filteredSites.map((site) => (
                 <tr key={site.site_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono font-bold text-cyan-400">{site.site_id}</td>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-zinc-200' : 'text-zinc-800'}`}>{site.site_id}</td>
                   <td className="p-3 font-bold">{site.customer_name}</td>
-                  <td className="p-3">{site.address}</td>
-                  <td className="p-3 font-mono text-slate-400">{site.contact_person}</td>
-                  <td className="p-3 font-mono text-slate-400">{site.region}</td>
+                  <td className="p-3 whitespace-normal break-words">{site.address}</td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>{site.contact_person}</td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>{site.region}</td>
                   <td className="p-3 text-right">
                     <button
                       onClick={() => handleDeleteSite(site.site_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
+                      className="p-1.5 rounded text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/10 dark:hover:text-zinc-200"
                       title="Удалить"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -615,12 +615,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         <div
           className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
             isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
+              ? 'bg-[#1A1D22] border-[#2C3139] text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
+            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-[#52525B] border-[#2C3139]' : 'bg-zinc-50 text-zinc-900 font-extrabold'}`}>
               <tr>
                 <th className="p-3">ID Ассета</th>
                 <th className="p-3">Код Объекта</th>
@@ -634,24 +634,28 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             <tbody className="divide-y divide-slate-700/20 font-sans">
               {filteredAssets.map((asset) => (
                 <tr key={asset.asset_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono text-slate-400">{asset.asset_id}</td>
-                  <td className="p-3 font-mono font-bold text-cyan-400">{asset.site_id}</td>
-                  <td className="p-3 font-mono font-bold text-amber-400">{asset.local_code}</td>
-                  <td className="p-3 font-semibold">{asset.name}</td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>{asset.asset_id}</td>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-zinc-200' : 'text-zinc-800'}`}>{asset.site_id}</td>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-zinc-200' : 'text-zinc-800'}`}>{asset.local_code}</td>
+                  <td className="p-3 font-semibold whitespace-normal break-words">{asset.name}</td>
                   <td className="p-3">
-                    <span className="px-2 py-0.5 rounded font-mono font-bold text-[10px] border bg-red-950/80 text-red-300 border-red-500/40">
+                    <span className={`px-2 py-0.5 rounded font-mono font-bold text-[10px] border ${
+                      isDark ? 'bg-zinc-800 text-zinc-200 border-zinc-600' : 'bg-stone-100 text-stone-800 border-stone-300'
+                    }`}>
                       {asset.criticality}
                     </span>
                   </td>
                   <td className="p-3">
-                    <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold border bg-emerald-950/80 text-emerald-300 border-emerald-500/40">
+                    <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold border ${
+                      isDark ? 'bg-zinc-800 text-zinc-200 border-zinc-600' : 'bg-zinc-100 text-zinc-800 border-zinc-300'
+                    }`}>
                       {asset.status}
                     </span>
                   </td>
                   <td className="p-3 text-right">
                     <button
                       onClick={() => handleDeleteAsset(asset.asset_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
+                      className="p-1.5 rounded text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/10 dark:hover:text-zinc-200"
                       title="Удалить"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -669,12 +673,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         <div
           className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
             isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
+              ? 'bg-[#1A1D22] border-[#2C3139] text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
+            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-[#52525B] border-[#2C3139]' : 'bg-zinc-50 text-zinc-900 font-extrabold'}`}>
               <tr>
                 <th className="p-3">ID Заявки</th>
                 <th className="p-3">ID Ассета</th>
@@ -688,21 +692,25 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             <tbody className="divide-y divide-slate-700/20 font-sans">
               {filteredOpenTickets.map((t) => (
                 <tr key={t.ticket_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono font-bold text-amber-400">{t.ticket_id}</td>
-                  <td className="p-3 font-mono font-bold text-cyan-400">{t.asset_id}</td>
-                  <td className="p-3 font-semibold">{t.summary}</td>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-zinc-200' : 'text-zinc-800'}`}>{t.ticket_id}</td>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-zinc-300' : 'text-zinc-800'}`}>{t.asset_id}</td>
+                  <td className="p-3 font-semibold whitespace-normal break-words leading-relaxed">{t.summary}</td>
                   <td className="p-3">
-                    <span className="px-2 py-0.5 rounded border font-mono font-bold text-[10px] bg-red-950/80 text-red-300 border-red-500/40">
+                    <span className={`px-2 py-0.5 rounded border font-mono font-bold text-[10px] ${
+                      isDark ? 'bg-zinc-800 text-zinc-200 border-zinc-600' : 'bg-stone-100 text-stone-800 border-stone-300'
+                    }`}>
                       {t.priority.toUpperCase()}
                     </span>
                   </td>
-                  <td className="p-3 font-mono text-cyan-300 font-bold">{t.status}</td>
-                  <td className="p-3 font-mono text-slate-400">{t.assigned_group}</td>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-zinc-300' : 'text-zinc-800'}`}>{t.status}</td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-zinc-300' : 'text-zinc-800'}`}>{t.assigned_group}</td>
                   <td className="p-3 text-right flex items-center justify-end space-x-1">
                     <button
                       onClick={() => handleCloseTicket(t.ticket_id)}
-                      className={`px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 font-mono text-[10px] flex items-center space-x-1 ${
-                        isDark ? 'text-emerald-300 font-bold' : 'text-emerald-950 font-extrabold'
+                      className={`px-2.5 py-1 rounded-xl border font-mono text-[10px] flex items-center space-x-1 ${
+                        isDark
+                          ? 'bg-zinc-800 hover:bg-zinc-700 border-zinc-600 text-zinc-200 font-bold'
+                          : 'bg-zinc-100 hover:bg-zinc-200 border-zinc-300 text-zinc-800 font-extrabold'
                       }`}
                       title="Завершить и перенести в архив"
                     >
@@ -711,7 +719,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                     </button>
                     <button
                       onClick={() => handleDeleteOpenTicket(t.ticket_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
+                      className="p-1.5 rounded text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/10 dark:hover:text-zinc-200"
                       title="Удалить"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -729,12 +737,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         <div
           className={`rounded-2xl p-4 sm:p-5 border transition-all overflow-x-auto ${
             isDark
-              ? 'bg-[#06060e]/90 border-cyan-500/20 text-white shadow-md'
+              ? 'bg-[#1A1D22] border-[#2C3139] text-white shadow-md'
               : 'bg-white border-slate-300 text-slate-900 shadow-sm'
           }`}
         >
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
-            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-blue-50 text-blue-950 font-extrabold'}`}>
+            <thead className={`font-mono uppercase text-[10px] tracking-wider border-b ${isDark ? 'bg-[#020204] text-[#52525B] border-[#2C3139]' : 'bg-zinc-50 text-zinc-900 font-extrabold'}`}>
               <tr>
                 <th className="p-3">ID Заявки</th>
                 <th className="p-3">ID Ассета</th>
@@ -748,22 +756,24 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             <tbody className="divide-y divide-slate-700/20 font-sans">
               {filteredClosedTickets.map((t) => (
                 <tr key={t.ticket_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                  <td className="p-3 font-mono font-bold text-emerald-400">{t.ticket_id}</td>
-                  <td className="p-3 font-mono text-slate-400">{t.asset_id}</td>
-                  <td className="p-3 font-semibold line-through text-slate-400">{t.summary}</td>
-                  <td className="p-3 font-mono text-slate-400">{t.priority}</td>
-                  <td className="p-3 font-mono text-slate-400">
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-zinc-200' : 'text-zinc-800'}`}>{t.ticket_id}</td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>{t.asset_id}</td>
+                  <td className={`p-3 font-semibold whitespace-normal break-words ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{t.summary}</td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>{t.priority}</td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>
                     {t.updated_at ? new Date(t.updated_at).toLocaleDateString('ru-RU') : '—'}
                   </td>
                   <td className="p-3">
-                    <span className="px-2 py-0.5 rounded border font-mono font-bold text-[10px] bg-emerald-950/80 text-emerald-300 border-emerald-500/40">
+                    <span className={`px-2 py-0.5 rounded border font-mono font-bold text-[10px] ${
+                      isDark ? 'bg-zinc-800 text-zinc-200 border-zinc-600' : 'bg-zinc-100 text-zinc-800 border-zinc-300'
+                    }`}>
                       CLOSED
                     </span>
                   </td>
                   <td className="p-3 text-right">
                     <button
                       onClick={() => handleDeleteClosedTicket(t.ticket_id)}
-                      className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
+                      className="p-1.5 rounded text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/10 dark:hover:text-zinc-200"
                       title="Удалить"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -779,9 +789,9 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       {/* MODAL DIALOGS FOR ADDING DATA */}
       {modalType && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className={`w-full max-w-lg rounded-2xl p-6 border shadow-2xl ${isDark ? 'bg-[#0a0a16] border-cyan-500/40 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
+          <div className={`w-full max-w-lg rounded-2xl p-6 border shadow-2xl ${isDark ? 'bg-[#0a0a16] border-[#2C3139] text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
             <div className="flex items-center justify-between mb-4 border-b pb-3 border-slate-700/30">
-              <h3 className="text-sm font-mono font-bold uppercase text-cyan-400">
+              <h3 className="text-sm font-mono font-bold uppercase text-[#52525B]">
                 {modalType === 'ADD_CONTRACTOR' && 'Добавить нового Контрагента'}
                 {modalType === 'ADD_SITE' && 'Добавить новый Объект'}
                 {modalType === 'ADD_ASSET' && 'Добавить новое Оборудование'}
@@ -803,7 +813,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                     placeholder="ООO «СеверТранс»"
                     value={contractorForm.name}
                     onChange={(e) => setContractorForm({ ...contractorForm, name: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
+                    className="w-full p-2 rounded-xl bg-black/60 border border-slate-700 text-white"
                   />
                 </div>
                 <div>
@@ -813,7 +823,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                     placeholder="7701998877"
                     value={contractorForm.inn}
                     onChange={(e) => setContractorForm({ ...contractorForm, inn: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
+                    className="w-full p-2 rounded-xl bg-black/60 border border-slate-700 text-white"
                   />
                 </div>
                 <div>
@@ -823,12 +833,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                     placeholder="+7 (495) 777-88-99"
                     value={contractorForm.contact_phone}
                     onChange={(e) => setContractorForm({ ...contractorForm, contact_phone: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
+                    className="w-full p-2 rounded-xl bg-black/60 border border-slate-700 text-white"
                   />
                 </div>
                 <button
                   onClick={handleSaveContractor}
-                  className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
+                  className="w-full py-2.5 rounded-2xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
                 >
                   Сохранить Контрагента
                 </button>
@@ -845,7 +855,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                     placeholder="г. Москва, ул. Ленина 45"
                     value={siteForm.address}
                     onChange={(e) => setSiteForm({ ...siteForm, address: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
+                    className="w-full p-2 rounded-xl bg-black/60 border border-slate-700 text-white"
                   />
                 </div>
                 <div>
@@ -855,12 +865,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                     placeholder="Иван (главный энергетик)"
                     value={siteForm.contact_person}
                     onChange={(e) => setSiteForm({ ...siteForm, contact_person: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
+                    className="w-full p-2 rounded-xl bg-black/60 border border-slate-700 text-white"
                   />
                 </div>
                 <button
                   onClick={handleSaveSite}
-                  className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
+                  className="w-full py-2.5 rounded-2xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
                 >
                   Сохранить Объект
                 </button>
@@ -877,7 +887,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                     placeholder="ХУ-19"
                     value={assetForm.local_code}
                     onChange={(e) => setAssetForm({ ...assetForm, local_code: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
+                    className="w-full p-2 rounded-xl bg-black/60 border border-slate-700 text-white"
                   />
                 </div>
                 <div>
@@ -887,12 +897,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                     placeholder="Компрессорная станция №4"
                     value={assetForm.name}
                     onChange={(e) => setAssetForm({ ...assetForm, name: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
+                    className="w-full p-2 rounded-xl bg-black/60 border border-slate-700 text-white"
                   />
                 </div>
                 <button
                   onClick={handleSaveAsset}
-                  className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
+                  className="w-full py-2.5 rounded-2xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
                 >
                   Сохранить Оборудование
                 </button>
@@ -909,7 +919,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                     placeholder="Утечка фреона на компрессоре ХУ-17"
                     value={ticketForm.summary}
                     onChange={(e) => setTicketForm({ ...ticketForm, summary: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
+                    className="w-full p-2 rounded-xl bg-black/60 border border-slate-700 text-white"
                   />
                 </div>
                 <div>
@@ -919,12 +929,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                     placeholder="Группа №2 (Холод-МСК)"
                     value={ticketForm.assigned_group}
                     onChange={(e) => setTicketForm({ ...ticketForm, assigned_group: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/60 border border-slate-700 text-white"
+                    className="w-full p-2 rounded-xl bg-black/60 border border-slate-700 text-white"
                   />
                 </div>
                 <button
                   onClick={() => handleSaveTicket(modalType === 'ADD_CLOSED_TICKET')}
-                  className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
+                  className="w-full py-2.5 rounded-2xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold mt-2 border border-emerald-700 shadow-md"
                 >
                   {modalType === 'ADD_CLOSED_TICKET' ? 'Сохранить Закрытую Заявку' : 'Создать Открытую Заявку'}
                 </button>

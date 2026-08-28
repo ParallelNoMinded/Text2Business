@@ -7,6 +7,7 @@ import { DatabaseInspectorView } from './components/DatabaseInspectorView';
 import { LogsTracesView } from './components/LogsTracesView';
 import { ArchitectureView } from './components/ArchitectureView';
 import { GithubTokenModal } from './components/GithubTokenModal';
+import { DemoRequestModal } from './components/DemoRequestModal';
 import { ScenarioRunner } from './components/ScenarioRunner';
 import { FactExtractorView } from './components/FactExtractorView';
 import { DispatchCard } from './components/DispatchCard';
@@ -15,10 +16,30 @@ import { SCENARIO_PRESETS } from './scenarios';
 import { ProcessingResult } from './types';
 import { apiFetch } from './api';
 import { INITIAL_DATABASE, DatabaseSchema } from './mockDb';
+import { AppRole, blockedRoleMessage, canAccessTab, roleFromTab } from './roles';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('home');
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [sessionRole, setSessionRole] = useState<AppRole>(() => {
+    try {
+      const saved = sessionStorage.getItem('nb-session-role');
+      if (saved === 'demo' || saved === 'dispatcher') return saved;
+    } catch {
+      /* ignore */
+    }
+    return 'guest';
+  });
+  const [roleNotice, setRoleNotice] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const saved = localStorage.getItem('nb-theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+    } catch {
+      /* ignore */
+    }
+    return 'light';
+  });
+  const [demoModalOpen, setDemoModalOpen] = useState(false);
   const [geminiActive, setGeminiActive] = useState(true);
   const [selectedModel, setSelectedModel] = useState<string>('gpt-4o');
   const [isDryRun, setIsDryRun] = useState<boolean>(true);
@@ -77,11 +98,20 @@ export default function App() {
     handleSelectPreset(selectedPresetId);
   };
 
+  const scrollToDispatchResults = () => {
+    const el = document.getElementById('dispatch-results');
+    if (!el) return;
+    const headerOffset = 84;
+    const top = el.getBoundingClientRect().top + window.scrollY - headerOffset;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  };
+
   const handleRunDispatch = async () => {
     if (!rawText.trim()) return;
     setIsRunningDispatch(true);
     setCommitSuccessMsg(null);
     setResult(null);
+    window.setTimeout(scrollToDispatchResults, 80);
     try {
       const res = await apiFetch('/api/dispatch', {
         method: 'POST',
@@ -98,11 +128,18 @@ export default function App() {
         setCommitSuccessMsg(`❌ Ошибка: ${data.error || res.status}`);
         return;
       }
-      setResult(data);
+      const facts = data.extracted_facts;
+      const fullText = rawText.trim();
+      const summary = facts?.problem_summary?.value;
+      if (facts?.problem_summary && typeof summary === 'string' && summary.endsWith('...') && fullText.startsWith(summary.slice(0, -3))) {
+        facts.problem_summary = { ...facts.problem_summary, value: fullText, quote: fullText };
+      }
+      setResult({ ...data, extracted_facts: facts });
     } catch (err: any) {
       setCommitSuccessMsg(`❌ Сетевая ошибка: ${err.message}`);
     } finally {
       setIsRunningDispatch(false);
+      window.setTimeout(scrollToDispatchResults, 120);
     }
   };
 
@@ -121,19 +158,18 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setCommitSuccessMsg(`❌ Коммит отклонен: ${data.error || res.status}`);
+        setCommitSuccessMsg(`❌ Сохранение отклонено: ${data.error || res.status}`);
         return;
       }
       setCommitSuccessMsg(`✅ Заявка ${data.ticket.ticket_id} подтверждена оператором и сохранена в БД (${data.action}).`);
       await fetchDatabase();
     } catch (err: any) {
-      setCommitSuccessMsg(`❌ Ошибка коммита: ${err.message}`);
+      setCommitSuccessMsg(`❌ Ошибка сохранения: ${err.message}`);
     } finally {
       setIsCommitting(false);
     }
   };
 
-  // Apply Theme class to document element
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -142,7 +178,16 @@ export default function App() {
       document.documentElement.classList.add('light');
       document.documentElement.classList.remove('dark');
     }
+    try {
+      localStorage.setItem('nb-theme', theme);
+    } catch {
+      /* ignore */
+    }
   }, [theme]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [activeTab]);
 
   // Fetch Database on Mount
   const fetchDatabase = useCallback(async () => {
@@ -191,18 +236,45 @@ export default function App() {
     (t) => t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0)
   ).length;
 
+  const persistRole = (role: AppRole) => {
+    setSessionRole(role);
+    try {
+      if (role === 'guest') sessionStorage.removeItem('nb-session-role');
+      else sessionStorage.setItem('nb-session-role', role);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const requestTab = (tab: TabType) => {
+    if (!canAccessTab(sessionRole, tab)) {
+      setRoleNotice(blockedRoleMessage(sessionRole));
+      window.setTimeout(() => setRoleNotice(null), 4200);
+      return;
+    }
+    const nextRole = roleFromTab(tab);
+    if (sessionRole === 'guest' && nextRole) persistRole(nextRole);
+    setActiveTab(tab);
+  };
+
+  const resetRole = () => {
+    persistRole('guest');
+    setActiveTab('home');
+    setRoleNotice(null);
+  };
+
   const isDark = theme === 'dark';
 
   return (
     <div
-      className={`min-h-screen flex flex-col justify-between font-sans antialiased transition-colors duration-200 ${
-        isDark ? 'bg-[#020204] text-slate-100' : 'bg-slate-100 text-slate-900'
+      className={`min-h-screen flex flex-col font-sans antialiased overflow-x-clip ${
+        isDark ? 'bg-[#121417] text-zinc-100' : 'bg-[#F5F6F8] text-zinc-900'
       }`}
     >
       {/* Streamlined Header */}
       <Header
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={requestTab}
         theme={theme}
         setTheme={setTheme}
         geminiActive={geminiActive}
@@ -213,6 +285,9 @@ export default function App() {
         pendingOperatorCount={pendingOperatorCount}
         githubToken={githubToken}
         onOpenTokenModal={() => setIsTokenModalOpen(true)}
+        onRequestDemo={() => setDemoModalOpen(true)}
+        sessionRole={sessionRole}
+        onResetRole={resetRole}
       />
 
       {/* GITHUB_MODELS_TOKEN Setup Modal */}
@@ -225,13 +300,39 @@ export default function App() {
         theme={theme}
       />
 
+      <DemoRequestModal
+        isOpen={demoModalOpen}
+        onClose={() => setDemoModalOpen(false)}
+        theme={theme}
+      />
+
+      {roleNotice && (
+        <div className="fixed bottom-5 left-1/2 z-[60] w-[min(440px,calc(100vw-2rem))] -translate-x-1/2 animate-fadeIn">
+          <div
+            className={`rounded-2xl border px-4 py-3 text-sm font-semibold shadow-lg ${
+              isDark ? 'bg-[#1A1D22] border-[#2C3139] text-zinc-100' : 'bg-white border-[#E6E8EC] text-zinc-900'
+            }`}
+          >
+            {roleNotice}
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        {/* TAB 0: LANDING HOME PAGE */}
+      <main
+        className={
+          activeTab === 'home'
+            ? 'flex-1 w-full overflow-x-clip'
+            : 'flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-8 overflow-x-clip'
+        }
+      >
         {activeTab === 'home' && (
           <LandingHome
-            setActiveTab={setActiveTab}
+            setActiveTab={requestTab}
             theme={theme}
+            onRequestDemo={() => setDemoModalOpen(true)}
+            sessionRole={sessionRole}
+            onResetRole={resetRole}
           />
         )}
 
@@ -239,7 +340,7 @@ export default function App() {
         {activeTab === 'channels' && (
           <ChannelsConfigView
             theme={theme}
-            onNavigateToConsole={() => setActiveTab('console')}
+            onNavigateToConsole={() => requestTab('console')}
           />
         )}
 
@@ -247,25 +348,25 @@ export default function App() {
         {activeTab === 'console' && (
           <div className="space-y-4">
             <div
-              className={`rounded-2xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+              className={`rounded-3xl p-5 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn ${
                 isDark
-                  ? 'bg-[#060612]/90 border-cyan-500/30 text-white'
-                  : 'bg-white border-slate-300 text-slate-950 shadow-sm'
+                  ? 'bg-[#1A1D22] border-[#2C3139] text-white'
+                  : 'bg-white border-[#E6E8EC] text-zinc-950 shadow-[0_10px_40px_rgba(16,24,40,0.05)]'
               }`}
             >
               <div>
-                <h2 className={`text-sm font-mono font-extrabold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-                  Демо-стенд AI-Диспетчера (4 сценария ТЗ)
+                <h2 className="text-base font-extrabold tracking-tight">
+                  Демонстрационный стенд диспетчера
                 </h2>
-                <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-800 font-medium'}`}>
-                  Обращение → извлечение фактов → решение движка → трассировка. Любое выполнение — dry-run;
-                  подтверждённый коммит в БД делает оператор (кнопка «Подтвердить»).
+                <p className={`text-sm mt-1 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                  Обращение → факты → решение → журнал обработки. Запуск без записи в реестр;
+                  заявка сохраняется только после «Подтвердить».
                 </p>
               </div>
-              <span className={`text-[11px] font-mono px-3 py-1.5 rounded-lg border font-bold whitespace-nowrap ${
-                isDark ? 'bg-amber-500/10 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-950 border-amber-400'
+              <span className={`text-[11px] px-3 py-1.5 rounded-full border font-semibold whitespace-nowrap ${
+                isDark ? 'bg-zinc-800 text-zinc-200 border-zinc-600' : 'bg-zinc-100 text-zinc-700 border-zinc-300'
               }`}>
-                ⚠ ТЕСТОВЫЙ РЕЖИМ (dry-run)
+                Тестовый режим
               </span>
             </div>
 
@@ -286,33 +387,35 @@ export default function App() {
               theme={theme}
             />
 
-            <FactExtractorView
-              facts={result?.extracted_facts || null}
-              theme={theme}
-            />
+            <div id="dispatch-results" className="space-y-4 scroll-mt-24">
+              <FactExtractorView
+                facts={result?.extracted_facts || null}
+                theme={theme}
+              />
 
-            <DispatchCard
-              result={result}
-              onCommitLive={handleCommitLive}
-              isCommitting={isCommitting}
-              commitSuccessMsg={commitSuccessMsg}
-              theme={theme}
-            />
+              <DispatchCard
+                result={result}
+                onCommitLive={handleCommitLive}
+                isCommitting={isCommitting}
+                commitSuccessMsg={commitSuccessMsg}
+                theme={theme}
+              />
 
-            <ExecutionTraceTimeline
-              trace={result?.trace || []}
-              theme={theme}
-            />
+              <ExecutionTraceTimeline
+                trace={result?.trace || []}
+                theme={theme}
+              />
+            </div>
 
             <div
-              className={`rounded-2xl p-4 border text-xs font-mono ${
+              className={`rounded-3xl p-4 border text-sm ${
                 isDark
-                  ? 'bg-[#060612]/90 border-cyan-500/20 text-slate-400'
-                  : 'bg-white border-slate-300 text-slate-700 font-medium shadow-sm'
+                  ? 'bg-[#1A1D22] border-[#2C3139] text-zinc-400'
+                  : 'bg-white border-[#E6E8EC] text-zinc-600 shadow-sm'
               }`}
             >
-              Ожидаемый результат пресета:{' '}
-              <span className={isDark ? 'text-cyan-300 font-bold' : 'text-blue-950 font-extrabold'}>
+              Ожидаемый результат сценария:{' '}
+              <span className={isDark ? 'text-zinc-100 font-semibold' : 'text-zinc-900 font-semibold'}>
                 {SCENARIO_PRESETS.find((p) => p.id === selectedPresetId)?.expected_outcome}
               </span>
             </div>
@@ -350,25 +453,14 @@ export default function App() {
         )}
       </main>
 
-      {/* Antigravity Footer */}
       <footer
-        className={`border-t mt-8 py-5 text-center text-xs font-mono transition-colors ${
-          isDark
-            ? 'border-white/10 bg-[#020204] text-slate-500'
-            : 'border-slate-300 bg-white text-slate-700'
+        className={`border-t mt-auto py-6 text-sm ${
+          isDark ? 'border-[#2C3139] bg-[#121417] text-zinc-500' : 'border-[#E6E8EC] bg-white text-zinc-500'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center space-x-2">
-            <span className={`h-2 w-2 rounded-full ${isDark ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-blue-900'}`}></span>
-            <span className={`font-bold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              Текстовый AI-Диспетчер для бизнеса
-            </span>
-            <span>/ Промышленная архитектура</span>
-          </div>
-          <p className="text-[11px]">
-            Архитектор AI-решений / Техлид AI-внедрений • Full-Stack контейнер Cloud Run
-          </p>
+          <p className="font-semibold text-zinc-800 dark:text-zinc-200">NeuroBiz · автоматизация сервиса</p>
+          <p className="text-xs">Каналы, пробный запуск и рабочее место диспетчера</p>
         </div>
       </footer>
     </div>

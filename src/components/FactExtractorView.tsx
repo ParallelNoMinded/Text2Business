@@ -1,6 +1,6 @@
-import React from 'react';
-import { ExtractedFacts } from '../types';
-import { Eye, Quote } from 'lucide-react';
+import React, { useState } from 'react';
+import { ExtractedFacts, ExtractedFact } from '../types';
+import { ChevronDown, Eye, Quote } from 'lucide-react';
 
 interface FactExtractorViewProps {
   facts: ExtractedFacts | null;
@@ -9,133 +9,150 @@ interface FactExtractorViewProps {
 
 export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts, theme = 'dark' }) => {
   const isDark = theme === 'dark';
+  const [showDetails, setShowDetails] = useState(false);
 
   if (!facts) {
     return (
       <div
-        className={`rounded-2xl p-5 text-center text-xs font-mono border transition-all ${
+        className={`rounded-2xl p-5 text-center text-xs border animate-fadeIn ${
           isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
-            : 'bg-white border-slate-300 text-slate-700 shadow-sm font-semibold'
+            ? 'bg-[#1A1D22] border-[#2C3139] text-slate-500'
+            : 'bg-white border-[#E6E8EC] text-slate-600 shadow-sm'
         }`}
       >
-        // Ожидание запуска пайплайна для извлечения фактов LLM (Structured Output)...
+        Запустите сценарий — здесь появятся клиент, объект и суть проблемы.
       </div>
     );
   }
 
-  const renderFactCard = (
-    label: string,
-    factItem: { value: string | null; quote?: string | null; confidence: number; type: string }
-  ) => {
-    const confPercent = Math.round((factItem.confidence || 0) * 100);
-    const isHighConf = confPercent >= 85;
+  const essentials: Array<{ label: string; item: ExtractedFact }> = [
+    { label: 'Клиент', item: facts.customer_name },
+    { label: 'Объект', item: facts.site_info },
+    { label: 'Оборудование', item: facts.asset_code },
+  ];
 
-    return (
-      <div
-        className={`border rounded-xl p-3 flex flex-col justify-between space-y-2 shadow-inner ${
-          isDark
-            ? 'bg-[#020204]/90 border-cyan-500/20'
-            : 'bg-slate-50 border-slate-300'
+  const extras: Array<{ label: string; item: ExtractedFact }> = [
+    { label: 'Запрошенный срок', item: facts.requested_deadline },
+    { label: 'Наличие резерва', item: facts.has_backup },
+  ];
+
+  const factMeta = (item: ExtractedFact) => (
+    <div className="flex items-center gap-1.5">
+      <span
+        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
+          isDark ? 'bg-white/8 text-zinc-300' : 'bg-zinc-100 text-zinc-600'
         }`}
       >
-        <div className="flex items-center justify-between">
-          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            {label}
-          </span>
-          <div className="flex items-center space-x-1.5">
-            <span
-              className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
-                isHighConf
-                  ? isDark
-                    ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/50 shadow-[0_0_8px_rgba(34,211,238,0.3)]'
-                    : 'bg-blue-100 text-blue-950 border border-blue-300 font-extrabold'
-                  : isDark
-                  ? 'bg-amber-950 text-amber-300 border border-amber-500/50'
-                  : 'bg-amber-100 text-amber-950 border border-amber-300 font-extrabold'
-              }`}
-            >
-              Conf: {confPercent}%
-            </span>
-            <span
-              className={`text-[9px] font-mono px-1 py-0.5 rounded uppercase font-semibold ${
-                isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-200 text-slate-700'
-              }`}
-            >
-              {factItem.type}
-            </span>
-          </div>
-        </div>
-
-        <div>
-          <p className={`text-xs font-bold font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {factItem.value || <span className="text-slate-500 italic font-sans font-normal">Не обнаружено</span>}
-          </p>
-        </div>
-
-        {factItem.quote && (
-          <div className="pt-1.5 border-t border-slate-700/20 flex items-start space-x-1 text-[11px] text-slate-500">
-            <Quote className={`h-3 w-3 flex-shrink-0 mt-0.5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <span className="italic line-clamp-1 font-sans">"{factItem.quote}"</span>
-          </div>
-        )}
-      </div>
-    );
-  };
+        {Math.round((item.confidence || 0) * 100)}%
+      </span>
+      <span className={`text-[9px] uppercase tracking-wide ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+        {item.type}
+      </span>
+    </div>
+  );
 
   return (
     <div
       id="fact-extractor-card"
-      className={`rounded-2xl p-4 sm:p-5 transition-all border ${
-        isDark
-          ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
-          : 'bg-white border-slate-300 shadow-sm text-slate-900'
+      className={`rounded-2xl p-4 sm:p-5 border animate-fadeIn ${
+        isDark ? 'bg-[#1A1D22] border-[#2C3139] text-white' : 'bg-white border-[#E6E8EC] text-zinc-900 shadow-sm'
       }`}
     >
-      <div className="flex items-center justify-between pb-3 border-b border-slate-700/30 mb-3">
-        <div className="flex items-center space-x-2">
-          <Eye className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-          <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            1. Извлеченные факты
-          </h2>
+      <div className="flex items-center justify-between gap-3 pb-3 mb-3 border-b border-zinc-200/40 dark:border-[#2C3139]">
+        <div className="flex items-center gap-2">
+          <Eye className={`h-4 w-4 ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`} />
+          <h2 className="text-xs font-bold uppercase tracking-wider">Извлечённые факты</h2>
         </div>
-        <span
-          className={`text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg border ${
+        <button
+          type="button"
+          onClick={() => setShowDetails((v) => !v)}
+          className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold transition ${
             isDark
-              ? 'text-cyan-300 bg-cyan-950/60 border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-              : 'text-blue-950 bg-blue-50 border-blue-200 font-extrabold'
+              ? 'border-[#3A404A] text-zinc-300 hover:bg-white/5'
+              : 'border-[#E6E8EC] text-zinc-600 hover:bg-zinc-50'
           }`}
         >
-          Структурированный вывод
-        </span>
+          {showDetails ? 'Скрыть детали' : 'Подробности'}
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-        {renderFactCard('Заказчик / Клиент', facts.customer_name)}
-        {renderFactCard('Объект / Адрес', facts.site_info)}
-        {renderFactCard('Код Оборудования', facts.asset_code)}
-        {renderFactCard('Суть Проблемы', facts.problem_summary)}
-        {renderFactCard('Запрошенный Срок', facts.requested_deadline)}
-        {renderFactCard('Наличие Резерва', facts.has_backup)}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        {essentials.map(({ label, item }) => (
+          <div
+            key={label}
+            className={`rounded-xl border p-3 transition hover:-translate-y-0.5 ${
+              isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-[#F7F8FA] border-[#E6E8EC]'
+            }`}
+          >
+            <div className={`text-[10px] font-semibold uppercase tracking-wider mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+              {label}
+            </div>
+            <p className="text-sm font-bold leading-snug">{item.value || 'Не обнаружено'}</p>
+            {showDetails && <div className="mt-2">{factMeta(item)}</div>}
+          </div>
+        ))}
       </div>
 
-      {facts.symptoms && facts.symptoms.length > 0 && (
-        <div className="mt-3 pt-2.5 border-t border-slate-700/20 flex items-center space-x-2 text-xs">
-          <span className={`font-mono font-bold text-[11px] ${isDark ? 'text-slate-400' : 'text-blue-950'}`}>Симптомы поломки:</span>
-          <div className="flex flex-wrap gap-1.5">
-            {facts.symptoms.map((s, idx) => (
+      <div
+        className={`mt-2.5 rounded-xl border p-3 ${
+          isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-[#F7F8FA] border-[#E6E8EC]'
+        }`}
+      >
+        <div className={`text-[10px] font-semibold uppercase tracking-wider mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+          Суть проблемы
+        </div>
+        <p className="text-sm font-semibold leading-relaxed">
+          {facts.problem_summary.value || 'Не обнаружено'}
+        </p>
+        {facts.symptoms && facts.symptoms.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {facts.symptoms.map((s) => (
               <span
-                key={idx}
-                className={`px-2 py-0.5 rounded-full border text-[11px] font-mono font-bold ${
-                  isDark
-                    ? 'bg-[#020204] border-cyan-500/30 text-cyan-300'
-                    : 'bg-blue-50 border-blue-200 text-blue-950'
+                key={s}
+                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                  isDark ? 'bg-white/8 text-zinc-200' : 'bg-white border border-[#E6E8EC] text-zinc-700'
                 }`}
               >
                 {s}
               </span>
             ))}
           </div>
+        )}
+      </div>
+
+      {showDetails && (
+        <div className="mt-3 space-y-2.5 animate-fadeIn">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {extras.map(({ label, item }) => (
+              <div
+                key={label}
+                className={`rounded-xl border p-3 ${
+                  isDark ? 'bg-[#121417] border-[#2C3139]' : 'bg-[#F7F8FA] border-[#E6E8EC]'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+                    {label}
+                  </span>
+                  {factMeta(item)}
+                </div>
+                <p className="text-sm font-semibold">{item.value || 'Не указано'}</p>
+              </div>
+            ))}
+          </div>
+
+          {[facts.customer_name, facts.site_info, facts.asset_code, facts.problem_summary]
+            .filter((item) => item.quote)
+            .map((item, idx) => (
+              <div
+                key={`${item.quote}-${idx}`}
+                className={`flex items-start gap-2 text-[12px] italic ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}
+              >
+                <Quote className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                <span>«{item.quote}»</span>
+              </div>
+            ))}
         </div>
       )}
     </div>

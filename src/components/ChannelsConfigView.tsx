@@ -28,8 +28,24 @@ interface ChannelsConfigViewProps {
 
 export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
   theme = 'dark',
+  onNavigateToConsole,
 }) => {
   const isDark = theme === 'dark';
+  const muteIcon = isDark
+    ? 'bg-zinc-800 text-zinc-300 border-zinc-600'
+    : 'bg-zinc-100 text-zinc-700 border-zinc-300';
+  const muteBadge = isDark
+    ? 'bg-zinc-800 text-zinc-200 border border-zinc-600 font-bold'
+    : 'bg-zinc-100 text-zinc-800 border border-zinc-300 font-extrabold';
+  const muteBtn = isDark
+    ? 'bg-zinc-700 hover:bg-zinc-600 text-white border-zinc-600'
+    : 'bg-zinc-800 hover:bg-zinc-900 text-white border-zinc-900';
+  const muteNote = isDark
+    ? 'bg-zinc-800/70 border-zinc-600 text-zinc-200'
+    : 'bg-zinc-100 border-zinc-300 text-zinc-800';
+  const muteCard = isDark
+    ? 'bg-[#1A1D22] border-[#2C3139]'
+    : 'bg-white border-slate-300 shadow-sm';
 
   // Telegram state
   const [telegramToken, setTelegramToken] = useState(
@@ -292,33 +308,38 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
     <div id="channels-config-page" className="space-y-6">
       {/* Top Banner */}
       <div
-        className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+        className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-start justify-between gap-4 ${
           isDark
-            ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
+            ? 'bg-[#1A1D22] border-[#2C3139] text-white '
             : 'bg-white border-slate-300 text-slate-900 shadow-sm'
         }`}
       >
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="flex items-center space-x-2">
-            <Zap className={`h-5 w-5 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-            <h2 className={`text-sm font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
+            <Zap className={`h-5 w-5 ${isDark ? 'text-[#52525B]' : 'text-zinc-800'}`} />
+            <h2 className={`text-sm font-mono font-bold uppercase tracking-wider ${isDark ? 'text-[#52525B]' : 'text-zinc-900'}`}>
               Каналы связи & Интеграции
             </h2>
           </div>
-          <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-700 font-medium'}`}>
-            Подключение реального Telegram Бота, Email MCP шлюза, голосовой телефонии, тестового голосового ввода и REST API.
+          <p className={`text-xs mt-1 font-sans whitespace-normal break-words leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700 font-medium'}`}>
+            Подключение Telegram-бота, корпоративной почты, голосовой связи и приёма обращений из внешних систем.
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <span className={`text-[11px] font-mono px-3 py-1.5 rounded-xl border flex items-center space-x-1.5 ${
-            isDark
-              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 font-bold'
-              : 'bg-emerald-500/20 text-emerald-950 border-emerald-500/40 font-extrabold'
-          }`}>
-            <span className={`h-2 w-2 rounded-full animate-pulse ${isDark ? 'bg-emerald-400' : 'bg-emerald-800'}`}></span>
-            <span>5 Каналов Активно</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`text-[11px] px-3 py-1.5 rounded-full border flex items-center space-x-1.5 ${muteBadge}`}>
+            <span className={`h-2 w-2 rounded-full ${isDark ? 'bg-zinc-400' : 'bg-zinc-600'}`}></span>
+            <span>5 каналов</span>
           </span>
+          {onNavigateToConsole && (
+            <button
+              type="button"
+              onClick={onNavigateToConsole}
+              className="rounded-full bg-[#52525B] px-4 py-2 text-xs font-bold text-white hover:bg-[#3F3F46]"
+            >
+              Дальше: пробный запуск
+            </button>
+          )}
         </div>
       </div>
 
@@ -326,20 +347,16 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* CARD 1: TELEGRAM BOT CONNECTOR */}
         <div
-          className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${
-            isDark
-              ? 'bg-[#060612]/90 border-sky-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
-              : 'bg-white border-slate-300 shadow-sm'
-          }`}
+          className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${muteCard}`}
         >
           <div>
             <div className="flex items-center justify-between mb-3 border-b pb-3 border-slate-700/30">
               <div className="flex items-center space-x-2.5">
-                <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/30">
+                <div className={`p-2 rounded-2xl border ${muteIcon}`}>
                   <Send className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className={`text-sm font-mono font-bold uppercase ${isDark ? 'text-sky-300' : 'text-blue-950'}`}>
+                  <h3 className={`text-sm font-mono font-bold uppercase ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>
                     1. Telegram Bot (Live API)
                   </h3>
                   <span className="text-[11px] text-slate-400 font-mono">
@@ -347,11 +364,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   </span>
                 </div>
               </div>
-              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${
-                telegramToken
-                  ? (isDark ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold' : 'bg-emerald-500/20 text-emerald-950 border border-emerald-500/40 font-extrabold')
-                  : (isDark ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold' : 'bg-rose-500/20 text-rose-950 border border-rose-500/40 font-extrabold')
-              }`}>
+              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${muteBadge}`}>
                 {telegramToken ? 'Бот подключен' : 'Ожидает токен'}
               </span>
             </div>
@@ -368,17 +381,17 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                 <div className="relative">
                   <input
                     type={showTelegramToken ? 'text' : 'password'}
-                    placeholder="7123456789:AAEFghIJKlmNopQRstUv..."
+                    placeholder="7123456789:AAEfgHIJKlmNopQRstUvWxyZ1234567890"
                     value={telegramToken}
                     onChange={(e) => setTelegramToken(e.target.value)}
-                    className={`w-full p-2.5 pr-10 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-sky-500 ${
-                      isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    className={`w-full p-2.5 pr-10 rounded-2xl border text-xs font-mono break-all focus:outline-none focus:ring-2 focus:ring-zinc-400 ${
+                      isDark ? 'bg-[#121417] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
                     }`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowTelegramToken(!showTelegramToken)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-white"
+                    className={`absolute right-3 top-2.5 ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-800'}`}
                   >
                     {showTelegramToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -391,7 +404,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                     type="checkbox"
                     checked={isPolling}
                     onChange={(e) => setIsPolling(e.target.checked)}
-                    className="rounded border-slate-700 text-sky-500 focus:ring-sky-500"
+                    className="rounded border-slate-300 accent-zinc-700 focus:ring-zinc-400"
                   />
                   <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>
                     Автоматический Long Polling
@@ -406,7 +419,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
             <button
               onClick={handleSaveTelegramToken}
               disabled={isSavingToken}
-              className="w-full py-2.5 px-4 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-1.5 disabled:opacity-50"
+              className={`w-full py-2.5 px-4 rounded-2xl border font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-1.5 disabled:opacity-50 ${muteBtn}`}
             >
               {isSavingToken ? (
                 <>
@@ -421,7 +434,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
               )}
             </button>
             {telegramStatus && (
-              <div className="mt-2.5 p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-[11px] font-mono text-sky-300">
+              <div className={`mt-2.5 p-2.5 rounded-2xl border text-[11px] font-mono ${muteNote}`}>
                 {telegramStatus}
               </div>
             )}
@@ -430,20 +443,16 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
 
         {/* CARD 2: EMAIL CONNECTOR (IMAP & MCP) */}
         <div
-          className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${
-            isDark
-              ? 'bg-[#060612]/90 border-amber-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
-              : 'bg-white border-slate-300 shadow-sm'
-          }`}
+          className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${muteCard}`}
         >
           <div>
             <div className="flex items-center justify-between mb-3 border-b pb-3 border-slate-700/30">
               <div className="flex items-center space-x-2.5">
-                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                <div className={`p-2 rounded-2xl border ${muteIcon}`}>
                   <Mail className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className={`text-sm font-mono font-bold uppercase ${isDark ? 'text-amber-300' : 'text-blue-950'}`}>
+                  <h3 className={`text-sm font-mono font-bold uppercase ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>
                     2. Email Connector (MCP & IMAP)
                   </h3>
                   <span className="text-[11px] text-slate-400 font-mono">
@@ -451,11 +460,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   </span>
                 </div>
               </div>
-              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${
-                isDark
-                  ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
-                  : 'bg-rose-500/20 text-rose-950 font-extrabold border border-rose-500/40'
-              }`}>
+              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${muteBadge}`}>
                 MCP Active
               </span>
             </div>
@@ -471,7 +476,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   type="text"
                   value={emailHost}
                   onChange={(e) => setEmailHost(e.target.value)}
-                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                  className={`w-full p-2 rounded-xl border text-xs ${isDark ? 'bg-[#121417] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                 />
               </div>
               <div>
@@ -480,7 +485,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   type="text"
                   value={emailPort}
                   onChange={(e) => setEmailPort(e.target.value)}
-                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                  className={`w-full p-2 rounded-xl border text-xs ${isDark ? 'bg-[#121417] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                 />
               </div>
             </div>
@@ -492,7 +497,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   type="email"
                   value={emailAddress}
                   onChange={(e) => setEmailAddress(e.target.value)}
-                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                  className={`w-full p-2 rounded-xl border text-xs ${isDark ? 'bg-[#121417] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                 />
               </div>
               <div>
@@ -502,7 +507,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                     type={showEmailPass ? 'text' : 'password'}
                     value={emailPassword}
                     onChange={(e) => setEmailPassword(e.target.value)}
-                    className={`w-full p-2 pr-9 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                    className={`w-full p-2 pr-9 rounded-xl border text-xs ${isDark ? 'bg-[#121417] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                   />
                   <button
                     type="button"
@@ -519,17 +524,13 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
           <div className="mt-4 pt-3 border-t border-slate-700/30">
             <button
               onClick={handleTestEmailWebhook}
-              className={`w-full py-2.5 px-4 rounded-xl font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-1.5 ${
-                isDark
-                  ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
-                  : 'bg-orange-800 hover:bg-orange-700 text-white border border-orange-600'
-              }`}
+              className={`w-full py-2.5 px-4 rounded-2xl border font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-1.5 ${muteBtn}`}
             >
               <Mail className="h-4 w-4" />
               <span>Симуляция входящего Email</span>
             </button>
             {emailStatus && (
-              <div className="mt-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] font-mono text-amber-300">
+              <div className={`mt-2.5 p-2.5 rounded-2xl border text-[11px] font-mono ${muteNote}`}>
                 {emailStatus}
               </div>
             )}
@@ -538,20 +539,16 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
 
         {/* CARD 3: TELEPHONY CONNECTOR (VOICE STT) */}
         <div
-          className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${
-            isDark
-              ? 'bg-[#060612]/90 border-purple-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
-              : 'bg-white border-slate-300 shadow-sm'
-          }`}
+          className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${muteCard}`}
         >
           <div>
             <div className="flex items-center justify-between mb-3 border-b pb-3 border-slate-700/30">
               <div className="flex items-center space-x-2.5">
-                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/30">
+                <div className={`p-2 rounded-2xl border ${muteIcon}`}>
                   <PhoneCall className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className={`text-sm font-mono font-bold uppercase ${isDark ? 'text-purple-300' : 'text-blue-950'}`}>
+                  <h3 className={`text-sm font-mono font-bold uppercase ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>
                     3. Телефония (Voice STT)
                   </h3>
                   <span className="text-[11px] text-slate-400 font-mono">
@@ -559,11 +556,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   </span>
                 </div>
               </div>
-              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${
-                isDark
-                  ? 'bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30'
-                  : 'bg-purple-500/20 text-purple-950 font-extrabold border border-purple-500/40'
-              }`}>
+              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${muteBadge}`}>
                 SIP Ready
               </span>
             </div>
@@ -579,7 +572,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   type="text"
                   value={sttProvider}
                   onChange={(e) => setSttProvider(e.target.value)}
-                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                  className={`w-full p-2 rounded-xl border text-xs ${isDark ? 'bg-[#121417] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                 />
               </div>
               <div>
@@ -588,7 +581,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   type="text"
                   value={sipTrunk}
                   onChange={(e) => setSipTrunk(e.target.value)}
-                  className={`w-full p-2 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                  className={`w-full p-2 rounded-xl border text-xs ${isDark ? 'bg-[#121417] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                 />
               </div>
               <div>
@@ -598,7 +591,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                     type={showTelephonySecret ? 'text' : 'password'}
                     value={telephonySecret}
                     onChange={(e) => setTelephonySecret(e.target.value)}
-                    className={`w-full p-2 pr-9 rounded-lg border text-xs ${isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                    className={`w-full p-2 pr-9 rounded-xl border text-xs ${isDark ? 'bg-[#121417] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300'}`}
                   />
                   <button
                     type="button"
@@ -615,13 +608,13 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
           <div className="mt-4 pt-3 border-t border-slate-700/30">
             <button
               onClick={handleTestTelephonyWebhook}
-              className="w-full py-2.5 px-4 rounded-xl bg-purple-500 hover:bg-purple-400 text-slate-950 font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-1.5"
+              className={`w-full py-2.5 px-4 rounded-2xl border font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-1.5 ${muteBtn}`}
             >
               <PhoneCall className="h-4 w-4" />
               <span>Тестовый звонок (Симуляция STT)</span>
             </button>
             {telephonyStatus && (
-              <div className="mt-2.5 p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-[11px] font-mono text-purple-300">
+              <div className={`mt-2.5 p-2.5 rounded-2xl border text-[11px] font-mono ${muteNote}`}>
                 {telephonyStatus}
               </div>
             )}
@@ -630,20 +623,16 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
 
         {/* CARD 4: API SWAGGER & LIVE RUNNER */}
         <div
-          className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${
-            isDark
-              ? 'bg-[#060612]/90 border-emerald-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
-              : 'bg-white border-slate-300 shadow-sm'
-          }`}
+          className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${muteCard}`}
         >
           <div>
             <div className="flex items-center justify-between mb-3 border-b pb-3 border-slate-700/30">
               <div className="flex items-center space-x-2.5">
-                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                <div className={`p-2 rounded-2xl border ${muteIcon}`}>
                   <Code className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className={`text-sm font-mono font-bold uppercase ${isDark ? 'text-emerald-300' : 'text-blue-950'}`}>
+                  <h3 className={`text-sm font-mono font-bold uppercase ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>
                     4. Swagger REST API & Webhooks
                   </h3>
                   <span className="text-[11px] text-slate-400 font-mono">
@@ -651,11 +640,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   </span>
                 </div>
               </div>
-              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${
-                isDark
-                  ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30'
-                  : 'bg-emerald-500/20 text-emerald-950 font-extrabold border border-emerald-500/40'
-              }`}>
+              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${muteBadge}`}>
                 Swagger Live
               </span>
             </div>
@@ -665,8 +650,8 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                 <select
                   value={apiMethod}
                   onChange={(e: any) => setApiMethod(e.target.value)}
-                  className={`p-2 rounded-lg border font-bold ${
-                    isDark ? 'bg-[#030712] border-slate-800 text-emerald-400' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  className={`p-2 rounded-xl border font-bold ${
+                    isDark ? 'bg-[#121417] border-slate-800 text-zinc-200' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 >
                   <option value="POST">POST</option>
@@ -731,8 +716,8 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                       }
                     }
                   }}
-                  className={`w-full p-2 rounded-lg border font-bold ${
-                    isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  className={`w-full p-2 rounded-xl border font-bold ${
+                    isDark ? 'bg-[#121417] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 >
                   <option value="/api/webhooks/dispatch">POST /api/webhooks/dispatch (AI Dispatcher Webhook)</option>
@@ -752,8 +737,8 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   value={apiRequestBody}
                   onChange={(e) => setApiRequestBody(e.target.value)}
                   placeholder={apiMethod === 'GET' ? '{"sender": "ООО СеверФуд", "text": "Срочный ремонт"}' : '{"text": "Заявка..."}'}
-                  className={`w-full p-2 rounded-lg border text-[11px] font-mono leading-tight focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
-                    isDark ? 'bg-[#030712] border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  className={`w-full p-2 rounded-xl border text-[11px] font-mono leading-tight focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
+                    isDark ? 'bg-[#121417] border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 />
               </div>
@@ -764,11 +749,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
             <button
               onClick={handleRunApiTest}
               disabled={isApiLoading}
-              className={`w-full py-2.5 px-4 rounded-xl font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-1.5 border disabled:opacity-50 ${
-                isDark
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-emerald-400'
-                  : 'bg-emerald-900 hover:bg-emerald-800 text-white border-emerald-700'
-              }`}
+              className={`w-full py-2.5 px-4 rounded-2xl font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-1.5 border disabled:opacity-50 ${muteBtn}`}
             >
               {isApiLoading ? (
                 <>
@@ -787,20 +768,16 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
 
         {/* CARD 5: TEST VOICE INPUT (MIC / SPEECH RECOGNITION) */}
         <div
-          className={`rounded-2xl p-5 border transition-all flex flex-col justify-between lg:col-span-2 ${
-            isDark
-              ? 'bg-[#060612]/90 border-rose-500/40 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
-              : 'bg-white border-slate-300 shadow-sm'
-          }`}
+          className={`rounded-2xl p-5 border transition-all flex flex-col justify-between lg:col-span-2 ${muteCard}`}
         >
           <div>
             <div className="flex items-center justify-between mb-3 border-b pb-3 border-slate-700/30">
               <div className="flex items-center space-x-2.5">
-                <div className={`p-2 rounded-xl border ${isRecording ? 'bg-rose-500/20 text-rose-400 border-rose-500/50 animate-pulse' : 'bg-rose-500/10 text-rose-400 border-rose-500/30'}`}>
-                  {isRecording ? <Mic className="h-5 w-5 animate-bounce" /> : <Mic className="h-5 w-5" />}
+                <div className={`p-2 rounded-2xl border ${isRecording ? 'bg-stone-700 text-stone-100 border-stone-500' : muteIcon}`}>
+                  {isRecording ? <Mic className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                 </div>
                 <div>
-                  <h3 className={`text-sm font-mono font-bold uppercase ${isDark ? 'text-rose-300' : 'text-blue-950'}`}>
+                  <h3 className={`text-sm font-mono font-bold uppercase ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>
                     5. Тестовый голосовой ввод (Browser Speech Recognition)
                   </h3>
                   <span className="text-[11px] text-slate-400 font-mono">
@@ -808,12 +785,8 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   </span>
                 </div>
               </div>
-              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${
-                isRecording
-                  ? (isDark ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse font-bold' : 'bg-rose-500/20 text-rose-950 border border-rose-500/40 animate-pulse font-extrabold')
-                  : (isDark ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold' : 'bg-emerald-500/20 text-emerald-950 border border-emerald-500/40 font-extrabold')
-              }`}>
-                {isRecording ? '🔴 Запись идет...' : 'Готов к записи'}
+              <span className={`text-[10px] font-mono px-2.5 py-1 rounded uppercase ${muteBadge}`}>
+                {isRecording ? 'Запись идет' : 'Готов к записи'}
               </span>
             </div>
 
@@ -823,14 +796,14 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
               {/* Mic Controls */}
-              <div className="flex flex-col justify-center items-center p-4 rounded-xl bg-black/40 border border-slate-800 space-y-2">
+              <div className="flex flex-col justify-center items-center p-4 rounded-2xl bg-black/40 border border-slate-800 space-y-2">
                 <button
                   type="button"
                   onClick={toggleVoiceRecording}
                   className={`p-4 rounded-full transition-all shadow-lg flex items-center justify-center ${
                     isRecording
-                      ? 'bg-rose-600 text-white animate-pulse ring-4 ring-rose-500/50 scale-105'
-                      : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40'
+                      ? 'bg-zinc-800 text-white ring-2 ring-zinc-500'
+                      : `${muteIcon} hover:bg-zinc-200`
                   }`}
                 >
                   {isRecording ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
@@ -847,7 +820,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
               <div className="md:col-span-2 space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                    <Volume2 className="h-3 w-3 text-rose-400" />
+                    <Volume2 className={`h-3 w-3 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`} />
                     Транскрипт Распознанной Речи (STT):
                   </label>
                   <div className="flex gap-1.5">
@@ -873,8 +846,8 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
                   value={voiceTranscript}
                   onChange={(e) => setVoiceTranscript(e.target.value)}
                   placeholder="Произнесите фразу или введите текст для теста голосового канала..."
-                  className={`w-full p-2.5 rounded-xl border text-xs font-sans leading-relaxed focus:outline-none focus:ring-1 focus:ring-rose-500 ${
-                    isDark ? 'bg-[#030712] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  className={`w-full p-2.5 rounded-2xl border text-xs font-sans leading-relaxed focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
+                    isDark ? 'bg-[#121417] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 />
               </div>
@@ -885,7 +858,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
             <button
               onClick={handleSendVoiceDispatch}
               disabled={isVoiceSubmitting || !voiceTranscript.trim()}
-              className="w-full sm:w-auto py-2.5 px-6 rounded-xl bg-rose-500 hover:bg-rose-400 text-slate-950 font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-2 disabled:opacity-50"
+              className={`w-full sm:w-auto py-2.5 px-6 rounded-2xl border font-mono text-xs font-bold transition-all shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 ${muteBtn}`}
             >
               {isVoiceSubmitting ? (
                 <>
@@ -901,7 +874,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
             </button>
 
             {voiceInputStatus && (
-              <div className="w-full sm:w-auto p-2 px-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-[11px] font-mono text-rose-300">
+              <div className={`w-full sm:w-auto p-2 px-3 rounded-2xl border text-[11px] font-mono ${muteNote}`}>
                 {voiceInputStatus}
               </div>
             )}
@@ -914,13 +887,13 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
         <div
           className={`p-5 rounded-2xl border transition-all ${
             isDark
-              ? 'bg-[#030712] border-emerald-500/40 text-emerald-300'
-              : 'bg-slate-900 border-slate-800 text-emerald-400'
+              ? 'bg-[#121417] border-[#2C3139] text-zinc-200'
+              : 'bg-zinc-50 border-zinc-300 text-zinc-800'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2 font-mono text-xs font-bold">
-              <Terminal className="h-4 w-4 text-emerald-400" />
+              <Terminal className={`h-4 w-4 ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`} />
               <span>Swagger REST API Output Response [HTTP 200 OK]</span>
             </div>
             <button
@@ -930,7 +903,9 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
               Очистить
             </button>
           </div>
-          <pre className="text-xs font-mono max-h-64 overflow-y-auto p-3 rounded-xl bg-black/60 border border-slate-800 text-emerald-400 whitespace-pre-wrap leading-relaxed">
+          <pre className={`text-xs font-mono max-h-64 overflow-y-auto p-3 rounded-2xl border whitespace-pre-wrap leading-relaxed ${
+            isDark ? 'bg-black/60 border-slate-800 text-zinc-200' : 'bg-white border-zinc-200 text-zinc-800'
+          }`}>
             {apiResponseOutput}
           </pre>
         </div>

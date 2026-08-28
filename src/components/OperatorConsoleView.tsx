@@ -42,7 +42,7 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
   if (!db) {
     return (
       <div className="p-6 text-center text-xs font-mono text-slate-400">
-        // Загрузка данных Диспетчера...
+        Загрузка рабочего места диспетчера…
       </div>
     );
   }
@@ -106,7 +106,7 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
             {
               timestamp: new Date().toISOString(),
               note: `Диспетчер направил запрос уточнения: "${replyText}"`,
-              author: 'Оператор HITL',
+              author: 'Диспетчер',
             },
           ],
         };
@@ -157,41 +157,41 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
     <div id="operator-console-page" className="space-y-6">
       {/* Top Banner */}
       <div
-        className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+        className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-start justify-between gap-4 ${
           isDark
-            ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
+            ? 'bg-[#1A1D22] border-[#2C3139] text-white '
             : 'bg-white border-slate-300 text-slate-950 shadow-md'
         }`}
       >
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="flex items-center space-x-2">
-            <UserCheck className={`h-5 w-5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`} />
-            <h2 className={`text-sm font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950 font-extrabold'}`}>
+            <UserCheck className={`h-5 w-5 ${isDark ? 'text-[#52525B]' : 'text-zinc-900'}`} />
+            <h2 className={`text-sm font-mono font-bold uppercase tracking-wider ${isDark ? 'text-[#52525B]' : 'text-zinc-900 font-extrabold'}`}>
               Рабочее Место Диспетчера
             </h2>
           </div>
-          <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'}`}>
+          <p className={`text-xs mt-1 font-sans whitespace-normal break-words leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'}`}>
             Разрешение неопределенностей, интерактивный диалог с клиентом в боте, ручное дообогащение данных и передача в 1С:ERP.
           </p>
         </div>
 
         <div className="flex items-center space-x-2 font-mono text-xs">
           {pendingTickets.length > 0 ? (
-            <span className={`px-3 py-1.5 rounded-xl border font-bold animate-pulse flex items-center space-x-1.5 ${
+            <span className={`px-3 py-1.5 rounded-2xl border font-bold flex items-center space-x-1.5 ${
               isDark
-                ? 'bg-red-500/20 text-red-300 border-red-500/40'
-                : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
+                ? 'bg-stone-800/80 text-stone-200 border-stone-600'
+                : 'bg-stone-100 text-stone-800 border-stone-300 font-extrabold'
             }`}>
-              <AlertTriangle className={`h-4 w-4 ${isDark ? 'text-red-400' : 'text-red-700'}`} />
+              <AlertTriangle className={`h-4 w-4 ${isDark ? 'text-stone-300' : 'text-stone-700'}`} />
               <span>{pendingTickets.length} Заявок требуют внимания</span>
             </span>
           ) : (
-            <span className={`px-3 py-1.5 rounded-xl border font-bold flex items-center space-x-1.5 ${
+            <span className={`px-3 py-1.5 rounded-2xl border font-bold flex items-center space-x-1.5 ${
               isDark
-                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                : 'bg-emerald-100 text-emerald-950 border-emerald-400 font-extrabold'
+                ? 'bg-zinc-800 text-zinc-200 border-zinc-600'
+                : 'bg-zinc-100 text-zinc-800 border-zinc-300 font-extrabold'
             }`}>
-              <CheckCircle className={`h-4 w-4 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} />
+              <CheckCircle className={`h-4 w-4 ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`} />
               <span>Все обращения укомплектованы</span>
             </span>
           )}
@@ -201,15 +201,15 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
       {/* SECTION 1: PENDING HITL TICKETS (RED GLOW ATTENTION) */}
       <div className="space-y-3">
         <h3 className={`text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-1.5 ${
-          isDark ? 'text-amber-400' : 'text-amber-700 font-extrabold'
+          isDark ? 'text-stone-300' : 'text-stone-700 font-extrabold'
         }`}>
           <ShieldAlert className="h-4 w-4" />
           <span>Обращения, Требующие Уточнения Данных Диспетчером ({pendingTickets.length})</span>
         </h3>
 
         {pendingTickets.length === 0 ? (
-          <div className={`p-5 rounded-2xl border text-center text-xs font-mono ${isDark ? 'bg-[#030712] border-slate-800 text-slate-500' : 'bg-slate-100 border-slate-300 text-slate-900 font-semibold'}`}>
-            // Нет неполных обращений. AI-Диспетчер автоматически обработал 100% поступивших сообщений.
+          <div className={`p-5 rounded-2xl border text-center text-xs font-mono ${isDark ? 'bg-[#121417] border-slate-800 text-slate-500' : 'bg-slate-100 border-slate-300 text-slate-900 font-semibold'}`}>
+            Нет неполных обращений. Диспетчер обработал все поступившие сообщения.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -217,26 +217,26 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
               <div
                 key={ticket.ticket_id}
                 onClick={() => handleOpenTicketInspector(ticket)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer hover:scale-[1.01] ${
+                className={`p-4 rounded-2xl border transition-all cursor-pointer hover:scale-[1.01] nb-pulse-warn ${
                   isDark
-                    ? 'bg-[#090814] border-red-500/40 hover:border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
-                    : 'bg-white border-red-400 hover:border-red-600 shadow-md text-slate-950'
+                    ? 'bg-[#121417] border-stone-600 hover:border-stone-500'
+                    : 'bg-white border-stone-300 hover:border-stone-400 shadow-md text-slate-950'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${
+                  <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-xl border ${
                     isDark
-                      ? 'text-amber-400 bg-amber-500/10 border-amber-500/30'
-                      : 'text-amber-950 bg-amber-100 border-amber-400 font-extrabold'
+                      ? 'text-zinc-200 bg-zinc-800 border-zinc-600'
+                      : 'text-zinc-800 bg-zinc-100 border-zinc-300 font-extrabold'
                   }`}>
                     {ticket.ticket_id}
                   </span>
                   <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded border flex items-center space-x-1 ${
                     isDark
-                      ? 'text-red-400 bg-red-500/10 border-red-500/30'
-                      : 'text-red-950 bg-red-100 border-red-400 font-extrabold'
+                      ? 'text-stone-200 bg-stone-800/80 border-stone-600'
+                      : 'text-stone-700 bg-stone-100 border-stone-300 font-extrabold'
                   }`}>
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-ping"></span>
+                    <span className={`h-1.5 w-1.5 rounded-full ${isDark ? 'bg-stone-400' : 'bg-stone-500'}`}></span>
                     <span>Уточнение Данных</span>
                   </span>
                 </div>
@@ -244,7 +244,7 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
                 <h4 className={`text-xs font-bold mb-1 ${isDark ? 'text-white' : 'text-slate-950 font-extrabold'}`}>
                   {ticket.summary || 'Неполное обращение без кода оборудования'}
                 </h4>
-                <p className={`text-[11px] mb-3 line-clamp-2 ${isDark ? 'text-slate-400' : 'text-slate-900 font-medium'}`}>
+                <p className={`text-[11px] mb-3 whitespace-normal break-words leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-900 font-medium'}`}>
                   {ticket.description}
                 </p>
 
@@ -254,10 +254,10 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
                     {ticket.missing_fields.map((field) => (
                       <span key={field} className={`px-2 py-0.5 rounded border font-bold ${
                         isDark
-                          ? 'bg-red-950/80 text-red-300 border-red-500/40'
-                          : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
+                          ? 'bg-stone-800/80 text-stone-200 border-stone-600'
+                          : 'bg-stone-50 text-stone-700 border-stone-300 font-extrabold'
                       }`}>
-                        ⚠️ {field}
+                        ⚠ {field}
                       </span>
                     ))}
                   </div>
@@ -265,8 +265,8 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
 
                 <div className={`flex items-center justify-between pt-2 border-t text-[11px] font-mono font-bold ${
                   isDark
-                    ? 'border-slate-700/30 text-cyan-400'
-                    : 'border-slate-200 text-blue-950 font-extrabold'
+                    ? 'border-slate-700/30 text-[#52525B]'
+                    : 'border-slate-200 text-zinc-900 font-extrabold'
                 }`}>
                   <span>Открыть интерактивный диалог</span>
                   <MessageSquare className="h-4 w-4" />
@@ -285,9 +285,9 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
           Все Укомплектованные Заявки в Работе ({activeTickets.length})
         </h3>
 
-        <div className={`rounded-2xl p-4 border overflow-x-auto ${isDark ? 'bg-[#060612]/90 border-cyan-500/20' : 'bg-white border-slate-300 shadow-sm'}`}>
+        <div className={`rounded-2xl p-4 border overflow-x-auto ${isDark ? 'bg-[#1A1D22] border-[#2C3139]' : 'bg-white border-slate-300 shadow-sm'}`}>
           <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-950'}`}>
-            <thead className={`font-mono uppercase text-[10px] border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-slate-200 text-slate-950 font-extrabold border-slate-300'}`}>
+            <thead className={`font-mono uppercase text-[10px] border-b ${isDark ? 'bg-[#020204] text-[#52525B] border-[#2C3139]' : 'bg-slate-200 text-slate-950 font-extrabold border-slate-300'}`}>
               <tr>
                 <th className="p-3">ID Заявки</th>
                 <th className="p-3">Объект / Ассет</th>
@@ -300,14 +300,14 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
             <tbody className="divide-y divide-slate-700/20 font-sans">
               {activeTickets.map((t) => (
                 <tr key={t.ticket_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100/80'}>
-                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-amber-400' : 'text-amber-800 font-extrabold'}`}>{t.ticket_id}</td>
-                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-cyan-400' : 'text-blue-950 font-extrabold'}`}>{t.asset_id}</td>
-                  <td className="p-3 font-semibold">{t.summary}</td>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-zinc-200' : 'text-zinc-800 font-extrabold'}`}>{t.ticket_id}</td>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-zinc-300' : 'text-zinc-900 font-extrabold'}`}>{t.asset_id}</td>
+                  <td className="p-3 font-semibold whitespace-normal break-words leading-relaxed">{t.summary}</td>
                   <td className="p-3">
                     <span className={`px-2 py-0.5 rounded border font-mono font-bold text-[10px] ${
                       isDark
-                        ? 'bg-red-950/80 text-red-300 border-red-500/40'
-                        : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
+                        ? 'bg-zinc-800 text-zinc-200 border-zinc-600'
+                        : 'bg-stone-100 text-stone-800 border-stone-300 font-extrabold'
                     }`}>
                       {t.priority.toUpperCase()}
                     </span>
@@ -315,7 +315,7 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
                   <td className="p-3 font-mono font-semibold">
                     {new Date(t.sla_deadline).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                   </td>
-                  <td className={`p-3 font-mono ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>{t.assigned_group}</td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-zinc-300' : 'text-zinc-800 font-bold'}`}>{t.assigned_group}</td>
                 </tr>
               ))}
             </tbody>
@@ -328,22 +328,22 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div
             className={`w-full max-w-2xl rounded-2xl p-6 border shadow-2xl flex flex-col max-h-[90vh] ${
-              isDark ? 'bg-[#090918] border-cyan-500/40 text-white' : 'bg-white border-slate-400 text-slate-950 shadow-2xl'
+              isDark ? 'bg-[#090918] border-[#2C3139] text-white' : 'bg-white border-slate-400 text-slate-950 shadow-2xl'
             }`}
           >
             {/* Modal Header */}
             <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-slate-700/30' : 'border-slate-300'}`}>
               <div className="flex items-center space-x-2.5">
-                <div className={`p-2 rounded-xl border ${
+                <div className={`p-2 rounded-2xl border ${
                   isDark
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                    : 'bg-amber-100 text-amber-950 border-amber-400 font-extrabold'
+                    ? 'bg-zinc-800 text-zinc-200 border-zinc-600'
+                    : 'bg-zinc-100 text-zinc-800 border-zinc-300 font-extrabold'
                 }`}>
                   <MessageSquare className="h-5 w-5" />
                 </div>
                 <div>
                   <h3 className={`text-sm font-mono font-bold uppercase ${
-                    isDark ? 'text-amber-400' : 'text-amber-900 font-extrabold'
+                    isDark ? 'text-zinc-200' : 'text-zinc-800 font-extrabold'
                   }`}>
                     Интерактивный Диалог Диспетчера (Заявка {selectedTicket.ticket_id})
                   </h3>
@@ -363,7 +363,7 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
             </div>
 
             {/* Chat Messages History Stream */}
-            <div className={`flex-1 overflow-y-auto my-4 space-y-3 p-3 rounded-xl border font-sans text-xs ${
+            <div className={`flex-1 overflow-y-auto my-4 space-y-3 p-3 rounded-2xl border font-sans text-xs ${
               isDark ? 'bg-black/40 border-slate-800' : 'bg-slate-100 border-slate-300'
             }`}>
               {(selectedTicket.messages || [
@@ -377,11 +377,11 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
               ]).map((msg) => (
                 <div
                   key={msg.id}
-                  className={`p-3 rounded-xl max-w-[85%] ${
+                  className={`p-3 rounded-2xl max-w-[85%] ${
                     msg.sender === 'operator'
                       ? isDark
-                        ? 'bg-cyan-950/60 border border-cyan-500/40 text-cyan-200 ml-auto'
-                        : 'bg-blue-100 border border-blue-400 text-blue-950 font-semibold ml-auto shadow-sm'
+                        ? 'bg-[#52525B]/10 border border-[#2C3139] text-zinc-100 ml-auto'
+                        : 'bg-zinc-100 border border-blue-400 text-zinc-900 font-semibold ml-auto shadow-sm'
                       : msg.sender === 'bot'
                       ? isDark
                         ? 'bg-purple-950/60 border border-purple-500/40 text-purple-200 ml-auto'
@@ -403,10 +403,10 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
             {/* Operator Manual Entry / Clarification Controls */}
             <div className={`space-y-3 font-mono text-xs border-t pt-3 ${isDark ? 'border-slate-700/30' : 'border-slate-300'}`}>
               {/* Missing Information Highlight */}
-              <div className={`p-2.5 rounded-xl border text-[11px] flex items-center justify-between ${
+              <div className={`p-2.5 rounded-2xl border text-[11px] flex items-center justify-between ${
                 isDark
-                  ? 'bg-red-950/40 border-red-500/30 text-red-300'
-                  : 'bg-red-100 border-red-400 text-red-950 font-extrabold'
+                  ? 'bg-stone-900/60 border-stone-600 text-stone-200'
+                  : 'bg-stone-100 border-stone-300 text-stone-800 font-extrabold'
               }`}>
                 <span>⚠️ Требуется уточнить: Код Оборудования / Складской Цех</span>
                 <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-700 font-bold'}`}>AI Confidence: 65%</span>
@@ -423,9 +423,9 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
                   rows={2}
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  className={`w-full p-2.5 rounded-xl text-xs focus:outline-none transition ${
+                  className={`w-full p-2.5 rounded-2xl text-xs focus:outline-none transition ${
                     isDark
-                      ? 'bg-black/60 border border-slate-700 text-white focus:ring-1 focus:ring-cyan-500'
+                      ? 'bg-black/60 border border-slate-700 text-white focus:ring-1 focus:ring-zinc-400'
                       : 'bg-white border border-slate-400 text-slate-950 font-semibold focus:border-blue-950 focus:ring-1 focus:ring-blue-950'
                   }`}
                 />
@@ -436,10 +436,10 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
                 <button
                   onClick={handleSendClarification}
                   disabled={isSending}
-                  className={`flex-1 py-2.5 px-4 rounded-xl font-bold flex items-center justify-center space-x-1.5 transition ${
+                  className={`flex-1 py-2.5 px-4 rounded-2xl font-bold flex items-center justify-center space-x-1.5 transition ${
                     isDark
-                      ? 'bg-sky-500 hover:bg-sky-400 text-slate-950'
-                      : 'bg-sky-600 hover:bg-sky-700 text-white font-extrabold shadow-sm'
+                      ? 'bg-zinc-700 hover:bg-zinc-600 text-white'
+                      : 'bg-zinc-800 hover:bg-zinc-900 text-white font-extrabold shadow-sm'
                   }`}
                 >
                   {isSending ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -448,10 +448,10 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
 
                 <button
                   onClick={handleApproveAndCommitTicket}
-                  className={`flex-1 py-2.5 px-4 rounded-xl font-bold flex items-center justify-center space-x-1.5 transition ${
+                  className={`flex-1 py-2.5 px-4 rounded-2xl font-bold flex items-center justify-center space-x-1.5 transition ${
                     isDark
-                      ? 'bg-emerald-900 hover:bg-emerald-800 text-white border border-emerald-700 shadow-md'
-                      : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
+                      ? 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-600 shadow-md'
+                      : 'bg-zinc-800 hover:bg-zinc-900 text-white font-extrabold shadow-md border border-zinc-900'
                   }`}
                 >
                   <FileCheck className="h-4 w-4" />
@@ -460,10 +460,10 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
               </div>
 
               {statusMessage && (
-                <div className={`p-2 rounded-lg text-[11px] font-bold ${
+                <div className={`p-2 rounded-xl text-[11px] font-bold ${
                   isDark
-                    ? 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-300'
-                    : 'bg-blue-100 border border-blue-400 text-blue-950'
+                    ? 'bg-[#52525B]/10 border border-[#2C3139] text-zinc-200'
+                    : 'bg-zinc-100 border border-blue-400 text-zinc-900'
                 }`}>
                   {statusMessage}
                 </div>
