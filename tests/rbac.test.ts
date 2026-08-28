@@ -25,6 +25,8 @@ test('диспетчер не имеет доступа к /admin/users и ад�
   assert.equal(canAccessPath('dispatcher', '/sla'), true);
   assert.equal(canAccessPath('dispatcher', '/history'), true);
   assert.equal(canAccessPath('dispatcher', '/notifications'), true);
+  assert.equal(canAccessPath('dispatcher', '/field'), true);
+  assert.equal(canAccessPath('dispatcher', '/sites'), true);
   assert.equal(canAccessPath('dispatcher', '/profile'), true);
   assert.equal(canAccessTab('dispatcher', 'sla'), true);
   assert.equal(canAccessTab('dispatcher', 'channels'), false);

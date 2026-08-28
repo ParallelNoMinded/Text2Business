@@ -67,6 +67,32 @@ export function clearStartTicket() {
   }
 }
 
+const SITE_FILTER_KEY = 't2b-site-filter';
+
+export function requestSiteFilter(siteId: string) {
+  try {
+    sessionStorage.setItem(SITE_FILTER_KEY, siteId);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function peekSiteFilter(): string | null {
+  try {
+    return sessionStorage.getItem(SITE_FILTER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function clearSiteFilter() {
+  try {
+    sessionStorage.removeItem(SITE_FILTER_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function ticketChannel(t: Ticket): string {
   return t.channel || t.messages?.[0]?.channel || '';
 }
@@ -89,6 +115,63 @@ export function missingFieldLabel(field: string): string {
     customer_name: 'Клиент',
   };
   return map[field] || field;
+}
+
+function similarTokens(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 3);
+}
+
+export function ticketOutcome(t: Ticket): string {
+  if (t.status === 'CLOSED' || t.status === 'RESOLVED') {
+    const last = [...(t.history || [])].reverse().find((h) =>
+      /закрыт|акт|выполнен|замен|калибр/i.test(h.note)
+    );
+    return last?.note || t.description || 'Закрыта';
+  }
+  return statusLabel(t).label;
+}
+
+export function similarTickets(
+  db: DatabaseSchema,
+  current: Ticket,
+  limit = 5
+): Array<{ ticket: Ticket; why: string; outcome: string }> {
+  const words = new Set(similarTokens(`${current.summary} ${current.description || ''}`));
+  const pool = [...db.open_tickets, ...(db.closed_tickets || [])].filter(
+    (t) => t.ticket_id !== current.ticket_id
+  );
+  return pool
+    .map((t) => {
+      const why: string[] = [];
+      let score = 0;
+      if (t.asset_id && t.asset_id === current.asset_id) {
+        score += 6;
+        why.push('то же оборудование');
+      } else if (t.site_id === current.site_id) {
+        score += 3;
+        why.push('тот же объект');
+      } else if (t.customer_id === current.customer_id) {
+        score += 1;
+        why.push('тот же клиент');
+      }
+      const overlap = similarTokens(t.summary).filter((w) => words.has(w));
+      if (overlap.length) {
+        score += Math.min(overlap.length, 4);
+        why.push('похожий инцидент');
+      }
+      return { ticket: t, score, why: why.join(' · ') || 'рядом по базе', outcome: ticketOutcome(t) };
+    })
+    .filter((row) => row.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return new Date(b.ticket.updated_at || b.ticket.created_at).getTime() - new Date(a.ticket.updated_at || a.ticket.created_at).getTime();
+    })
+    .slice(0, limit)
+    .map(({ ticket, why, outcome }) => ({ ticket, why, outcome }));
 }
 
 export function slaBucket(deadlineIso: string, nowMs = Date.now()): SlaBucket {

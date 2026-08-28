@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { DatabaseSchema } from '../mockDb';
-import { Asset, Contractor, Site, Ticket } from '../types';
+import { Asset, Contractor, Site, Ticket, TicketHandoff } from '../types';
 import { PageSection } from './layout/PageSection';
 import { StatusBadge } from './ui/StatusBadge';
 import {
@@ -8,13 +8,22 @@ import {
   customerName,
   formatSla,
   peekStartTicket,
+  peekSiteFilter,
+  clearSiteFilter,
   priorityTone,
   requestStartTicket,
+  similarTickets,
   slaBucket,
   statusLabel,
   wasAutoDispatched,
 } from '../opsDashboard';
 import { ruPriority, ruTicketStatus, ruAssetStatus } from '../uiRu';
+import { ESCALATE_REASONS, SHIFT_COLLEAGUES, SHIFT_REASONS } from '../shiftRoster';
+import { visitBlocksClose, visitChecklistDone, visitShowsChecklist } from '../fieldCrews';
+import { VisitChecklist } from './VisitChecklist';
+import { DispatcherReminder } from './DispatcherReminder';
+import { buildClientTemplates, outboundChannelLabel } from '../clientTemplates';
+import { reminderDue } from '../dispatcherReminders';
 import { Search, RotateCcw, Plus, X, ChevronDown, Play } from 'lucide-react';
 
 interface DatabaseInspectorViewProps {
@@ -25,6 +34,7 @@ interface DatabaseInspectorViewProps {
   onUpdateDb?: (updatedDb: DatabaseSchema) => void;
   canResetDatabase?: boolean;
   ticketsOnly?: boolean;
+  operatorName?: string;
 }
 
 type RegistryTab = 'open_tickets' | 'closed_tickets' | 'contractors' | 'sites' | 'assets';
@@ -50,21 +60,40 @@ function fmtTime(iso?: string) {
   return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
-function markTicketInProgress(ticket: Ticket): Ticket {
+function markTicketInProgress(ticket: Ticket, operatorName?: string): Ticket {
+  const owner = operatorName || ticket.owned_by;
+  const take: TicketHandoff | null =
+    owner && ticket.owned_by !== owner
+      ? {
+          timestamp: new Date().toISOString(),
+          from: ticket.owned_by || 'Очередь',
+          to: owner,
+          reason: 'Диспетчер взял заявку в работу',
+          kind: 'take',
+        }
+      : null;
   return {
     ...ticket,
     status: 'IN_PROGRESS',
     missing_fields: [],
+    owned_by: owner,
     updated_at: new Date().toISOString(),
+    handoffs: take ? [...(ticket.handoffs || []), take] : ticket.handoffs,
     history: [
       ...(ticket.history || []),
       {
         timestamp: new Date().toISOString(),
-        note: 'Диспетчер приступил к заявке.',
-        author: 'Диспетчер',
+        note: owner ? `Смена: ${ticket.owned_by || 'очередь'} → ${owner}. Взял в работу.` : 'Диспетчер приступил к заявке.',
+        author: 'Смена',
       },
     ],
   };
+}
+
+function handoffKindLabel(kind: TicketHandoff['kind']) {
+  if (kind === 'escalate') return 'Эскалация';
+  if (kind === 'shift') return 'Смена';
+  return 'Назначение';
 }
 
 export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
@@ -74,6 +103,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
   onUpdateDb,
   canResetDatabase = true,
   ticketsOnly = false,
+  operatorName = 'Диспетчер',
 }) => {
   const [activeTab, setActiveTab] = useState<RegistryTab>('open_tickets');
   const [searchTerm, setSearchTerm] = useState('');
@@ -88,6 +118,32 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
   const [slaMinutes, setSlaMinutes] = useState(120);
   const [workingId, setWorkingId] = useState<string | null>(null);
   const [workNote, setWorkNote] = useState('');
+  const [handoffOpen, setHandoffOpen] = useState(false);
+  const [handoffKind, setHandoffKind] = useState<'shift' | 'escalate'>('shift');
+  const [handoffTo, setHandoffTo] = useState<string>(SHIFT_COLLEAGUES[0].name);
+  const [handoffReason, setHandoffReason] = useState<string>(SHIFT_REASONS[0]);
+  const [clientDraft, setClientDraft] = useState('');
+  const [clientBusy, setClientBusy] = useState(false);
+  const [clientStatus, setClientStatus] = useState<string | null>(null);
+  const [siteFilter, setSiteFilter] = useState<string | null>(null);
+  const appliedSiteRef = useRef<string | null>(null);
+  const detailIdRef = useRef<string | null>(null);
+  const appliedStartRef = useRef<string | null>(null);
+  detailIdRef.current = detailId;
+
+  const openDetail = (id: string | null) => {
+    clearStartTicket();
+    appliedStartRef.current = id;
+    detailIdRef.current = id;
+    setDetailId(id);
+    setHandoffOpen(false);
+    setClientDraft('');
+    setClientStatus(null);
+    if (!id) {
+      setWorkingId(null);
+      setWorkNote('');
+    }
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -103,6 +159,8 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       }
       setDetailId(null);
       setWorkingId(null);
+      appliedStartRef.current = null;
+      detailIdRef.current = null;
       clearStartTicket();
     };
     window.addEventListener('keydown', onKey);
@@ -119,21 +177,35 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
     if (!db) return;
     const id = peekStartTicket();
     if (!id) return;
+    if (appliedStartRef.current === id) return;
+    if (detailIdRef.current && detailIdRef.current !== id) return;
     const open = db.open_tickets.find((t) => t.ticket_id === id);
     const closed = (db.closed_tickets || []).find((t) => t.ticket_id === id);
     if (!open && !closed) return;
+    appliedStartRef.current = id;
     setActiveTab(open ? 'open_tickets' : 'closed_tickets');
     setDetailId(id);
     if (!open) return;
     setWorkingId(id);
     const needsStart = open.status !== 'IN_PROGRESS' || Boolean(open.missing_fields && open.missing_fields.length);
     if (!needsStart || !onUpdateDb) return;
-    const updated = markTicketInProgress(open);
+    const updated = markTicketInProgress(open, operatorName);
     onUpdateDb({
       ...db,
       open_tickets: db.open_tickets.map((t) => (t.ticket_id === id ? updated : t)),
     });
-  }, [db, onUpdateDb]);
+  }, [db, onUpdateDb, operatorName]);
+
+  useEffect(() => {
+    const siteId = peekSiteFilter();
+    if (!siteId) return;
+    if (appliedSiteRef.current === siteId) return;
+    appliedSiteRef.current = siteId;
+    setSiteFilter(siteId);
+    setActiveTab('open_tickets');
+    setPage(0);
+    clearSiteFilter();
+  }, [db]);
 
   const [contractorForm, setContractorForm] = useState<Partial<Contractor>>({
     customer_id: '',
@@ -212,6 +284,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
 
   const filterTickets = (list: Ticket[]) => {
     let rows = list.filter(matchTicket);
+    if (siteFilter) rows = rows.filter((t) => t.site_id === siteFilter);
     if (statusFilter !== 'all') rows = rows.filter((t) => t.status === statusFilter);
     if (priorityFilter !== 'all') rows = rows.filter((t) => t.priority === priorityFilter);
     rows = [...rows].sort((a, b) => {
@@ -234,35 +307,28 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
 
   const allTickets = [...db.open_tickets, ...(db.closed_tickets || [])];
   const detailTicket = allTickets.find((t) => t.ticket_id === detailId) || null;
-  const related = detailTicket
-    ? allTickets.filter(
-        (t) =>
-          t.ticket_id !== detailTicket.ticket_id &&
-          (t.customer_id === detailTicket.customer_id || t.site_id === detailTicket.site_id)
-      )
-    : [];
+  const similar = detailTicket ? similarTickets(db, detailTicket) : [];
 
   const commitDbChange = (newDb: DatabaseSchema) => {
     if (onUpdateDb) onUpdateDb(newDb);
   };
 
   const closeDetail = () => {
-    clearStartTicket();
-    setWorkingId(null);
-    setWorkNote('');
-    setDetailId(null);
+    openDetail(null);
   };
 
   const startWork = (ticket: Ticket) => {
     requestStartTicket(ticket.ticket_id);
+    appliedStartRef.current = ticket.ticket_id;
+    detailIdRef.current = ticket.ticket_id;
     setActiveTab('open_tickets');
     setDetailId(ticket.ticket_id);
     setWorkingId(ticket.ticket_id);
     const open = db.open_tickets.find((t) => t.ticket_id === ticket.ticket_id);
     if (!open) return;
     const needsStart = open.status !== 'IN_PROGRESS' || Boolean(open.missing_fields && open.missing_fields.length);
-    if (!needsStart) return;
-    const updated = markTicketInProgress(open);
+    if (!needsStart && open.owned_by === operatorName) return;
+    const updated = markTicketInProgress(open, operatorName);
     commitDbChange({
       ...db,
       open_tickets: db.open_tickets.map((t) => (t.ticket_id === open.ticket_id ? updated : t)),
@@ -292,12 +358,88 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
     setWorkNote('');
   };
 
+  const sendClientMessage = (ticket: Ticket) => {
+    const text = clientDraft.trim();
+    if (!text) return;
+    setClientBusy(true);
+    setClientStatus(null);
+    const stamp = new Date().toISOString();
+    const msg = {
+      id: `m-${Date.now()}`,
+      sender: 'operator' as const,
+      author_name: operatorName,
+      text,
+      timestamp: stamp,
+      channel: ticket.channel,
+    };
+    const patched = db.open_tickets.map((t) =>
+      t.ticket_id === ticket.ticket_id
+        ? {
+            ...t,
+            updated_at: stamp,
+            messages: [...(t.messages || []), msg],
+            history: [
+              ...(t.history || []),
+              {
+                timestamp: stamp,
+                note: `Клиенту (${outboundChannelLabel(t.channel)}): ${text}`,
+                author: operatorName,
+              },
+            ],
+          }
+        : t
+    );
+    commitDbChange({ ...db, open_tickets: patched });
+    setClientStatus(`В журнал как исходящее · ${outboundChannelLabel(ticket.channel)}.`);
+    setClientBusy(false);
+    setClientDraft('');
+  };
+
+  const applyHandoff = (ticket: Ticket) => {
+    const to = handoffTo.trim();
+    const reason = handoffReason.trim();
+    if (!to || !reason) return;
+    const from = ticket.owned_by || operatorName;
+    const entry: TicketHandoff = {
+      timestamp: new Date().toISOString(),
+      from,
+      to,
+      reason,
+      kind: handoffKind,
+    };
+    const note =
+      handoffKind === 'escalate'
+        ? `Эскалация: ${from} → ${to}. ${reason}`
+        : `Смена: ${from} → ${to}. ${reason}`;
+    commitDbChange({
+      ...db,
+      open_tickets: db.open_tickets.map((t) =>
+        t.ticket_id === ticket.ticket_id
+          ? {
+              ...t,
+              owned_by: to,
+              escalated: handoffKind === 'escalate' ? true : t.escalated,
+              priority: handoffKind === 'escalate' && t.priority !== 'critical' ? 'high' : t.priority,
+              updated_at: new Date().toISOString(),
+              handoffs: [...(t.handoffs || []), entry],
+              history: [...(t.history || []), { timestamp: entry.timestamp, note, author: 'Смена' }],
+            }
+          : t
+      ),
+    });
+    setWorkingId((id) => (id === ticket.ticket_id ? null : id));
+    setHandoffOpen(false);
+  };
+
   const handleCloseTicket = (ticketId: string) => {
     const ticketToClose = db.open_tickets.find((t) => t.ticket_id === ticketId);
     if (!ticketToClose) return;
+    if (visitBlocksClose(ticketToClose.visit_status) && !visitChecklistDone(ticketToClose.visit_checklist)) return;
     const updatedTicket: Ticket = {
       ...ticketToClose,
       status: 'CLOSED',
+      remind_at: undefined,
+      remind_note: undefined,
       updated_at: new Date().toISOString(),
       history: [
         ...(ticketToClose.history || []),
@@ -480,7 +622,22 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
 
   const runConfirm = () => {
     if (!confirm) return;
-    if (confirm.kind === 'complete') handleCloseTicket(confirm.id);
+    if (confirm.kind === 'blocked') {
+      setConfirm(null);
+      return;
+    }
+    if (confirm.kind === 'complete') {
+      const ticket = db.open_tickets.find((t) => t.ticket_id === confirm.id);
+      if (ticket && visitBlocksClose(ticket.visit_status) && !visitChecklistDone(ticket.visit_checklist)) {
+        setConfirm({
+          kind: 'blocked',
+          id: ticket.ticket_id,
+          label: `Сначала чек-лист выезда по ${ticket.ticket_id}: допуск, шильдик, температура, акт.`,
+        });
+        return;
+      }
+      handleCloseTicket(confirm.id);
+    }
     if (confirm.kind === 'del-open') handleDeleteOpenTicket(confirm.id);
     if (confirm.kind === 'del-closed') handleDeleteClosedTicket(confirm.id);
     if (confirm.kind === 'del-customer') handleDeleteContractor(confirm.id);
@@ -584,6 +741,22 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             }}
           />
         </div>
+        {siteFilter && (
+          <button
+            type="button"
+            className={btnCls}
+            onClick={() => {
+              setSiteFilter(null);
+              appliedSiteRef.current = null;
+              setPage(0);
+            }}
+          >
+            {db.sites.find((s) => s.site_id === siteFilter)?.customer_name || 'Объект'}
+            {' · '}
+            {(db.sites.find((s) => s.site_id === siteFilter)?.region || siteFilter)}
+            {' ×'}
+          </button>
+        )}
         {(activeTab === 'open_tickets' || activeTab === 'closed_tickets') && (
           <>
             <div className="w-full min-w-0 sm:w-48">
@@ -672,7 +845,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                           <StatusBadge tone={priorityTone(t.priority)} label={ruPriority(t.priority)} />
                         </td>
                         <td data-label="Статус">
-                          <StatusBadge tone={st.tone} label={st.label} />
+                          <div className="flex flex-wrap items-center gap-1">
+                            <StatusBadge tone={st.tone} label={st.label} />
+                            {activeTab === 'open_tickets' && reminderDue(t) && (
+                              <StatusBadge tone="warning" label="НАПОМНИТЬ" />
+                            )}
+                          </div>
                         </td>
                         <td className="text-[var(--oc-muted)]" data-label="Группа">{t.assigned_group}</td>
                         <td className="font-mono text-[11px]" data-label="SLA">{formatSla(t.sla_deadline)}</td>
@@ -690,7 +868,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                               Приступить
                             </button>
                           )}
-                          <button type="button" className="mr-1 text-[11px] text-[var(--oc-accent)]" onClick={() => setDetailId(t.ticket_id)}>
+                          <button type="button" className="mr-1 text-[11px] text-[var(--oc-accent)]" onClick={() => openDetail(t.ticket_id)}>
                             Открыть
                           </button>
                           <button type="button" className="mr-1 text-[11px]" onClick={() => openEdit(t)}>
@@ -699,7 +877,13 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                           {activeTab === 'open_tickets' && (
                             <button
                               type="button"
-                              className="mr-1 text-[11px]"
+                              className="mr-1 text-[11px] disabled:opacity-40"
+                              disabled={visitBlocksClose(t.visit_status) && !visitChecklistDone(t.visit_checklist)}
+                              title={
+                                visitBlocksClose(t.visit_status) && !visitChecklistDone(t.visit_checklist)
+                                  ? 'Сначала чек-лист выезда'
+                                  : undefined
+                              }
                               onClick={() => setConfirm({ kind: 'complete', id: t.ticket_id, label: `Закрыть ${t.ticket_id}?` })}
                             >
                               Завершить
@@ -880,7 +1064,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         </section>
 
         {detailTicket && (
-          <aside className="oc-card flex max-h-[72vh] flex-col overflow-hidden">
+          <aside className="oc-card flex flex-col self-start">
             <div className="flex items-center justify-between border-b border-[var(--oc-border)] px-3 py-2">
               <div>
                 <p className="font-mono text-xs">{detailTicket.ticket_id}</p>
@@ -892,7 +1076,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex-1 space-y-3 overflow-auto px-3 py-2 text-[11px]">
+            <div className="space-y-3 px-3 py-2 text-[11px]">
               <p className="text-[13px] leading-snug text-[var(--oc-text)]">{detailTicket.summary}</p>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
                 <Field label="Клиент" value={customerName(db, detailTicket.customer_id)} />
@@ -912,7 +1096,138 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                 </div>
                 <Field label="SLA" value={`${formatSla(detailTicket.sla_deadline)} · ${fmtTime(detailTicket.sla_deadline)}`} />
                 <Field label="Канал" value={detailTicket.channel || '—'} />
+                <Field label="Ведёт" value={detailTicket.owned_by || 'не назначен'} />
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Смена</p>
+                  {detailTicket.escalated ? (
+                    <StatusBadge tone="warning" label="ЭСКАЛАЦИЯ" />
+                  ) : (
+                    <StatusBadge tone="neutral" label="НА СМЕНЕ" />
+                  )}
+                </div>
               </div>
+              {db.open_tickets.some((t) => t.ticket_id === detailTicket.ticket_id) && (
+                <div>
+                  <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Передача</p>
+                  {(detailTicket.handoffs || []).length > 0 && (
+                    <ul className="mb-2 space-y-1">
+                      {(detailTicket.handoffs || []).slice().reverse().map((h, i) => (
+                        <li key={`${h.timestamp}-${i}`} className="border-l border-[var(--oc-border)] pl-2 leading-snug">
+                          <span className="text-[10px] text-[var(--oc-muted)]">{handoffKindLabel(h.kind)}</span>
+                          {' · '}
+                          {h.from} → {h.to}
+                          <div className="text-[var(--oc-muted)]">{h.reason}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {handoffOpen ? (
+                    <div className="grid gap-1.5 rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] p-2">
+                      <div className="flex flex-wrap gap-1">
+                        <button
+                          type="button"
+                          className={`rounded px-1.5 py-0.5 text-[11px] ${
+                            handoffKind === 'shift' ? 'bg-[var(--oc-accent-soft)] text-[var(--oc-accent)]' : 'border border-[var(--oc-border)]'
+                          }`}
+                          onClick={() => {
+                            setHandoffKind('shift');
+                            setHandoffReason(SHIFT_REASONS[0]);
+                          }}
+                        >
+                          Смена
+                        </button>
+                        <button
+                          type="button"
+                          className={`rounded px-1.5 py-0.5 text-[11px] ${
+                            handoffKind === 'escalate' ? 'bg-[var(--oc-accent-soft)] text-[var(--oc-accent)]' : 'border border-[var(--oc-border)]'
+                          }`}
+                          onClick={() => {
+                            setHandoffKind('escalate');
+                            setHandoffTo(SHIFT_COLLEAGUES[0].name);
+                            setHandoffReason(ESCALATE_REASONS[0]);
+                          }}
+                        >
+                          Старшему
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {SHIFT_COLLEAGUES.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            className={`rounded px-1.5 py-0.5 text-[11px] ${
+                              handoffTo === c.name ? 'bg-[var(--oc-accent-soft)] text-[var(--oc-accent)]' : 'border border-[var(--oc-border)]'
+                            }`}
+                            onClick={() => setHandoffTo(c.name)}
+                          >
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-[var(--oc-muted)]">
+                        {SHIFT_COLLEAGUES.find((c) => c.name === handoffTo)?.role}
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {(handoffKind === 'escalate' ? ESCALATE_REASONS : SHIFT_REASONS).map((r) => (
+                          <button
+                            key={r}
+                            type="button"
+                            className={`rounded px-1.5 py-0.5 text-[11px] ${
+                              handoffReason === r ? 'bg-[var(--oc-accent-soft)] text-[var(--oc-accent)]' : 'border border-[var(--oc-border)]'
+                            }`}
+                            onClick={() => setHandoffReason(r)}
+                          >
+                            {r}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <button type="button" className={btnCls} onClick={() => applyHandoff(detailTicket)}>
+                          Передать
+                        </button>
+                        <button type="button" className={btnCls} onClick={() => setHandoffOpen(false)}>
+                          Отмена
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button type="button" className={btnCls} onClick={() => setHandoffOpen(true)}>
+                      Передать смену / старшему
+                    </button>
+                  )}
+                </div>
+              )}
+              {db.open_tickets.some((t) => t.ticket_id === detailTicket.ticket_id) && (
+                <DispatcherReminder
+                  ticket={detailTicket}
+                  operatorName={operatorName || 'Диспетчер'}
+                  onPatch={(next) => {
+                    commitDbChange({
+                      ...db,
+                      open_tickets: db.open_tickets.map((t) => (t.ticket_id === next.ticket_id ? next : t)),
+                    });
+                  }}
+                />
+              )}
+              {visitShowsChecklist(detailTicket.visit_status) && db.open_tickets.some((t) => t.ticket_id === detailTicket.ticket_id) && (
+                <VisitChecklist
+                  ticket={detailTicket}
+                  onChange={(next) => {
+                    commitDbChange({
+                      ...db,
+                      open_tickets: db.open_tickets.map((t) =>
+                        t.ticket_id === detailTicket.ticket_id
+                          ? {
+                              ...t,
+                              visit_checklist: next,
+                              updated_at: new Date().toISOString(),
+                            }
+                          : t
+                      ),
+                    });
+                  }}
+                />
+              )}
               <div>
                 <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Решение ИИ</p>
                 <p className="rounded-md bg-[var(--oc-bg)] px-2 py-1.5">
@@ -947,21 +1262,61 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                 </ul>
               </div>
               <div>
-                <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Связанные заявки</p>
-                <ul className="space-y-0.5">
-                  {related.slice(0, 6).map((t) => (
-                    <li key={t.ticket_id}>
-                      <button type="button" className="text-[var(--oc-accent)]" onClick={() => setDetailId(t.ticket_id)}>
-                        {t.ticket_id}
-                      </button>{' '}
-                      <span className="text-[var(--oc-muted)]">{t.summary}</span>
+                <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Уже было</p>
+                <ul className="space-y-2">
+                  {similar.map((row) => (
+                    <li key={row.ticket.ticket_id} className="rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] px-2 py-1.5 leading-snug">
+                      <button type="button" className="font-mono text-[11px] text-[var(--oc-accent)]" onClick={() => openDetail(row.ticket.ticket_id)}>
+                        {row.ticket.ticket_id}
+                      </button>
+                      <span className="ml-1 text-[10px] text-[var(--oc-muted)]">{row.why}</span>
+                      <p>{row.ticket.summary}</p>
+                      <p className="text-[var(--oc-muted)]">{row.outcome}</p>
                     </li>
                   ))}
-                  {!related.length && <li className="text-[var(--oc-muted)]">Нет связанных</li>}
+                  {!similar.length && <li className="text-[var(--oc-muted)]">Похожих заявок нет</li>}
                 </ul>
               </div>
             </div>
             <div className="flex flex-col gap-1.5 border-t border-[var(--oc-border)] px-3 py-2">
+              {db.open_tickets.some((t) => t.ticket_id === detailTicket.ticket_id) && (
+                <div className="grid gap-1">
+                  <p className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">
+                    Клиенту · {outboundChannelLabel(detailTicket.channel)}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {buildClientTemplates(detailTicket, customerName(db, detailTicket.customer_id)).map((tpl) => (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        className="rounded-md border border-[var(--oc-border)] px-1.5 py-0.5 text-[11px] hover:bg-[var(--oc-surface-2)]"
+                        onClick={() => {
+                          setClientDraft(tpl.text);
+                          setClientStatus(null);
+                        }}
+                      >
+                        {tpl.label}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    rows={3}
+                    value={clientDraft}
+                    onChange={(e) => setClientDraft(e.target.value)}
+                    placeholder="Текст SMS или письма…"
+                    className="w-full rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] p-2 text-xs leading-snug"
+                  />
+                  <button
+                    type="button"
+                    className={btnCls}
+                    disabled={clientBusy || !clientDraft.trim()}
+                    onClick={() => sendClientMessage(detailTicket)}
+                  >
+                    {clientBusy ? 'Отправка…' : 'Отправить клиенту'}
+                  </button>
+                  {clientStatus ? <p className="text-[11px] text-[var(--oc-muted)]">{clientStatus}</p> : null}
+                </div>
+              )}
               {db.open_tickets.some((t) => t.ticket_id === detailTicket.ticket_id) && workingId === detailTicket.ticket_id && (
                 <div className="grid gap-1">
                   <textarea
@@ -990,6 +1345,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                 <button
                   type="button"
                   className={btnCls}
+                  disabled={visitBlocksClose(detailTicket.visit_status) && !visitChecklistDone(detailTicket.visit_checklist)}
+                  title={
+                    visitBlocksClose(detailTicket.visit_status) && !visitChecklistDone(detailTicket.visit_checklist)
+                      ? 'Сначала чек-лист выезда'
+                      : undefined
+                  }
                   onClick={() =>
                     setConfirm({ kind: 'complete', id: detailTicket.ticket_id, label: `Закрыть ${detailTicket.ticket_id}?` })
                   }
@@ -1206,12 +1567,20 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
               {confirm.label}
             </p>
             <div className="mt-3 flex justify-end gap-2">
+              {confirm.kind === 'blocked' ? (
+                <button type="button" className={btnCls} onClick={() => setConfirm(null)}>
+                  Понятно
+                </button>
+              ) : (
+                <>
               <button type="button" className={btnCls} onClick={() => setConfirm(null)}>
                 Отмена
               </button>
               <button type="button" className={`${btnCls} border-[var(--status-danger)]`} onClick={runConfirm}>
                 Подтвердить
               </button>
+                </>
+              )}
             </div>
           </div>
         </div>

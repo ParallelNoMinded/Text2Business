@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ruPriority } from '../uiRu';
 import { TabType } from './Header';
-import { Database, Activity, UserCheck, Zap, Plus, Phone, Play } from 'lucide-react';
+import { Database, Activity, UserCheck, Zap, Plus, Phone, Play, Truck, MapPin } from 'lucide-react';
 import { PageSection } from './layout/PageSection';
 import { StatusBadge, StatusTone } from './ui/StatusBadge';
 import { DatabaseSchema } from '../mockDb';
@@ -410,6 +410,22 @@ export const LandingHome: React.FC<LandingHomeProps> = ({
             >
               <Database className="h-3 w-3" aria-hidden="true" />
               {isAdmin ? 'Реестр' : 'Заявки'}
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-md border border-[var(--oc-border)] px-2 py-1 text-[12px] hover:bg-[var(--oc-surface-2)]"
+              onClick={() => setActiveTab('field')}
+            >
+              <Truck className="h-3 w-3" aria-hidden="true" />
+              Выезды
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-md border border-[var(--oc-border)] px-2 py-1 text-[12px] hover:bg-[var(--oc-surface-2)]"
+              onClick={() => setActiveTab('sites')}
+            >
+              <MapPin className="h-3 w-3" aria-hidden="true" />
+              Объекты
             </button>
             {isAdmin && (
             <button

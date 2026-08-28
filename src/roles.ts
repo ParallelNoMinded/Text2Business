@@ -7,6 +7,8 @@ export const DISPATCHER_TABS: AppTab[] = [
   'sla',
   'history',
   'notifications',
+  'field',
+  'sites',
   'profile',
 ];
 
@@ -17,6 +19,8 @@ const PATH_BY_TAB: Record<AppTab, string> = {
   sla: '/sla',
   history: '/history',
   notifications: '/notifications',
+  field: '/field',
+  sites: '/sites',
   profile: '/profile',
   channels: '/admin/channels',
   console: '/admin/console',
@@ -36,6 +40,8 @@ const TAB_BY_PATH: Record<string, AppTab> = {
   '/sla': 'sla',
   '/history': 'history',
   '/notifications': 'notifications',
+  '/field': 'field',
+  '/sites': 'sites',
   '/profile': 'profile',
   '/admin': 'admin_users',
   '/admin/users': 'admin_users',

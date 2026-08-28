@@ -20,6 +20,8 @@ import {
   Shield,
   ChevronDown,
   BarChart3,
+  Truck,
+  MapPin,
 } from 'lucide-react';
 import { AppTab, PublicUser } from '../types';
 import { formatUserRoleLine } from '../uiRu';
@@ -31,6 +33,8 @@ const WORK_NAV: { id: TabType; label: string; icon: typeof Inbox; elementId: str
   { id: 'operator', label: 'Обращения', icon: Inbox, elementId: 'header-tab-operator' },
   { id: 'home', label: 'AI-диспетчер', icon: Cpu, elementId: 'header-tab-home' },
   { id: 'database', label: 'Заявки', icon: Database, elementId: 'header-tab-database' },
+  { id: 'field', label: 'Выезды', icon: Truck, elementId: 'header-tab-field' },
+  { id: 'sites', label: 'Объекты', icon: MapPin, elementId: 'header-tab-sites' },
   { id: 'sla', label: 'SLA', icon: Timer, elementId: 'header-tab-sla' },
   { id: 'history', label: 'История', icon: Clock, elementId: 'header-tab-history' },
   { id: 'notifications', label: 'Уведомления', icon: Bell, elementId: 'header-tab-notifications' },
@@ -63,6 +67,7 @@ export interface HeaderProps {
   selectedModel?: string;
   setSelectedModel?: (model: string) => void;
   pendingOperatorCount?: number;
+  dueReminderCount?: number;
   githubToken?: string;
   onOpenTokenModal?: () => void;
   apiHealthy?: boolean | null;
@@ -79,6 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
   selectedModel = 'gpt-4o',
   setSelectedModel,
   pendingOperatorCount = 0,
+  dueReminderCount = 0,
   githubToken = '',
   onOpenTokenModal,
   currentUser = null,
@@ -177,9 +183,9 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="min-w-0 break-words">
                 {activeWork ? (activeWork.id === 'database' && isAdmin ? 'Реестр' : activeWork.label) : 'Меню'}
               </span>
-              {pendingOperatorCount > 0 && (
+              {(pendingOperatorCount > 0 || dueReminderCount > 0) && (
                 <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--status-warning-soft)] px-1 text-[10px] font-semibold text-[var(--status-warning)]">
-                  {pendingOperatorCount}
+                  {pendingOperatorCount + dueReminderCount}
                 </span>
               )}
               <ChevronDown className="h-3 w-3" aria-hidden="true" />
@@ -204,6 +210,11 @@ export const Header: React.FC<HeaderProps> = ({
                       {item.id === 'operator' && pendingOperatorCount > 0 && (
                         <span className="text-[10px] font-semibold text-[var(--status-warning)]">
                           {pendingOperatorCount}
+                        </span>
+                      )}
+                      {item.id === 'notifications' && dueReminderCount > 0 && (
+                        <span className="text-[10px] font-semibold text-[var(--status-warning)]">
+                          {dueReminderCount}
                         </span>
                       )}
                     </button>

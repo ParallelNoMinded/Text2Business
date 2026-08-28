@@ -21,7 +21,8 @@ import {
   completeUXScenario,
 } from './uxMetrics';
 import { INITIAL_DATABASE, DatabaseSchema } from './mockDb';
-import { requestStartTicket } from './opsDashboard';
+import { requestStartTicket, requestSiteFilter } from './opsDashboard';
+import { dueReminders } from './dispatcherReminders';
 import { PageSection } from './components/layout/PageSection';
 import { PipelineRail } from './components/pipeline/PipelineRail';
 import { LoginView } from './components/LoginView';
@@ -34,6 +35,8 @@ import { AccessDenied } from './components/AccessDenied';
 import { WorkSlaView } from './components/WorkSlaView';
 import { WorkHistoryView } from './components/WorkHistoryView';
 import { WorkNotificationsView } from './components/WorkNotificationsView';
+import { FieldDispatchView } from './components/FieldDispatchView';
+import { SitesMapView } from './components/SitesMapView';
 import { clearSessionId, getSessionId } from './authSession';
 import { navigateTo, usePathname } from './appPath';
 import { canAccessPath, canAccessTab, pathForTab, tabForPath } from './roles';
@@ -273,6 +276,7 @@ export default function App() {
   const pendingOperatorCount = (db.open_tickets || []).filter(
     (t) => t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0)
   ).length;
+  const dueReminderCount = dueReminders(db.open_tickets || []).length;
 
   const isAdmin = currentUser?.role === 'admin';
 
@@ -353,6 +357,7 @@ export default function App() {
         selectedModel={selectedModel}
         setSelectedModel={handleSelectModel}
         pendingOperatorCount={pendingOperatorCount}
+        dueReminderCount={dueReminderCount}
         githubToken={githubToken}
         onOpenTokenModal={() => setIsTokenModalOpen(true)}
         apiHealthy={apiHealthy}
@@ -492,6 +497,7 @@ export default function App() {
             theme={theme}
             canResetDatabase={isAdmin}
             ticketsOnly={!isAdmin}
+            operatorName={`${currentUser.firstName} ${currentUser.lastName}`.trim()}
           />
         )}
 
@@ -501,8 +507,21 @@ export default function App() {
           <WorkNotificationsView
             db={db}
             onOpenAppeals={() => guardedSetTab('operator')}
+            onUpdateDb={handleUpdateDb}
+            operatorName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}`.trim() : 'Диспетчер'}
             onStartTicket={(ticketId) => {
               requestStartTicket(ticketId);
+              guardedSetTab('database');
+            }}
+          />
+        )}
+
+        {activeTab === 'field' && <FieldDispatchView db={db} onUpdateDb={handleUpdateDb} />}
+        {activeTab === 'sites' && (
+          <SitesMapView
+            db={db}
+            onOpenSite={(siteId) => {
+              requestSiteFilter(siteId);
               guardedSetTab('database');
             }}
           />

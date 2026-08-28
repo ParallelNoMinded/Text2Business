@@ -1250,6 +1250,8 @@ async function startServer() {
       '/sla',
       '/history',
       '/notifications',
+      '/field',
+      '/sites',
       '/profile',
       '/admin',
       '/admin/users',

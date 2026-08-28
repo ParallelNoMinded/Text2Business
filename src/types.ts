@@ -64,6 +64,14 @@ export interface TicketMessage {
   channel?: string;
 }
 
+export interface TicketHandoff {
+  timestamp: string;
+  from: string;
+  to: string;
+  reason: string;
+  kind: 'take' | 'shift' | 'escalate';
+}
+
 export interface Ticket {
   ticket_id: string;
   customer_id: string;
@@ -82,6 +90,15 @@ export interface Ticket {
   missing_fields?: string[];
   messages?: TicketMessage[];
   history?: Array<{ timestamp: string; note: string; author: string }>;
+  visit_status?: 'queued' | 'en_route' | 'on_site' | 'done';
+  assigned_crew?: string;
+  eta_minutes?: number;
+  owned_by?: string;
+  escalated?: boolean;
+  handoffs?: TicketHandoff[];
+  visit_checklist?: string[];
+  remind_at?: string;
+  remind_note?: string;
 }
 
 export interface SystemLogEntry {
@@ -156,6 +173,8 @@ export type AppTab =
   | 'sla'
   | 'history'
   | 'notifications'
+  | 'field'
+  | 'sites'
   | 'logs_traces'
   | 'architecture'
   | 'profile'
