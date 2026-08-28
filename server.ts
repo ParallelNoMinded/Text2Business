@@ -1,3 +1,11 @@
+/**
+ * Сервер приложения (Express + Vite middleware).
+ * Отдаёт фронтенд и предоставляет REST API диспетчеризации:
+ *  - POST /api/dispatch      — приём обращения, извлечение фактов (Gemini), диспетчеризация
+ *  - POST /api/operator/reply — отправка уточнения клиенту через Telegram-бота
+ *  - GET  /api/db            — текущее состояние мок-БД
+ * Безопасность: токен X-Dispatch-Token на мутациях, маскирование PII в логах.
+ */
 import dns from 'dns';
 // Принудительно используем IPv4 для DNS (решает ошибку "fetch failed" в Node.js)
 if (dns.setDefaultResultOrder) {

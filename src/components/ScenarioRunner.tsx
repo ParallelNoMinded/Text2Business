@@ -107,7 +107,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
       </div>
 
       {/* Preset Pills */}
-      <div className="my-3 space-y-1.5">
+      <div className="my-2.5 space-y-1">
         <label
           className={`block text-[10px] font-mono font-bold uppercase tracking-wider ${
             isDark ? 'text-slate-400' : 'text-blue-950'
@@ -242,7 +242,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           </div>
           <textarea
             id="raw-text-input"
-                        rows={3}
+                        rows={2}
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -261,7 +261,7 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           type="button"
           onClick={onRunDispatch}
           disabled={isLoading || !rawText.trim()}
-          className={`w-full font-extrabold py-4 px-4 rounded-xl shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-[0.99] ${
+          className={`w-full font-extrabold py-3 px-4 rounded-xl shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-[0.99] ${
             isDark
               ? 'bg-slate-200 hover:bg-white text-slate-950'
               : 'bg-blue-900 hover:bg-blue-950 text-white shadow-blue-900/20'
