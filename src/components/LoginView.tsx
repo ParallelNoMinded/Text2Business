@@ -78,7 +78,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onAuthenticated }) => {
             required
           />
         </label>
-        <button id="login-submit-btn" type="submit" className="oc-btn" disabled={isLoading}>
+        <button id="login-submit-btn" type="submit" className="oc-btn oc-btn-accent" disabled={isLoading}>
           {isLoading ? 'Вход…' : 'Войти'}
         </button>
         <p className="text-center text-[12px] text-[var(--oc-muted)]">

@@ -1,18 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DatabaseSchema } from '../mockDb';
 import { Asset, Contractor, Site, Ticket } from '../types';
 import { PageSection } from './layout/PageSection';
 import { StatusBadge } from './ui/StatusBadge';
 import {
+  clearStartTicket,
   customerName,
   formatSla,
+  peekStartTicket,
   priorityTone,
+  requestStartTicket,
   slaBucket,
   statusLabel,
   wasAutoDispatched,
 } from '../opsDashboard';
 import { ruPriority, ruTicketStatus, ruAssetStatus } from '../uiRu';
-import { Search, RotateCcw, Plus, X } from 'lucide-react';
+import { Search, RotateCcw, Plus, X, ChevronDown, Play } from 'lucide-react';
 
 interface DatabaseInspectorViewProps {
   db: DatabaseSchema | null;
@@ -47,6 +50,23 @@ function fmtTime(iso?: string) {
   return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
+function markTicketInProgress(ticket: Ticket): Ticket {
+  return {
+    ...ticket,
+    status: 'IN_PROGRESS',
+    missing_fields: [],
+    updated_at: new Date().toISOString(),
+    history: [
+      ...(ticket.history || []),
+      {
+        timestamp: new Date().toISOString(),
+        note: 'Диспетчер приступил к заявке.',
+        author: 'Диспетчер',
+      },
+    ],
+  };
+}
+
 export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
   db,
   onResetDatabase,
@@ -66,6 +86,8 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ kind: string; id: string; label: string } | null>(null);
   const [slaMinutes, setSlaMinutes] = useState(120);
+  const [workingId, setWorkingId] = useState<string | null>(null);
+  const [workNote, setWorkNote] = useState('');
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -80,6 +102,8 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         return;
       }
       setDetailId(null);
+      setWorkingId(null);
+      clearStartTicket();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -90,6 +114,26 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       setActiveTab('open_tickets');
     }
   }, [ticketsOnly, activeTab]);
+
+  useEffect(() => {
+    if (!db) return;
+    const id = peekStartTicket();
+    if (!id) return;
+    const open = db.open_tickets.find((t) => t.ticket_id === id);
+    const closed = (db.closed_tickets || []).find((t) => t.ticket_id === id);
+    if (!open && !closed) return;
+    setActiveTab(open ? 'open_tickets' : 'closed_tickets');
+    setDetailId(id);
+    if (!open) return;
+    setWorkingId(id);
+    const needsStart = open.status !== 'IN_PROGRESS' || Boolean(open.missing_fields && open.missing_fields.length);
+    if (!needsStart || !onUpdateDb) return;
+    const updated = markTicketInProgress(open);
+    onUpdateDb({
+      ...db,
+      open_tickets: db.open_tickets.map((t) => (t.ticket_id === id ? updated : t)),
+    });
+  }, [db, onUpdateDb]);
 
   const [contractorForm, setContractorForm] = useState<Partial<Contractor>>({
     customer_id: '',
@@ -202,6 +246,52 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
     if (onUpdateDb) onUpdateDb(newDb);
   };
 
+  const closeDetail = () => {
+    clearStartTicket();
+    setWorkingId(null);
+    setWorkNote('');
+    setDetailId(null);
+  };
+
+  const startWork = (ticket: Ticket) => {
+    requestStartTicket(ticket.ticket_id);
+    setActiveTab('open_tickets');
+    setDetailId(ticket.ticket_id);
+    setWorkingId(ticket.ticket_id);
+    const open = db.open_tickets.find((t) => t.ticket_id === ticket.ticket_id);
+    if (!open) return;
+    const needsStart = open.status !== 'IN_PROGRESS' || Boolean(open.missing_fields && open.missing_fields.length);
+    if (!needsStart) return;
+    const updated = markTicketInProgress(open);
+    commitDbChange({
+      ...db,
+      open_tickets: db.open_tickets.map((t) => (t.ticket_id === open.ticket_id ? updated : t)),
+    });
+  };
+
+  const addWorkNote = () => {
+    const text = workNote.trim();
+    if (!text || !workingId) return;
+    const ticket = db.open_tickets.find((t) => t.ticket_id === workingId);
+    if (!ticket) return;
+    commitDbChange({
+      ...db,
+      open_tickets: db.open_tickets.map((t) =>
+        t.ticket_id === workingId
+          ? {
+              ...t,
+              updated_at: new Date().toISOString(),
+              history: [
+                ...(t.history || []),
+                { timestamp: new Date().toISOString(), note: text, author: 'Диспетчер' },
+              ],
+            }
+          : t
+      ),
+    });
+    setWorkNote('');
+  };
+
   const handleCloseTicket = (ticketId: string) => {
     const ticketToClose = db.open_tickets.find((t) => t.ticket_id === ticketId);
     if (!ticketToClose) return;
@@ -224,6 +314,10 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       closed_tickets: [updatedTicket, ...(db.closed_tickets || [])],
     });
     setConfirm(null);
+    if (workingId === ticketId) {
+      clearStartTicket();
+      setWorkingId(null);
+    }
     if (detailId === ticketId) setDetailId(ticketId);
   };
 
@@ -443,9 +537,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       <PageSection
         title={ticketsOnly ? 'Заявки' : 'Расширенный реестр'}
         description={
-          ticketsOnly
-            ? 'Рабочий список заявок: поиск, фильтры, статусы, приоритеты, SLA и история.'
-            : 'Клиенты, объекты, оборудование и заявки. Полный CRUD для администратора.'
+          ticketsOnly ? 'Поиск, фильтры и карточка заявки.' : 'Клиенты, объекты, оборудование и заявки.'
         }
         status={{ tone: 'info', label: `${db.open_tickets.length} ОТКРЫТЫХ` }}
         actions={
@@ -480,7 +572,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-2 top-1.5 h-3.5 w-3.5 text-[var(--oc-muted)]" />
           <input
             className={`${inputCls} pl-7`}
@@ -494,41 +586,54 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         </div>
         {(activeTab === 'open_tickets' || activeTab === 'closed_tickets') && (
           <>
-            <select
-              className={`${inputCls} w-auto`}
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPage(0);
-              }}
-            >
-              <option value="all">Статус: все</option>
-              <option value="NEW">{ruTicketStatus('NEW')}</option>
-              <option value="IN_PROGRESS">{ruTicketStatus('IN_PROGRESS')}</option>
-              <option value="WAITING_DISPATCHER">{ruTicketStatus('WAITING_DISPATCHER')}</option>
-              <option value="RESOLVED">{ruTicketStatus('RESOLVED')}</option>
-              <option value="CLOSED">{ruTicketStatus('CLOSED')}</option>
-            </select>
-            <select
-              className={`${inputCls} w-auto`}
-              value={priorityFilter}
-              onChange={(e) => {
-                setPriorityFilter(e.target.value);
-                setPage(0);
-              }}
-            >
-              <option value="all">Приоритет: все</option>
-              <option value="critical">{ruPriority('critical')}</option>
-              <option value="high">{ruPriority('high')}</option>
-              <option value="medium">{ruPriority('medium')}</option>
-              <option value="low">{ruPriority('low')}</option>
-            </select>
-            <select className={`${inputCls} w-auto`} value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
-              <option value="updated">Сортировка: обновлено</option>
-              <option value="priority">Сортировка: приоритет</option>
-              <option value="sla">Сортировка: SLA</option>
-              <option value="id">Сортировка: ID</option>
-            </select>
+            <div className="w-full min-w-0 sm:w-48">
+              <AlignedSelect
+                overlay
+                value={statusFilter}
+                onChange={(value) => {
+                  setStatusFilter(value);
+                  setPage(0);
+                }}
+                options={[
+                  { value: 'all', label: 'Статус: все' },
+                  { value: 'NEW', label: ruTicketStatus('NEW') },
+                  { value: 'IN_PROGRESS', label: ruTicketStatus('IN_PROGRESS') },
+                  { value: 'WAITING_DISPATCHER', label: ruTicketStatus('WAITING_DISPATCHER') },
+                  { value: 'RESOLVED', label: ruTicketStatus('RESOLVED') },
+                  { value: 'CLOSED', label: ruTicketStatus('CLOSED') },
+                ]}
+              />
+            </div>
+            <div className="w-full min-w-0 sm:w-48">
+              <AlignedSelect
+                overlay
+                value={priorityFilter}
+                onChange={(value) => {
+                  setPriorityFilter(value);
+                  setPage(0);
+                }}
+                options={[
+                  { value: 'all', label: 'Приоритет: все' },
+                  { value: 'critical', label: ruPriority('critical') },
+                  { value: 'high', label: ruPriority('high') },
+                  { value: 'medium', label: ruPriority('medium') },
+                  { value: 'low', label: ruPriority('low') },
+                ]}
+              />
+            </div>
+            <div className="w-full min-w-0 sm:w-48">
+              <AlignedSelect
+                overlay
+                value={sortKey}
+                onChange={(value) => setSortKey(value as SortKey)}
+                options={[
+                  { value: 'updated', label: 'Сортировка: обновлено' },
+                  { value: 'priority', label: 'Сортировка: приоритет' },
+                  { value: 'sla', label: 'Сортировка: SLA' },
+                  { value: 'id', label: 'Сортировка: ID' },
+                ]}
+              />
+            </div>
           </>
         )}
       </div>
@@ -537,7 +642,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
         <section className="oc-card overflow-hidden">
           <div className="table-scroll">
             {(activeTab === 'open_tickets' || activeTab === 'closed_tickets') && (
-              <table className="oc-table min-w-[920px]">
+              <table className="oc-table oc-table-stack">
                 <thead>
                   <tr>
                     <th>ID</th>
@@ -560,23 +665,31 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                         key={t.ticket_id}
                         className={t.priority === 'critical' || sla === 'breached' ? 'row-critical' : ''}
                       >
-                        <td className="font-mono">{t.ticket_id}</td>
-                        <td>{customerName(db, t.customer_id)}</td>
-                        <td className="max-w-[220px] truncate" title={t.summary}>
-                          {t.summary}
-                        </td>
-                        <td>
+                        <td className="font-mono" data-label="ID">{t.ticket_id}</td>
+                        <td data-label="Клиент">{customerName(db, t.customer_id)}</td>
+                        <td data-label="Инцидент">{t.summary}</td>
+                        <td data-label="Приоритет">
                           <StatusBadge tone={priorityTone(t.priority)} label={ruPriority(t.priority)} />
                         </td>
-                        <td>
+                        <td data-label="Статус">
                           <StatusBadge tone={st.tone} label={st.label} />
                         </td>
-                        <td className="text-[var(--oc-muted)]">{t.assigned_group}</td>
-                        <td className="font-mono text-[11px]">{formatSla(t.sla_deadline)}</td>
-                        <td className="font-mono text-[11px] text-[var(--oc-muted)]">
+                        <td className="text-[var(--oc-muted)]" data-label="Группа">{t.assigned_group}</td>
+                        <td className="font-mono text-[11px]" data-label="SLA">{formatSla(t.sla_deadline)}</td>
+                        <td className="font-mono text-[11px] text-[var(--oc-muted)]" data-label="Обновлено">
                           {fmtTime(t.updated_at || t.created_at)}
                         </td>
-                        <td className="whitespace-nowrap">
+                        <td>
+                          <div className="flex flex-wrap gap-x-2 gap-y-1">
+                          {activeTab === 'open_tickets' && (
+                            <button
+                              type="button"
+                              className="text-[11px] font-medium text-[var(--oc-accent)]"
+                              onClick={() => startWork(t)}
+                            >
+                              Приступить
+                            </button>
+                          )}
                           <button type="button" className="mr-1 text-[11px] text-[var(--oc-accent)]" onClick={() => setDetailId(t.ticket_id)}>
                             Открыть
                           </button>
@@ -605,6 +718,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                           >
                             Удалить
                           </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -621,7 +735,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             )}
 
             {activeTab === 'contractors' && !ticketsOnly && (
-              <table className="oc-table min-w-[720px]">
+              <table className="oc-table oc-table-stack">
                 <thead>
                   <tr>
                     <th>ID</th>
@@ -636,12 +750,12 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                 <tbody>
                   {filteredContractors.map((c) => (
                     <tr key={c.customer_id}>
-                      <td className="font-mono">{c.customer_id}</td>
-                      <td>{c.name}</td>
-                      <td className="font-mono">{c.inn}</td>
-                      <td className="font-mono text-[var(--oc-muted)]">{c.contact_phone}</td>
-                      <td className="text-[var(--oc-muted)]">{c.contact_email}</td>
-                      <td className="font-mono">{c.contract_number}</td>
+                      <td className="font-mono" data-label="ID">{c.customer_id}</td>
+                      <td data-label="Клиент">{c.name}</td>
+                      <td className="font-mono" data-label="ИНН">{c.inn}</td>
+                      <td className="font-mono text-[var(--oc-muted)]" data-label="Телефон">{c.contact_phone}</td>
+                      <td className="text-[var(--oc-muted)]" data-label="Email">{c.contact_email}</td>
+                      <td className="font-mono" data-label="Договор">{c.contract_number}</td>
                       <td>
                         <button
                           type="button"
@@ -660,7 +774,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             )}
 
             {activeTab === 'sites' && !ticketsOnly && (
-              <table className="oc-table min-w-[720px]">
+              <table className="oc-table oc-table-stack">
                 <thead>
                   <tr>
                     <th>ID</th>
@@ -674,11 +788,11 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                 <tbody>
                   {filteredSites.map((s) => (
                     <tr key={s.site_id}>
-                      <td className="font-mono">{s.site_id}</td>
-                      <td>{s.customer_name}</td>
-                      <td>{s.address}</td>
-                      <td className="text-[var(--oc-muted)]">{s.contact_person}</td>
-                      <td className="text-[var(--oc-muted)]">{s.region}</td>
+                      <td className="font-mono" data-label="ID">{s.site_id}</td>
+                      <td data-label="Клиент">{s.customer_name}</td>
+                      <td data-label="Адрес">{s.address}</td>
+                      <td className="text-[var(--oc-muted)]" data-label="Контакт">{s.contact_person}</td>
+                      <td className="text-[var(--oc-muted)]" data-label="Регион">{s.region}</td>
                       <td>
                         <button
                           type="button"
@@ -695,7 +809,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             )}
 
             {activeTab === 'assets' && !ticketsOnly && (
-              <table className="oc-table min-w-[720px]">
+              <table className="oc-table oc-table-stack">
                 <thead>
                   <tr>
                     <th>ID</th>
@@ -710,17 +824,17 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                 <tbody>
                   {filteredAssets.map((a) => (
                     <tr key={a.asset_id}>
-                      <td className="font-mono">{a.asset_id}</td>
-                      <td className="font-mono">{a.site_id}</td>
-                      <td className="font-mono">{a.local_code}</td>
-                      <td>{a.name}</td>
-                      <td>
+                      <td className="font-mono" data-label="ID">{a.asset_id}</td>
+                      <td className="font-mono" data-label="Объект">{a.site_id}</td>
+                      <td className="font-mono" data-label="Код">{a.local_code}</td>
+                      <td data-label="Оборудование">{a.name}</td>
+                      <td data-label="Приоритет">
                         <StatusBadge
                           tone={priorityTone(a.criticality.toLowerCase() as Ticket['priority'])}
                           label={ruPriority(a.criticality)}
                         />
                       </td>
-                      <td>
+                      <td data-label="Статус">
                         <StatusBadge
                           tone={a.status === 'OK' ? 'success' : a.status === 'WARNING' ? 'warning' : 'danger'}
                           label={ruAssetStatus(a.status)}
@@ -770,9 +884,11 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             <div className="flex items-center justify-between border-b border-[var(--oc-border)] px-3 py-2">
               <div>
                 <p className="font-mono text-xs">{detailTicket.ticket_id}</p>
-                <p className="oc-section-title text-[13px]">Обзор заявки</p>
+                <p className="oc-section-title text-[13px]">
+                  {workingId === detailTicket.ticket_id ? 'В работе' : 'Обзор заявки'}
+                </p>
               </div>
-              <button type="button" className="text-[var(--oc-muted)]" onClick={() => setDetailId(null)}>
+              <button type="button" className="text-[var(--oc-muted)]" onClick={closeDetail}>
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -845,7 +961,28 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                 </ul>
               </div>
             </div>
-            <div className="flex gap-1 border-t border-[var(--oc-border)] px-3 py-2">
+            <div className="flex flex-col gap-1.5 border-t border-[var(--oc-border)] px-3 py-2">
+              {db.open_tickets.some((t) => t.ticket_id === detailTicket.ticket_id) && workingId === detailTicket.ticket_id && (
+                <div className="grid gap-1">
+                  <textarea
+                    rows={2}
+                    value={workNote}
+                    onChange={(e) => setWorkNote(e.target.value)}
+                    placeholder="Заметка в журнал…"
+                    className="w-full rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] p-2 text-xs leading-snug"
+                  />
+                  <button type="button" className={btnCls} disabled={!workNote.trim()} onClick={addWorkNote}>
+                    В журнал
+                  </button>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-1">
+              {db.open_tickets.some((t) => t.ticket_id === detailTicket.ticket_id) && workingId !== detailTicket.ticket_id && (
+                <button type="button" className={`${btnCls} text-[var(--oc-accent)]`} onClick={() => startWork(detailTicket)}>
+                  <Play className="mr-1 inline h-3 w-3" />
+                  Приступить
+                </button>
+              )}
               <button type="button" className={btnCls} onClick={() => openEdit(detailTicket)}>
                 Изменить
               </button>
@@ -860,6 +997,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                   Завершить
                 </button>
               )}
+              </div>
             </div>
           </aside>
         )}
@@ -871,7 +1009,7 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             role="dialog"
             aria-modal="true"
             aria-labelledby="registry-dialog-title"
-            className="h-full w-full max-w-md overflow-auto border border-[var(--oc-border)] bg-[var(--oc-surface)] p-4 shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg"
+            className="h-full w-full max-w-md overflow-x-hidden overflow-y-auto border border-[var(--oc-border)] bg-[var(--oc-surface)] p-4 shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg"
           >
             <div className="mb-3 flex items-center justify-between">
               <h3 id="registry-dialog-title" className="oc-section-title text-[13px]">
@@ -945,71 +1083,54 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
             )}
 
             {(modalType === 'ADD_TICKET' || modalType === 'ADD_CLOSED_TICKET') && (
-              <div className="grid gap-2 text-[11px]">
-                <label>
+              <div className="grid min-w-0 gap-2 text-[11px]">
+                <label className="grid min-w-0 gap-1">
                   Клиент
-                  <select
-                    className={inputCls}
-                    value={ticketForm.customer_id}
-                    onChange={(e) => {
-                      const customer_id = e.target.value;
+                  <AlignedSelect
+                    value={ticketForm.customer_id || ''}
+                    onChange={(customer_id) => {
                       const firstSite = db.sites.find((s) => s.customer_id === customer_id);
                       setTicketForm({ ...ticketForm, customer_id, site_id: firstSite?.site_id || ticketForm.site_id });
                     }}
-                  >
-                    {(db.contractors || []).map((c) => (
-                      <option key={c.customer_id} value={c.customer_id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    options={(db.contractors || []).map((c) => ({ value: c.customer_id, label: c.name }))}
+                  />
                 </label>
-                <label>
+                <label className="grid min-w-0 gap-1">
                   Объект
-                  <select
-                    className={inputCls}
-                    value={ticketForm.site_id}
-                    onChange={(e) => {
-                      const site_id = e.target.value;
+                  <AlignedSelect
+                    value={ticketForm.site_id || ''}
+                    onChange={(site_id) => {
                       const firstAsset = db.assets.find((a) => a.site_id === site_id);
                       setTicketForm({ ...ticketForm, site_id, asset_id: firstAsset?.asset_id || ticketForm.asset_id });
                     }}
-                  >
-                    {sitesForCustomer.map((s) => (
-                      <option key={s.site_id} value={s.site_id}>
-                        {s.address}
-                      </option>
-                    ))}
-                  </select>
+                    options={sitesForCustomer.map((s) => ({ value: s.site_id, label: s.address }))}
+                  />
                 </label>
-                <label>
+                <label className="grid min-w-0 gap-1">
                   Оборудование
-                  <select
-                    className={inputCls}
-                    value={ticketForm.asset_id}
-                    onChange={(e) => setTicketForm({ ...ticketForm, asset_id: e.target.value })}
-                  >
-                    {assetsForSite.map((a) => (
-                      <option key={a.asset_id} value={a.asset_id}>
-                        {a.local_code} · {a.name}
-                      </option>
-                    ))}
-                  </select>
+                  <AlignedSelect
+                    value={ticketForm.asset_id || ''}
+                    onChange={(asset_id) => setTicketForm({ ...ticketForm, asset_id })}
+                    options={assetsForSite.map((a) => ({
+                      value: a.asset_id,
+                      label: `${a.local_code} · ${a.name}`,
+                    }))}
+                  />
                 </label>
-                <label>
+                <label className="grid min-w-0 gap-1">
                   Канал
-                  <select
-                    className={inputCls}
+                  <AlignedSelect
                     value={ticketForm.channel || 'rest'}
-                    onChange={(e) => setTicketForm({ ...ticketForm, channel: e.target.value })}
-                  >
-                    <option value="telegram">telegram</option>
-                    <option value="email">email</option>
-                    <option value="voice">voice</option>
-                    <option value="rest">rest</option>
-                  </select>
+                    onChange={(channel) => setTicketForm({ ...ticketForm, channel })}
+                    options={[
+                      { value: 'telegram', label: 'telegram' },
+                      { value: 'email', label: 'email' },
+                      { value: 'voice', label: 'voice' },
+                      { value: 'rest', label: 'rest' },
+                    ]}
+                  />
                 </label>
-                <label>
+                <label className="grid min-w-0 gap-1">
                   Описание
                   <textarea
                     rows={3}
@@ -1020,21 +1141,21 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                     }
                   />
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <label>
+                <div className="grid min-w-0 grid-cols-2 gap-2">
+                  <label className="grid min-w-0 gap-1">
                     Приоритет
-                    <select
-                      className={inputCls}
-                      value={ticketForm.priority}
-                      onChange={(e) => setTicketForm({ ...ticketForm, priority: e.target.value as Ticket['priority'] })}
-                    >
-                      <option value="critical">{ruPriority('critical')}</option>
-                      <option value="high">{ruPriority('high')}</option>
-                      <option value="medium">{ruPriority('medium')}</option>
-                      <option value="low">{ruPriority('low')}</option>
-                    </select>
+                    <AlignedSelect
+                      value={ticketForm.priority || 'high'}
+                      onChange={(priority) => setTicketForm({ ...ticketForm, priority: priority as Ticket['priority'] })}
+                      options={[
+                        { value: 'critical', label: ruPriority('critical') },
+                        { value: 'high', label: ruPriority('high') },
+                        { value: 'medium', label: ruPriority('medium') },
+                        { value: 'low', label: ruPriority('low') },
+                      ]}
+                    />
                   </label>
-                  <label>
+                  <label className="grid min-w-0 gap-1">
                     SLA (мин)
                     <input
                       type="number"
@@ -1045,19 +1166,19 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
                   </label>
                 </div>
                 {editingId && (
-                  <label>
+                  <label className="grid min-w-0 gap-1">
                     Статус
-                    <select
-                      className={inputCls}
-                      value={ticketForm.status}
-                      onChange={(e) => setTicketForm({ ...ticketForm, status: e.target.value as Ticket['status'] })}
-                    >
-                      <option value="NEW">{ruTicketStatus('NEW')}</option>
-                      <option value="IN_PROGRESS">{ruTicketStatus('IN_PROGRESS')}</option>
-                      <option value="WAITING_DISPATCHER">{ruTicketStatus('WAITING_DISPATCHER')}</option>
-                      <option value="RESOLVED">{ruTicketStatus('RESOLVED')}</option>
-                      <option value="CLOSED">{ruTicketStatus('CLOSED')}</option>
-                    </select>
+                    <AlignedSelect
+                      value={ticketForm.status || 'NEW'}
+                      onChange={(status) => setTicketForm({ ...ticketForm, status: status as Ticket['status'] })}
+                      options={[
+                        { value: 'NEW', label: ruTicketStatus('NEW') },
+                        { value: 'IN_PROGRESS', label: ruTicketStatus('IN_PROGRESS') },
+                        { value: 'WAITING_DISPATCHER', label: ruTicketStatus('WAITING_DISPATCHER') },
+                        { value: 'RESOLVED', label: ruTicketStatus('RESOLVED') },
+                        { value: 'CLOSED', label: ruTicketStatus('CLOSED') },
+                      ]}
+                    />
                   </label>
                 )}
                 <button
@@ -1098,6 +1219,81 @@ export const DatabaseInspectorView: React.FC<DatabaseInspectorViewProps> = ({
     </div>
   );
 };
+
+function AlignedSelect({
+  value,
+  onChange,
+  options,
+  overlay = false,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  overlay?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const current = options.find((item) => item.value === value);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  return (
+    <div className="relative w-full min-w-0" ref={rootRef}>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex min-h-7 w-full items-start justify-between gap-2 rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] px-2 py-1.5 text-left text-xs leading-snug"
+      >
+        <span className="min-w-0 flex-1 break-words">{current?.label || '—'}</span>
+        <ChevronDown className="mt-0.5 h-3 w-3 shrink-0 text-[var(--oc-muted)]" aria-hidden="true" />
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          className={
+            overlay
+              ? 'absolute left-0 right-0 top-full z-40 mt-1 box-border max-h-48 w-full overflow-y-auto overflow-x-hidden rounded-md border border-[var(--oc-border)] bg-[var(--oc-surface)] py-1'
+              : 'mt-1 box-border max-h-48 w-full overflow-y-auto overflow-x-hidden rounded-md border border-[var(--oc-border)] bg-[var(--oc-surface)] py-1'
+          }
+        >
+          {options.map((item) => (
+            <li key={item.value}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={item.value === value}
+                className={`w-full break-words px-2 py-1.5 text-left text-xs leading-snug hover:bg-[var(--oc-surface-2)] ${
+                  item.value === value ? 'bg-[var(--oc-accent-soft)] text-[var(--oc-accent)]' : 'text-[var(--oc-text)]'
+                }`}
+                onClick={() => {
+                  onChange(item.value);
+                  setOpen(false);
+                }}
+              >
+                {item.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function Field({ label, value }: { label: string; value: string }) {
   return (

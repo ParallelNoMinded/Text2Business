@@ -198,7 +198,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({
     <div id="logs-traces-page" className="grid gap-3">
       <PageSection
         title="Мониторинг системы"
-        description="Живой поток логов GET /api/logs и безопасный разбор пайплайна без секретов и скрытой цепочки рассуждений."
+        description="Журнал и разбор пайплайна без секретов."
         status={{
           tone: apiHealthy === false ? 'danger' : errors > 0 ? 'warning' : 'success',
           label: apiHealthy === false ? 'НЕДОСТУПЕН' : errors > 0 ? 'ОГРАНИЧЕН' : 'РАБОТАЕТ',
@@ -222,7 +222,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({
 
       <section className="oc-card px-3 py-2" aria-label="Состояние сервисов">
         <h2 className="oc-section-title mb-2">Состояние сервисов</h2>
-        <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:grid-cols-8">
+        <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
           {services.map((s) => (
             <li key={s.name} className="flex items-center justify-between gap-1 rounded-md border border-[var(--oc-border)] px-2 py-1">
               <span className="text-[11px]">{s.name}</span>
@@ -236,7 +236,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({
         <section id="admin-logs-stream" className="oc-card overflow-hidden" aria-label="Поток логов">
           <div className="flex flex-col gap-2 border-b border-[var(--oc-border)] px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
             <h2 className="oc-section-title mr-auto">Поток логов</h2>
-            <div className="relative min-w-[160px] flex-1">
+            <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-2 top-1.5 h-3.5 w-3.5 text-[var(--oc-muted)]" />
               <input
                 className="oc-input pl-7"
@@ -287,7 +287,7 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({
             </select>
           </div>
           <div className="table-scroll">
-            <table className="oc-table min-w-[780px]">
+            <table className="oc-table oc-table-stack">
               <thead>
                 <tr>
                   <th>Время</th>
@@ -313,24 +313,24 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({
                       key={log.id}
                       className={shown === 'CRITICAL' || shown === 'ERROR' ? 'row-critical' : ''}
                     >
-                      <td className="whitespace-nowrap font-mono text-[11px]">{fmtTs(log.timestamp)}</td>
-                      <td>
+                      <td className="font-mono text-[11px]" data-label="Время">{fmtTs(log.timestamp)}</td>
+                      <td data-label="Уровень">
                         <StatusBadge tone={levelTone(shown)} label={ruLogLevel(shown)} />
                       </td>
-                      <td className="font-mono text-[11px]">{log.channel}</td>
-                      <td className="max-w-[280px] truncate" title={log.message}>
+                      <td className="font-mono text-[11px]" data-label="Источник">{log.channel}</td>
+                      <td data-label="Событие">
                         <button
                           type="button"
-                          className="text-left text-[var(--oc-accent)] hover:underline"
+                          className="text-left break-words text-[var(--oc-accent)] hover:underline"
                           onClick={() => setSelectedId(log.id)}
                         >
                           {log.message}
                         </button>
                       </td>
-                      <td className="font-mono text-[11px]">
+                      <td className="font-mono text-[11px]" data-label="Длительность">
                         {log.duration_ms != null ? `${log.duration_ms} мс` : '—'}
                       </td>
-                      <td className="font-mono text-[11px] text-[var(--oc-muted)]">{traceIdFor(log)}</td>
+                      <td className="font-mono text-[11px] text-[var(--oc-muted)]" data-label="Трейс">{traceIdFor(log)}</td>
                     </tr>
                   );
                 })}

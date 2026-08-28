@@ -4,7 +4,6 @@ import {
   Database,
   Zap,
   Activity,
-  User,
   Inbox,
   Sun,
   Moon,
@@ -12,7 +11,6 @@ import {
   Key,
   BookOpen,
   Menu,
-  X,
   LogOut,
   Settings,
   Users,
@@ -23,9 +21,9 @@ import {
   ChevronDown,
   BarChart3,
 } from 'lucide-react';
-import { StatusBadge } from './ui/StatusBadge';
 import { AppTab, PublicUser } from '../types';
 import { formatUserRoleLine } from '../uiRu';
+import { AssistantPicker } from './AssistantPicker';
 
 export type TabType = AppTab;
 
@@ -36,13 +34,12 @@ const WORK_NAV: { id: TabType; label: string; icon: typeof Inbox; elementId: str
   { id: 'sla', label: 'SLA', icon: Timer, elementId: 'header-tab-sla' },
   { id: 'history', label: 'История', icon: Clock, elementId: 'header-tab-history' },
   { id: 'notifications', label: 'Уведомления', icon: Bell, elementId: 'header-tab-notifications' },
-  { id: 'profile', label: 'Профиль', icon: User, elementId: 'header-tab-profile' },
 ];
 
 const ADMIN_NAV: { id: TabType; label: string; icon: typeof Users; elementId: string }[] = [
   { id: 'admin_users', label: 'Пользователи', icon: Users, elementId: 'header-admin-users' },
-  { id: 'admin_users', label: 'Роли', icon: Shield, elementId: 'header-admin-roles' },
-  { id: 'admin_users', label: 'Активность', icon: Activity, elementId: 'header-admin-activity' },
+  { id: 'admin_roles', label: 'Список и роли', icon: Shield, elementId: 'header-admin-roles' },
+  { id: 'admin_activity', label: 'Активность', icon: Activity, elementId: 'header-admin-activity' },
   { id: 'logs_traces', label: 'Мониторинг', icon: Activity, elementId: 'header-admin-monitoring' },
   { id: 'logs_traces', label: 'Логи', icon: Activity, elementId: 'header-admin-logs' },
   { id: 'admin_analytics', label: 'Аналитика', icon: BarChart3, elementId: 'header-admin-analytics' },
@@ -79,25 +76,26 @@ export const Header: React.FC<HeaderProps> = ({
   geminiActive,
   theme,
   setTheme,
-  isDryRun,
   selectedModel = 'gpt-4o',
   setSelectedModel,
   pendingOperatorCount = 0,
   githubToken = '',
   onOpenTokenModal,
-  apiHealthy = null,
   currentUser = null,
   onLogout,
 }) => {
   const isDark = theme === 'dark';
   const [menuOpen, setMenuOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const adminRef = useRef<HTMLDivElement>(null);
   const isAdmin = currentUser?.role === 'admin';
   const adminActive =
     isAdmin &&
     [...ADMIN_NAV, ...ADMIN_EXTRA].some((item) => item.id === activeTab && item.id !== 'database');
+  const activeWork = WORK_NAV.find((item) => item.id === activeTab);
   const userLine = currentUser ? formatUserRoleLine(currentUser) : '';
+  const userLineShort = currentUser ? formatUserRoleLine(currentUser, true) : '';
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -107,9 +105,9 @@ export const Header: React.FC<HeaderProps> = ({
       }
     };
     const onDoc = (e: MouseEvent) => {
-      if (adminRef.current && !adminRef.current.contains(e.target as Node)) {
-        setAdminOpen(false);
-      }
+      const t = e.target as Node;
+      if (menuRef.current && !menuRef.current.contains(t)) setMenuOpen(false);
+      if (adminRef.current && !adminRef.current.contains(t)) setAdminOpen(false);
     };
     window.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onDoc);
@@ -125,60 +123,27 @@ export const Header: React.FC<HeaderProps> = ({
     setAdminOpen(false);
   };
 
-  const systemTone =
-    pendingOperatorCount > 0 ? 'warning' : apiHealthy === false ? 'danger' : 'success';
-  const systemLabel =
-    pendingOperatorCount > 0 ? 'НА ПРОВЕРКЕ' : apiHealthy === false ? 'ОШИБКА' : 'В НОРМЕ';
-
-  const apiTone = apiHealthy === false ? 'danger' : apiHealthy ? 'success' : 'neutral';
-  const apiLabel = apiHealthy === false ? 'СБОЙ' : apiHealthy ? 'АКТИВЕН' : 'НЕИЗВЕСТНО';
-
-  const llmConnected = Boolean(githubToken) || geminiActive;
-  const llmTone = llmConnected ? 'info' : 'warning';
-  const llmLabel = llmConnected ? 'ИИ' : 'ОЖИДАНИЕ';
-
-  const navButtonClass = (id: TabType) => {
-    const active = activeTab === id;
-    return `inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium transition-colors whitespace-nowrap ${
+  const triggerClass = (active: boolean) =>
+    `inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium whitespace-nowrap ${
       active
-        ? 'bg-[var(--oc-accent-soft)] text-[var(--oc-accent)]'
+        ? 'bg-[var(--oc-accent-soft)] text-[var(--oc-accent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--oc-accent)_35%,transparent)]'
         : 'text-[var(--oc-muted)] hover:bg-[var(--oc-surface-2)] hover:text-[var(--oc-text)]'
     }`;
-  };
+
+  const menuItemClass = (active: boolean) =>
+    `flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--oc-surface-2)] ${
+      active ? 'bg-[var(--oc-accent-soft)] text-[var(--oc-accent)]' : 'text-[var(--oc-text)]'
+    }`;
 
   const iconButtonClass =
-    'inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--oc-muted)] transition-colors hover:bg-[var(--oc-surface-2)] hover:text-[var(--oc-text)]';
+    'inline-flex h-8 w-8 items-center justify-center gap-1.5 rounded-md text-[var(--oc-muted)] transition-colors hover:bg-[var(--oc-surface-2)] hover:text-[var(--oc-text)]';
 
-  const renderWorkItem = (item: (typeof WORK_NAV)[number], keyPrefix = '') => {
-    const Icon = item.icon;
-    return (
-      <button
-        key={`${keyPrefix}${item.id}`}
-        id={keyPrefix ? undefined : item.elementId}
-        type="button"
-        aria-current={activeTab === item.id ? 'page' : undefined}
-        onClick={() => go(item.id)}
-        className={`${navButtonClass(item.id)} ${keyPrefix ? 'w-full justify-start' : ''}`}
-      >
-        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-        <span>{item.id === 'database' && isAdmin ? 'Заявки / реестр' : item.label}</span>
-        {item.id === 'operator' && pendingOperatorCount > 0 && (
-          <span className="ml-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--status-warning-soft)] px-1 text-[10px] font-semibold text-[var(--status-warning)]">
-            {pendingOperatorCount}
-          </span>
-        )}
-        {item.id === 'notifications' && pendingOperatorCount > 0 && (
-          <span className="ml-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--status-warning-soft)] px-1 text-[10px] font-semibold text-[var(--status-warning)]">
-            {pendingOperatorCount}
-          </span>
-        )}
-      </button>
-    );
-  };
+  const dropdownClass =
+    'absolute left-0 z-50 mt-1 w-56 max-w-[calc(100vw-1.5rem)] rounded-md border border-[var(--oc-border)] bg-[var(--oc-surface)] py-1 shadow-lg';
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--oc-border)] bg-[var(--oc-surface)]/95 backdrop-blur-sm">
-      <div className="mx-auto flex min-h-12 max-w-[1440px] items-center gap-2 px-3 py-1.5 sm:gap-3 sm:px-6">
+    <header className="oc-topbar sticky top-0 z-50">
+      <div className="mx-auto flex min-h-14 max-w-[1440px] items-center gap-1 px-3 py-2 sm:gap-2 sm:px-4 lg:px-6">
         <button
           type="button"
           onClick={() => go('home')}
@@ -186,45 +151,102 @@ export const Header: React.FC<HeaderProps> = ({
           title="Перейти к AI-диспетчеру"
           aria-label="Перейти к AI-диспетчеру"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--oc-accent-soft)] text-[var(--oc-accent)]">
-            <Cpu className="h-3.5 w-3.5" aria-hidden="true" />
+          <span className="flex h-8 w-8 items-center justify-center rounded-md border border-[color-mix(in_srgb,var(--oc-accent)_35%,var(--oc-border))] bg-[var(--oc-accent-soft)] text-[var(--oc-accent)]">
+            <Cpu className="h-4 w-4" aria-hidden="true" />
           </span>
           <span className="hidden leading-tight sm:flex sm:flex-col">
             <span className="text-[12px] font-semibold tracking-tight">Text2Business</span>
-            <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--oc-muted)]">
-              AI-ДИСПЕТЧЕР
-            </span>
+            <span className="hidden text-[10px] text-[var(--oc-muted)] 2xl:block">AI-диспетчер</span>
           </span>
         </button>
 
-        <nav
-          className="hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto lg:flex"
-          aria-label="Рабочая навигация"
-        >
-          {WORK_NAV.map((item) => renderWorkItem(item))}
-        </nav>
+        <nav className="flex min-w-0 items-center gap-1" aria-label="Навигация">
+          <div className="relative" ref={menuRef}>
+            <button
+              id="header-work-menu-btn"
+              type="button"
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              onClick={() => {
+                setMenuOpen((v) => !v);
+                setAdminOpen(false);
+              }}
+              className={triggerClass(Boolean(activeWork))}
+            >
+              <Menu className="h-3.5 w-3.5" aria-hidden="true" />
+              <span className="min-w-0 break-words">
+                {activeWork ? (activeWork.id === 'database' && isAdmin ? 'Реестр' : activeWork.label) : 'Меню'}
+              </span>
+              {pendingOperatorCount > 0 && (
+                <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--status-warning-soft)] px-1 text-[10px] font-semibold text-[var(--status-warning)]">
+                  {pendingOperatorCount}
+                </span>
+              )}
+              <ChevronDown className="h-3 w-3" aria-hidden="true" />
+            </button>
+            {menuOpen && (
+              <div role="menu" className={dropdownClass}>
+                {WORK_NAV.map((item) => {
+                  const Icon = item.icon;
+                  const label = item.id === 'database' && isAdmin ? 'Реестр' : item.label;
+                  return (
+                    <button
+                      key={item.id}
+                      id={item.elementId}
+                      type="button"
+                      role="menuitem"
+                      aria-current={activeTab === item.id ? 'page' : undefined}
+                      onClick={() => go(item.id)}
+                      className={menuItemClass(activeTab === item.id)}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      <span className="flex-1">{label}</span>
+                      {item.id === 'operator' && pendingOperatorCount > 0 && (
+                        <span className="text-[10px] font-semibold text-[var(--status-warning)]">
+                          {pendingOperatorCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+                {currentUser && (
+                  <>
+                    <div className="my-1 border-t border-[var(--oc-border)] lg:hidden" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={`${menuItemClass(activeTab === 'profile')} lg:hidden`}
+                      onClick={() => go('profile')}
+                    >
+                      {userLineShort}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
 
-        <div className="ml-auto flex min-w-0 items-center gap-1 sm:gap-1.5">
           {isAdmin && (
-            <div className="relative hidden lg:block" ref={adminRef}>
+            <div className="relative" ref={adminRef}>
               <button
                 id="header-admin-menu-btn"
                 type="button"
                 aria-expanded={adminOpen}
                 aria-haspopup="menu"
-                onClick={() => setAdminOpen((v) => !v)}
-                className={`${navButtonClass(adminActive ? activeTab : 'admin_users')} ${
-                  adminActive ? 'bg-[var(--oc-accent-soft)] text-[var(--oc-accent)]' : ''
-                }`}
+                onClick={() => {
+                  setAdminOpen((v) => !v);
+                  setMenuOpen(false);
+                }}
+                className={triggerClass(adminActive)}
               >
                 <Shield className="h-3.5 w-3.5" aria-hidden="true" />
-                Администрирование
+                <span className="hidden sm:inline">Админ</span>
                 <ChevronDown className="h-3 w-3" aria-hidden="true" />
               </button>
               {adminOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 z-50 mt-1 w-56 rounded-md border border-[var(--oc-border)] bg-[var(--oc-surface)] py-1 shadow-lg"
+                  className={`${dropdownClass} left-auto right-0`}
                 >
                   {ADMIN_NAV.map((item) => {
                     const Icon = item.icon;
@@ -259,46 +281,30 @@ export const Header: React.FC<HeaderProps> = ({
                       </button>
                     );
                   })}
+                  {setSelectedModel && (
+                    <div className="border-t border-[var(--oc-border)] px-2 py-2 xl:hidden">
+                      <AssistantPicker
+                        selectedModel={selectedModel}
+                        onSelect={setSelectedModel}
+                        tokenReady={Boolean(githubToken) || geminiActive}
+                        compact
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
+        </nav>
 
-          <StatusBadge tone={systemTone} label={systemLabel} title="Статус системы" className="hidden sm:inline-flex" />
-          <StatusBadge
-            tone={apiTone}
-            label={apiLabel}
-            title="Подключение API"
-            className="hidden lg:inline-flex"
-          />
-          <StatusBadge
-            tone={llmTone}
-            label={llmLabel}
-            title={githubToken ? 'Токен модели задан' : 'Эвристический запасной режим / без токена'}
-            className="hidden xl:inline-flex"
-          />
-          {isDryRun && (
-            <StatusBadge tone="warning" label="ЧЕРНОВИК" title="Запись в БД только после подтверждения" className="hidden md:inline-flex" />
-          )}
-
-          {isAdmin && (
-            <div className="hidden items-center gap-1 rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] px-1.5 py-0.5 2xl:flex">
-              <label className="sr-only" htmlFor="header-model-dropdown">
-                Модель ИИ
-              </label>
-              <Zap className="h-3 w-3 text-[var(--oc-accent)]" aria-hidden="true" />
-              <select
-                id="header-model-dropdown"
-                value={selectedModel}
-                onChange={(e) => setSelectedModel?.(e.target.value)}
-                className="max-w-[9.5rem] cursor-pointer bg-transparent text-[11px] text-[var(--oc-text)] focus:outline-none"
-              >
-                <option value="qwen3.6-27b">qwen3.6-27b</option>
-                <option value="gpt-4o">gpt-4o</option>
-                <option value="gemma4:e4b">gemma4:e4b</option>
-                <option value="deepseek-reasoner">deepseek-reasoner</option>
-                <option value="nemotron-3-ultra-550b-a55b">nemotron-3-ultra-550b-a55b</option>
-              </select>
+        <div className="ml-auto flex min-w-0 items-center gap-1 sm:gap-1.5">
+          {isAdmin && setSelectedModel && (
+            <div className="hidden min-w-0 xl:block">
+              <AssistantPicker
+                selectedModel={selectedModel}
+                onSelect={setSelectedModel}
+                tokenReady={Boolean(githubToken) || geminiActive}
+              />
             </div>
           )}
 
@@ -317,12 +323,21 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {currentUser && (
-            <span
-              className="hidden min-w-0 max-w-[14rem] truncate text-[11px] text-[var(--oc-text)] sm:inline"
+            <button
+              id="header-tab-profile"
+              type="button"
+              onClick={() => go('profile')}
               title={currentUser.email}
+              aria-current={activeTab === 'profile' ? 'page' : undefined}
+              className={`hidden min-w-0 max-w-[16rem] whitespace-normal rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] px-2 py-1 text-left text-[11px] leading-snug lg:inline ${
+                activeTab === 'profile'
+                  ? 'border-[var(--oc-accent)] text-[var(--oc-accent)]'
+                  : 'text-[var(--oc-text)] hover:bg-[var(--oc-surface-2)]'
+              }`}
             >
-              {userLine}
-            </span>
+              <span className="2xl:hidden">{userLineShort}</span>
+              <span className="hidden 2xl:inline">{userLine}</span>
+            </button>
           )}
           {onLogout && (
             <button
@@ -347,81 +362,8 @@ export const Header: React.FC<HeaderProps> = ({
           >
             {isDark ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
           </button>
-
-          <button
-            id="header-mobile-menu-btn"
-            type="button"
-            className={`${iconButtonClass} lg:hidden`}
-            aria-expanded={menuOpen}
-            aria-controls="mobile-nav-panel"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
-            title={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
-          >
-            {menuOpen ? <X className="h-4 w-4" aria-hidden="true" /> : <Menu className="h-4 w-4" aria-hidden="true" />}
-          </button>
         </div>
       </div>
-
-      {menuOpen && (
-        <nav
-          id="mobile-nav-panel"
-          className="border-t border-[var(--oc-border)] bg-[var(--oc-surface)] lg:hidden"
-          aria-label="Мобильная навигация"
-        >
-          {currentUser && (
-            <p className="mx-auto max-w-[1440px] px-3 pt-2 text-[11px] text-[var(--oc-muted)] sm:hidden">
-              {userLine}
-            </p>
-          )}
-          <p className="mx-auto max-w-[1440px] px-3 pt-2 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">
-            Работа
-          </p>
-          <div className="mx-auto grid max-w-[1440px] grid-cols-2 gap-1 px-3 py-2 sm:grid-cols-3">
-            {WORK_NAV.map((item) => renderWorkItem(item, 'm-'))}
-          </div>
-          {isAdmin && (
-            <>
-              <p className="mx-auto max-w-[1440px] px-3 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">
-                Администрирование
-              </p>
-              <div className="mx-auto grid max-w-[1440px] grid-cols-2 gap-1 px-3 py-2 sm:grid-cols-3">
-                {[...ADMIN_NAV, ...ADMIN_EXTRA].map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={`m-${item.elementId}`}
-                      type="button"
-                      onClick={() => go(item.id)}
-                      className={`${navButtonClass(item.id)} w-full justify-start`}
-                    >
-                      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mx-auto flex max-w-[1440px] items-center gap-2 px-3 pb-2 sm:hidden">
-                <label className="sr-only" htmlFor="header-model-dropdown-mobile">
-                  Модель ИИ
-                </label>
-                <select
-                  id="header-model-dropdown-mobile"
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel?.(e.target.value)}
-                  className="h-8 w-full rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] px-2 text-[12px]"
-                >
-                  <option value="qwen3.6-27b">qwen3.6-27b</option>
-                  <option value="gpt-4o">gpt-4o</option>
-                  <option value="gemma4:e4b">gemma4:e4b</option>
-                  <option value="deepseek-reasoner">deepseek-reasoner</option>
-                  <option value="nemotron-3-ultra-550b-a55b">nemotron-3-ultra-550b-a55b</option>
-                </select>
-              </div>
-            </>
-          )}
-        </nav>
-      )}
     </header>
   );
 };

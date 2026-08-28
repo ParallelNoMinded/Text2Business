@@ -29,7 +29,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ tone, label, title, cl
   return (
     <span
       title={title || label}
-      className={`inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${TONE_CLASS[tone]} ${className}`}
+      className={`inline-flex max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium leading-snug tracking-wide ${TONE_CLASS[tone]} ${className}`}
       aria-label={title || label}
     >
       <span className={`status-dot ${DOT_CLASS[tone]}`} aria-hidden="true" />

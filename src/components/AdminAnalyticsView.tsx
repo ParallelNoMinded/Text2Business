@@ -26,7 +26,7 @@ export const AdminAnalyticsView: React.FC = () => {
 
   return (
     <div className="grid gap-3">
-      <PageSection title="Аналитика" description="Сводка по заявкам и пользователям. Только для администратора." />
+      <PageSection title="Аналитика" description="Заявки и пользователи." />
       {error && <p className="text-[12px] text-[var(--status-danger)]">{error}</p>}
       {data && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">

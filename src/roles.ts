@@ -23,6 +23,8 @@ const PATH_BY_TAB: Record<AppTab, string> = {
   logs_traces: '/admin/logs',
   architecture: '/admin/architecture',
   admin_users: '/admin/users',
+  admin_roles: '/admin/roles',
+  admin_activity: '/admin/activity',
   admin_settings: '/admin/settings',
   admin_analytics: '/admin/analytics',
 };
@@ -37,6 +39,8 @@ const TAB_BY_PATH: Record<string, AppTab> = {
   '/profile': 'profile',
   '/admin': 'admin_users',
   '/admin/users': 'admin_users',
+  '/admin/roles': 'admin_roles',
+  '/admin/activity': 'admin_activity',
   '/admin/channels': 'channels',
   '/admin/console': 'console',
   '/admin/logs': 'logs_traces',
@@ -45,7 +49,6 @@ const TAB_BY_PATH: Record<string, AppTab> = {
   '/admin/architecture': 'architecture',
   '/admin/settings': 'admin_settings',
   '/admin/analytics': 'admin_analytics',
-  '/admin/activity': 'admin_users',
 };
 
 export function pathForTab(tab: AppTab, role: UserRole): string {

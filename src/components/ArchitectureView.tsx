@@ -893,7 +893,7 @@ end
     <div className="grid gap-3 pb-8">
       <PageSection
         title="Реестр архитектуры"
-        description="Текущая MVP (As-Is) и целевая корпоративная архитектура (To-Be). Диаграммы и ADR без смены runtime."
+        description="As-Is и To-Be, диаграммы и ADR."
       />
       <div className="oc-card flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-[11px] text-[var(--oc-muted)]">/architecture/</p>

@@ -48,7 +48,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUserUpdate }) 
     <div className="grid gap-3">
       <PageSection
         title="Профиль"
-        description="Личные данные. Роль назначается только администратором."
+        description="Роль меняет только администратор."
         status={{ tone: user.role === 'admin' ? 'info' : 'success', label: user.role === 'admin' ? 'АДМИН' : 'ДИСПЕТЧЕР' }}
       />
       <section className="oc-card max-w-lg p-4">
@@ -66,6 +66,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUserUpdate }) 
           <label className="grid gap-1 text-[12px]">
             Email
             <input className="oc-input" value={user.email} disabled />
+          </label>
+          <label className="grid gap-1 text-[12px]">
+            Телефон
+            <input className="oc-input" value={user.phone ? `+${user.phone}` : '—'} disabled />
           </label>
           <label className="grid gap-1 text-[12px]">
             Роль

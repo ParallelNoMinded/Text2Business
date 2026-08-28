@@ -18,6 +18,8 @@ test('диспетчер не имеет доступа к /admin/users и ад�
   assert.equal(canAccessPath('dispatcher', '/admin/channels'), false);
   assert.equal(canAccessTab('dispatcher', 'logs_traces'), false);
   assert.equal(canAccessTab('dispatcher', 'admin_users'), false);
+  assert.equal(canAccessPath('dispatcher', '/admin/roles'), false);
+  assert.equal(canAccessPath('dispatcher', '/admin/activity'), false);
   assert.equal(canAccessPath('dispatcher', '/operator'), true);
   assert.equal(canAccessPath('dispatcher', '/tickets'), true);
   assert.equal(canAccessPath('dispatcher', '/sla'), true);
@@ -30,6 +32,9 @@ test('диспетчер не имеет доступа к /admin/users и ад�
 
 test('администратор имеет доступ к /admin/users', () => {
   assert.equal(canAccessPath('admin', '/admin/users'), true);
+  assert.equal(canAccessPath('admin', '/admin/roles'), true);
+  assert.equal(canAccessPath('admin', '/admin/activity'), true);
+  assert.equal(canAccessTab('admin', 'admin_roles'), true);
   assert.equal(canAccessPath('admin', '/admin/registry'), true);
   assert.equal(canAccessTab('admin', 'logs_traces'), true);
 });
@@ -58,6 +63,7 @@ test('админ создаёт пользователя и меняет рол�
     lastName: 'Диспетчер',
     email: 'new.disp@example.com',
     password: 'password1',
+    phone: '+7 999 111-22-33',
     role: 'dispatcher',
   });
   assert.ok('user' in created);

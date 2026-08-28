@@ -21,10 +21,12 @@ export const PageSection: React.FC<PageSectionProps> = ({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="oc-section-title text-[15px]">{title}</h1>
+            <h1 className="text-[15px] font-semibold tracking-tight text-[var(--oc-text)]">{title}</h1>
             {status && <StatusBadge tone={status.tone} label={status.label} />}
           </div>
-          {description && <p className="oc-muted mt-0.5 text-xs leading-relaxed">{description}</p>}
+          {description && (
+            <p className="oc-muted mt-0.5 hidden text-xs leading-relaxed sm:block">{description}</p>
+          )}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>

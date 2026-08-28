@@ -15,6 +15,82 @@ export function isWaitingTicket(t: Ticket): boolean {
   return t.status === 'WAITING_DISPATCHER' || Boolean(t.missing_fields && t.missing_fields.length > 0);
 }
 
+const TAKE_TICKET_KEY = 't2b-take-ticket';
+
+export function requestTakeTicket(ticketId: string) {
+  try {
+    sessionStorage.setItem(TAKE_TICKET_KEY, ticketId);
+  } catch {
+    /* private mode */
+  }
+}
+
+export function peekTakeTicket(): string | null {
+  try {
+    return sessionStorage.getItem(TAKE_TICKET_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function clearTakeTicket() {
+  try {
+    sessionStorage.removeItem(TAKE_TICKET_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+const START_TICKET_KEY = 't2b-start-ticket';
+
+export function requestStartTicket(ticketId: string) {
+  try {
+    sessionStorage.setItem(START_TICKET_KEY, ticketId);
+  } catch {
+    /* private mode */
+  }
+}
+
+export function peekStartTicket(): string | null {
+  try {
+    return sessionStorage.getItem(START_TICKET_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function clearStartTicket() {
+  try {
+    sessionStorage.removeItem(START_TICKET_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function ticketChannel(t: Ticket): string {
+  return t.channel || t.messages?.[0]?.channel || '';
+}
+
+export function channelLabel(channel?: string): string {
+  const v = (channel || '').toLowerCase();
+  if (v.includes('telegram')) return 'Telegram';
+  if (v.includes('email') || v.includes('mail')) return 'Почта';
+  if (v.includes('voice') || v.includes('call')) return 'Звонок';
+  if (v.includes('portal')) return 'Портал';
+  if (v.includes('rest')) return 'REST';
+  return channel ? channel : 'Канал';
+}
+
+export function missingFieldLabel(field: string): string {
+  const map: Record<string, string> = {
+    asset_code: 'Код оборудования',
+    preferred_time: 'Удобное время',
+    site_info: 'Адрес объекта',
+    customer_name: 'Клиент',
+  };
+  return map[field] || field;
+}
+
 export function slaBucket(deadlineIso: string, nowMs = Date.now()): SlaBucket {
   const due = new Date(deadlineIso).getTime();
   if (Number.isNaN(due)) return 'on_time';

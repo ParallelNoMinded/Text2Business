@@ -28,11 +28,11 @@ export const WorkSlaView: React.FC<WorkSlaViewProps> = ({ db }) => {
     <div className="grid gap-3">
       <PageSection
         title="SLA"
-        description="Контроль дедлайнов по открытым заявкам. Карточка заявки и смена статуса — в разделе «Заявки»."
+        description="Дедлайны открытых заявок."
       />
       <section className="oc-card overflow-hidden">
         <div className="table-scroll">
-          <table className="oc-table min-w-[640px]">
+          <table className="oc-table oc-table-stack">
             <thead>
               <tr>
                 <th>Заявка</th>
@@ -55,12 +55,12 @@ export const WorkSlaView: React.FC<WorkSlaViewProps> = ({ db }) => {
                 const bucket = slaBucket(t.sla_deadline);
                 return (
                   <tr key={t.ticket_id}>
-                    <td className="font-mono text-[11px]">{t.ticket_id}</td>
-                    <td>{customerName(db, t.customer_id)}</td>
-                    <td>{ruPriority(t.priority)}</td>
-                    <td>{ruTicketStatus(t.status)}</td>
-                    <td className="tabular-nums">{formatSla(t.sla_deadline)}</td>
-                    <td>
+                    <td className="font-mono text-[11px]" data-label="Заявка">{t.ticket_id}</td>
+                    <td data-label="Клиент">{customerName(db, t.customer_id)}</td>
+                    <td data-label="Приоритет">{ruPriority(t.priority)}</td>
+                    <td data-label="Статус">{ruTicketStatus(t.status)}</td>
+                    <td className="tabular-nums" data-label="Остаток">{formatSla(t.sla_deadline)}</td>
+                    <td data-label="SLA">
                       <StatusBadge tone={SLA_TONE[bucket].tone} label={SLA_TONE[bucket].label} />
                     </td>
                   </tr>

@@ -393,7 +393,7 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
     <div id="channels-config-page" className="grid gap-3">
       <PageSection
         title="Каналы и интеграции"
-        description="Состояние подключений. Секреты маскируются, полный токен не отображается."
+        description="Подключения. Токены маскируются."
         status={{ tone: telegramToken ? 'success' : 'warning', label: telegramToken ? 'АКТИВЕН' : 'ОЖИДАНИЕ' }}
       />
 
@@ -402,9 +402,9 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
           <h2 className="oc-section-title">Состояние подключений</h2>
         </div>
         <div className="table-scroll">
-          <table className="oc-table min-w-[800px]">
+          <table className="oc-table oc-table-stack">
             <thead>
-              <tr>
+                <tr>
                 <th>Канал</th>
                 <th>Статус</th>
                 <th>Тип</th>
@@ -417,23 +417,23 @@ export const ChannelsConfigView: React.FC<ChannelsConfigViewProps> = ({
             <tbody>
               {rows.map((r) => (
                 <tr key={r.name}>
-                  <td className="font-medium">{r.name}</td>
-                  <td>
+                  <td className="font-medium" data-label="Канал">{r.name}</td>
+                  <td data-label="Статус">
                     <StatusBadge tone={r.tone} label={ruConnStatus(r.status)} />
                   </td>
-                  <td className="text-[var(--oc-muted)]">{r.type}</td>
-                  <td className="max-w-[220px] truncate" title={r.last}>
-                    {r.last}
-                  </td>
-                  <td className="font-mono text-[11px]">{r.latency}</td>
-                  <td className="max-w-[200px] truncate font-mono text-[11px] text-[var(--oc-muted)]">{r.config}</td>
-                  <td className="whitespace-nowrap">
+                  <td className="text-[var(--oc-muted)]" data-label="Тип">{r.type}</td>
+                  <td data-label="Событие">{r.last}</td>
+                  <td className="font-mono text-[11px]" data-label="Задержка">{r.latency}</td>
+                  <td className="font-mono text-[11px] text-[var(--oc-muted)]" data-label="Конфиг">{r.config}</td>
+                  <td>
+                    <div className="flex flex-wrap gap-x-2">
                     <button type="button" className="mr-1 text-[11px] text-[var(--oc-accent)]" onClick={() => setOpenConfig(r.key)}>
                       Настроить
                     </button>
                     <button type="button" className="text-[11px] text-[var(--oc-muted)]" onClick={onViewLogs}>
                       Логи
                     </button>
+                    </div>
                   </td>
                 </tr>
               ))}

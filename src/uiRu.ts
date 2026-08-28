@@ -85,6 +85,12 @@ export function ruUserRole(role: UserRole): string {
   return role === 'admin' ? 'Администратор' : 'Диспетчер';
 }
 
-export function formatUserRoleLine(user: Pick<PublicUser, 'firstName' | 'lastName' | 'role'>): string {
+export function formatUserRoleLine(
+  user: Pick<PublicUser, 'firstName' | 'lastName' | 'role'>,
+  compact = false
+): string {
+  if (compact) {
+    return `${user.firstName} · ${user.role === 'admin' ? 'Админ' : 'Дисп.'}`;
+  }
   return `${user.firstName} ${user.lastName} · ${ruUserRole(user.role)}`;
 }

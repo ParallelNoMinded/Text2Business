@@ -2,15 +2,16 @@ import React from 'react';
 import { DatabaseSchema } from '../mockDb';
 import { PageSection } from './layout/PageSection';
 import { StatusBadge } from './ui/StatusBadge';
-import { customerName, isWaitingTicket, slaBucket } from '../opsDashboard';
+import { customerName, isWaitingTicket, requestStartTicket, requestTakeTicket, slaBucket } from '../opsDashboard';
 import { ruPriority } from '../uiRu';
 
 interface WorkNotificationsViewProps {
   db: DatabaseSchema | null;
   onOpenAppeals: () => void;
+  onStartTicket?: (ticketId: string) => void;
 }
 
-export const WorkNotificationsView: React.FC<WorkNotificationsViewProps> = ({ db, onOpenAppeals }) => {
+export const WorkNotificationsView: React.FC<WorkNotificationsViewProps> = ({ db, onOpenAppeals, onStartTicket }) => {
   if (!db) {
     return <p className="text-[11px] text-[var(--oc-muted)]">Загрузка уведомлений…</p>;
   }
@@ -22,7 +23,7 @@ export const WorkNotificationsView: React.FC<WorkNotificationsViewProps> = ({ db
     <div className="grid gap-3">
       <PageSection
         title="Уведомления"
-        description="Очередь на проверку диспетчера и просроченные SLA. Ответ клиенту — в разделе «Обращения»."
+        description="Очередь на проверку и просроченный SLA."
         status={
           waiting.length > 0
             ? { tone: 'warning', label: String(waiting.length) }
@@ -42,14 +43,21 @@ export const WorkNotificationsView: React.FC<WorkNotificationsViewProps> = ({ db
               <li key={t.ticket_id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[12px]">
                 <div>
                   <p className="font-mono text-[11px] text-[var(--oc-accent)]">{t.ticket_id}</p>
-                  <p>
+                  <p className="break-words">
                     {customerName(db, t.customer_id)} · {t.summary}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <StatusBadge tone="warning" label={ruPriority(t.priority)} />
-                  <button type="button" className="oc-btn" onClick={onOpenAppeals}>
-                    Открыть
+                  <button
+                    type="button"
+                    className="oc-btn"
+                    onClick={() => {
+                      requestTakeTicket(t.ticket_id);
+                      onOpenAppeals();
+                    }}
+                  >
+                    Взять
                   </button>
                 </div>
               </li>
@@ -67,8 +75,15 @@ export const WorkNotificationsView: React.FC<WorkNotificationsViewProps> = ({ db
         ) : (
           <ul className="divide-y divide-[var(--oc-border)] px-3 py-1 text-[12px]">
             {breached.map((t) => (
-              <li key={`b-${t.ticket_id}`} className="py-1.5">
-                <span className="font-mono text-[11px]">{t.ticket_id}</span> · {t.summary}
+              <li key={`b-${t.ticket_id}`} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                <span>
+                  <span className="font-mono text-[11px]">{t.ticket_id}</span> · <span className="break-words">{t.summary}</span>
+                </span>
+                {onStartTicket && (
+                  <button type="button" className="oc-btn" onClick={() => onStartTicket(t.ticket_id)}>
+                    Приступить
+                  </button>
+                )}
               </li>
             ))}
           </ul>

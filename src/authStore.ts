@@ -1,9 +1,9 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { ActivityEvent, PublicUser, UserRole, UserStatus } from './types';
+import { firstRegisterError, normalizePhoneDigits } from './registerValidation';
 
 const KEYLEN = 64;
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface StoredUser {
   id: string;
@@ -14,6 +14,7 @@ export interface StoredUser {
   passwordHash: string;
   role: UserRole;
   status: UserStatus;
+  phone?: string;
   createdAt: string;
 }
 
@@ -49,6 +50,7 @@ export function toPublicUser(user: StoredUser): PublicUser {
     firstName: user.firstName,
     lastName: user.lastName,
     email: user.email,
+    phone: user.phone,
     role: user.role,
     status: user.status,
     createdAt: user.createdAt,
@@ -78,6 +80,7 @@ function createUser(input: {
   password: string;
   role: UserRole;
   status?: UserStatus;
+  phone?: string;
 }): StoredUser {
   const salt = randomBytes(16);
   const hash = hashPassword(input.password, salt);
@@ -90,6 +93,7 @@ function createUser(input: {
     passwordHash: hash.toString('hex'),
     role: input.role,
     status: input.status || 'active',
+    phone: input.phone ? normalizePhoneDigits(input.phone) : undefined,
     createdAt: new Date().toISOString(),
   };
   usersByEmail.set(user.email, user);
@@ -103,6 +107,7 @@ function seedIfMissing(input: {
   email: string;
   password: string;
   role: UserRole;
+  phone?: string;
 }) {
   const email = normalizeEmail(input.email);
   if (usersByEmail.has(email)) return;
@@ -116,6 +121,7 @@ export function seedDefaultUsers() {
     email: process.env.ADMIN_EMAIL || 'admin@text2business.local',
     password: process.env.ADMIN_PASSWORD || 'admin123',
     role: 'admin',
+    phone: '79990000001',
   });
   seedIfMissing({
     firstName: 'Иван',
@@ -123,6 +129,7 @@ export function seedDefaultUsers() {
     email: process.env.DISPATCHER_EMAIL || 'dispatcher@text2business.local',
     password: process.env.DISPATCHER_PASSWORD || 'dispatcher123',
     role: 'dispatcher',
+    phone: '79990000002',
   });
 }
 
@@ -130,21 +137,18 @@ export function validateRegisterInput(body: {
   firstName?: unknown;
   lastName?: unknown;
   email?: unknown;
+  phone?: unknown;
   password?: unknown;
   passwordConfirm?: unknown;
 }): string | null {
-  const firstName = typeof body.firstName === 'string' ? body.firstName.trim() : '';
-  const lastName = typeof body.lastName === 'string' ? body.lastName.trim() : '';
-  const email = typeof body.email === 'string' ? body.email.trim() : '';
-  const password = typeof body.password === 'string' ? body.password : '';
-  const passwordConfirm = typeof body.passwordConfirm === 'string' ? body.passwordConfirm : '';
-
-  if (!firstName) return 'Укажите имя.';
-  if (!lastName) return 'Укажите фамилию.';
-  if (!EMAIL_RE.test(email)) return 'Укажите корректный email.';
-  if (password.length < 8) return 'Пароль должен быть не короче 8 символов.';
-  if (password !== passwordConfirm) return 'Пароли не совпадают.';
-  return null;
+  return firstRegisterError({
+    firstName: typeof body.firstName === 'string' ? body.firstName : '',
+    lastName: typeof body.lastName === 'string' ? body.lastName : '',
+    email: typeof body.email === 'string' ? body.email : '',
+    phone: typeof body.phone === 'string' ? body.phone : '',
+    password: typeof body.password === 'string' ? body.password : '',
+    passwordConfirm: typeof body.passwordConfirm === 'string' ? body.passwordConfirm : '',
+  });
 }
 
 export function registerDispatcher(body: {
@@ -152,6 +156,7 @@ export function registerDispatcher(body: {
   lastName: string;
   email: string;
   password: string;
+  phone?: string;
 }): { user: PublicUser; sessionId: string } | { error: string } {
   const email = normalizeEmail(body.email);
   if (usersByEmail.has(email)) {
@@ -163,6 +168,7 @@ export function registerDispatcher(body: {
     email,
     password: body.password,
     role: 'dispatcher',
+    phone: body.phone,
   });
   const sessionId = createSession(stored.id);
   const user = toPublicUser(stored);
@@ -229,14 +235,22 @@ export function adminCreateUser(input: {
   email: string;
   password: string;
   role: UserRole;
+  phone?: string;
+  passwordConfirm?: string;
 }): { user: PublicUser } | { error: string } {
+  const validationError = firstRegisterError({
+    firstName: input.firstName,
+    lastName: input.lastName,
+    email: input.email,
+    phone: input.phone || '',
+    password: input.password,
+    passwordConfirm: input.passwordConfirm ?? input.password,
+  });
+  if (validationError) return { error: validationError };
   const email = normalizeEmail(input.email);
-  if (!EMAIL_RE.test(email)) return { error: 'Укажите корректный email.' };
-  if (!input.firstName.trim() || !input.lastName.trim()) return { error: 'Укажите имя и фамилию.' };
-  if (!input.password || input.password.length < 8) return { error: 'Пароль должен быть не короче 8 символов.' };
   if (input.role !== 'admin' && input.role !== 'dispatcher') return { error: 'Недопустимая роль.' };
   if (usersByEmail.has(email)) return { error: 'Пользователь с таким email уже существует.' };
-  const stored = createUser({ ...input, email, role: input.role });
+  const stored = createUser({ ...input, email, role: input.role, phone: input.phone });
   return { user: toPublicUser(stored) };
 }
 

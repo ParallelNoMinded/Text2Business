@@ -43,7 +43,7 @@ export const AdminSettingsView: React.FC = () => {
 
   return (
     <div className="grid gap-3">
-      <PageSection title="Системные настройки" description="SLA, интеграции и параметры стенда. Секреты LLM — в шапке." />
+      <PageSection title="Настройки" description="SLA и параметры стенда." />
       {error && <p className="text-[12px] text-[var(--status-danger)]">{error}</p>}
       {msg && <p className="text-[12px] text-[var(--status-success)]">{msg}</p>}
 

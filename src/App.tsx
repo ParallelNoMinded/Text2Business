@@ -21,6 +21,7 @@ import {
   completeUXScenario,
 } from './uxMetrics';
 import { INITIAL_DATABASE, DatabaseSchema } from './mockDb';
+import { requestStartTicket } from './opsDashboard';
 import { PageSection } from './components/layout/PageSection';
 import { PipelineRail } from './components/pipeline/PipelineRail';
 import { LoginView } from './components/LoginView';
@@ -371,7 +372,7 @@ export default function App() {
       />
       )}
 
-      <main id="main-content" className="mx-auto w-full max-w-[1440px] flex-1 px-3 py-4 sm:px-6">
+      <main id="main-content" className="mx-auto w-full min-w-0 max-w-[1440px] flex-1 px-3 py-4 sm:px-6">
         {!pathAllowed ? (
           <AccessDenied
             onGoHome={() => {
@@ -409,8 +410,8 @@ export default function App() {
         {isAdmin && activeTab === 'console' && (
           <div className="grid gap-3">
             <PageSection
-              title="Демо-стенд · пайплайн ИИ-диспетчера"
-              description="Входящее → факты → реестр/SLA → решение → подтверждение оператора → исполнение. Черновик до подтверждения."
+              title="Демо-стенд ИИ"
+              description="Черновик до подтверждения оператора."
               status={
                 isRunningDispatch
                   ? { tone: 'info', label: 'ИДЁТ' }
@@ -474,6 +475,10 @@ export default function App() {
             db={db}
             onUpdateDb={handleUpdateDb}
             theme={theme}
+            onStartTicket={(ticketId) => {
+              requestStartTicket(ticketId);
+              guardedSetTab('database');
+            }}
           />
         )}
 
@@ -493,14 +498,23 @@ export default function App() {
         {activeTab === 'sla' && <WorkSlaView db={db} />}
         {activeTab === 'history' && <WorkHistoryView db={db} />}
         {activeTab === 'notifications' && (
-          <WorkNotificationsView db={db} onOpenAppeals={() => guardedSetTab('operator')} />
+          <WorkNotificationsView
+            db={db}
+            onOpenAppeals={() => guardedSetTab('operator')}
+            onStartTicket={(ticketId) => {
+              requestStartTicket(ticketId);
+              guardedSetTab('database');
+            }}
+          />
         )}
 
         {activeTab === 'profile' && (
           <ProfileView user={currentUser} onUserUpdate={setCurrentUser} />
         )}
 
-        {isAdmin && activeTab === 'admin_users' && <AdminUsersView />}
+        {isAdmin && activeTab === 'admin_users' && <AdminUsersView section="users" />}
+        {isAdmin && activeTab === 'admin_roles' && <AdminUsersView section="roles" />}
+        {isAdmin && activeTab === 'admin_activity' && <AdminUsersView section="activity" />}
         {isAdmin && activeTab === 'admin_settings' && <AdminSettingsView />}
         {isAdmin && activeTab === 'admin_analytics' && <AdminAnalyticsView />}
 
@@ -524,13 +538,13 @@ export default function App() {
         )}
       </main>
 
-      <footer className="mt-auto border-t border-[var(--oc-border)] bg-[var(--oc-surface)]">
-        <div className="mx-auto flex max-w-[1440px] flex-col gap-1 px-3 py-2 text-[11px] text-[var(--oc-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <span>Text2Business · Операционный центр ИИ</span>
+      <footer className="oc-footer mt-auto">
+        <div className="mx-auto flex max-w-[1440px] flex-col gap-1 px-3 py-3 text-[11px] text-[var(--oc-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <span>Text2Business</span>
           <span>
             {pendingOperatorCount > 0
-              ? `${pendingOperatorCount} заявок ждут диспетчера`
-              : 'Очередь оператора пуста'}
+              ? `${pendingOperatorCount} на проверке`
+              : 'Очередь пуста'}
           </span>
         </div>
       </footer>

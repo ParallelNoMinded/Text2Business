@@ -397,6 +397,7 @@ app.post('/api/auth/register', (req, res) => {
     lastName: String(req.body.lastName),
     email: String(req.body.email),
     password: String(req.body.password),
+    phone: typeof req.body.phone === 'string' ? req.body.phone : '',
   });
   if ('error' in result) {
     return res.status(409).json({ error: result.error });
@@ -451,6 +452,8 @@ app.post('/api/admin/users', requireAuth, requireAdmin, (req, res) => {
     lastName: String(req.body?.lastName || ''),
     email: String(req.body?.email || ''),
     password: String(req.body?.password || ''),
+    passwordConfirm: typeof req.body?.passwordConfirm === 'string' ? req.body.passwordConfirm : undefined,
+    phone: typeof req.body?.phone === 'string' ? req.body.phone : '',
     role: req.body?.role === 'admin' ? 'admin' : 'dispatcher',
   });
   if ('error' in result) return res.status(400).json({ error: result.error });
@@ -1250,6 +1253,8 @@ async function startServer() {
       '/profile',
       '/admin',
       '/admin/users',
+      '/admin/roles',
+      '/admin/activity',
       '/admin/channels',
       '/admin/console',
       '/admin/logs',
@@ -1258,7 +1263,6 @@ async function startServer() {
       '/admin/architecture',
       '/admin/settings',
       '/admin/analytics',
-      '/admin/activity',
     ],
     (req, res, next) => {
       req.url = '/index.html';

@@ -18,12 +18,12 @@ function FactRow({ label, fact }: { label: string; fact: ExtractedFact }) {
   const conf = Math.round((fact.confidence || 0) * 100);
   const tone = !fact.value ? 'neutral' : conf >= 85 ? 'success' : conf >= 50 ? 'warning' : 'danger';
   return (
-    <div className="grid grid-cols-[7rem_1fr_3.25rem_5.5rem] items-start gap-2 border-b border-[var(--oc-border)] py-1.5 last:border-0">
+    <div className="grid grid-cols-1 gap-1 border-b border-[var(--oc-border)] py-1.5 last:border-0 sm:grid-cols-[7rem_minmax(0,1fr)_3.25rem_5.5rem] sm:items-start sm:gap-2">
       <span className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">{label}</span>
-      <span className="min-w-0 truncate text-[12px]" title={fact.value || undefined}>
+      <span className="min-w-0 break-words text-[12px]" title={fact.value || undefined}>
         {fact.value || '—'}
       </span>
-      <span className="text-right font-mono text-[11px] tabular-nums text-[var(--oc-muted)]">{conf}%</span>
+      <span className="font-mono text-[11px] tabular-nums text-[var(--oc-muted)] sm:text-right">{conf}%</span>
       <StatusBadge tone={tone} label={fact.value ? sourceLabel(fact.type) : 'НЕТ'} />
     </div>
   );
@@ -42,7 +42,7 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts }) =
         )}
         {facts && (
           <>
-            <div className="grid grid-cols-[7rem_1fr_3.25rem_5.5rem] gap-2 pb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">
+            <div className="hidden grid-cols-[7rem_minmax(0,1fr)_3.25rem_5.5rem] gap-2 pb-1 text-[10px] uppercase tracking-wide text-[var(--oc-muted)] sm:grid">
               <span>Поле</span>
               <span>Значение</span>
               <span className="text-right">Увер.</span>
@@ -54,7 +54,7 @@ export const FactExtractorView: React.FC<FactExtractorViewProps> = ({ facts }) =
             <FactRow label="Проблема" fact={facts.problem_summary} />
             <FactRow label="Срок" fact={facts.requested_deadline} />
             <FactRow label="Резерв" fact={facts.has_backup} />
-            <div className="grid grid-cols-[7rem_1fr] items-start gap-2 py-1.5">
+            <div className="grid grid-cols-1 items-start gap-1 py-1.5 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-2">
               <span className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Симптомы</span>
               <span className="text-[12px]">{facts.symptoms?.length ? facts.symptoms.join(' · ') : '—'}</span>
             </div>

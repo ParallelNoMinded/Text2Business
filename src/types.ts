@@ -160,6 +160,8 @@ export type AppTab =
   | 'architecture'
   | 'profile'
   | 'admin_users'
+  | 'admin_roles'
+  | 'admin_activity'
   | 'admin_settings'
   | 'admin_analytics';
 
@@ -168,6 +170,7 @@ export interface PublicUser {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
   role: UserRole;
   status: UserStatus;
   createdAt: string;

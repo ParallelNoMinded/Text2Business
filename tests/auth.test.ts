@@ -66,15 +66,48 @@ test('вход по неверному паролю не выдаёт сесси
 });
 
 test('валидация регистрации отклоняет короткий пароль и несовпадение', () => {
-  assert.ok(validateRegisterInput({ firstName: 'А', lastName: 'Б', email: 'a@b.c', password: '123', passwordConfirm: '123' }));
   assert.equal(
     validateRegisterInput({
-      firstName: 'А',
-      lastName: 'Б',
-      email: 'a@b.c',
+      firstName: 'Анна',
+      lastName: 'Козлова',
+      email: 'anna@example.com',
+      phone: '+7 999 123-45-67',
+      password: '123',
+      passwordConfirm: '123',
+    }),
+    'Пароль должен содержать минимум 8 символов'
+  );
+  assert.equal(
+    validateRegisterInput({
+      firstName: 'Анна',
+      lastName: 'Козлова',
+      email: 'anna@example.com',
+      phone: '+7 999 123-45-67',
       password: 'password1',
       passwordConfirm: 'password2',
     }),
-    'Пароли не совпадают.'
+    'Пароли не совпадают'
+  );
+  assert.equal(
+    validateRegisterInput({
+      firstName: 'Анна',
+      lastName: 'Козлова',
+      email: 'не-email',
+      phone: '+7 999 123-45-67',
+      password: 'password1',
+      passwordConfirm: 'password1',
+    }),
+    'Введите корректный email'
+  );
+  assert.equal(
+    validateRegisterInput({
+      firstName: 'Анна',
+      lastName: 'Козлова',
+      email: 'anna@example.com',
+      phone: '123',
+      password: 'password1',
+      passwordConfirm: 'password1',
+    }),
+    'Номер телефона введён в неправильном формате'
   );
 });

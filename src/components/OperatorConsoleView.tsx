@@ -1,43 +1,97 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { DatabaseSchema } from '../mockDb';
 import { Ticket } from '../types';
 import { apiFetch } from '../api';
 import { StatusBadge } from './ui/StatusBadge';
 import { PageSection } from './layout/PageSection';
-import { Send, X } from 'lucide-react';
+import { Phone, Play, Send } from 'lucide-react';
 import { ruPriority } from '../uiRu';
+import {
+  channelLabel,
+  clearTakeTicket,
+  customerName,
+  missingFieldLabel,
+  peekTakeTicket,
+  requestTakeTicket,
+  ticketChannel,
+} from '../opsDashboard';
 
 interface OperatorConsoleViewProps {
   db: DatabaseSchema | null;
   onUpdateDb: (updatedDb: DatabaseSchema) => void;
   theme?: 'dark' | 'light';
+  onStartTicket?: (ticketId: string) => void;
 }
 
-export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({ db, onUpdateDb }) => {
+function formatHold(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${r.toString().padStart(2, '0')}`;
+}
+
+function lastClientText(ticket: Ticket) {
+  const fromClient = [...(ticket.messages || [])].reverse().find((m) => m.sender === 'client');
+  return fromClient?.text || ticket.description || ticket.summary;
+}
+
+export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({ db, onUpdateDb, onStartTicket }) => {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [manualAssetCode, setManualAssetCode] = useState('ХУ-17');
   const [manualSiteId, setManualSiteId] = useState('S-MSK-01');
+  const [holdStartedAt, setHoldStartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!holdStartedAt) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [holdStartedAt]);
+
+  const takeTicket = (ticket: Ticket) => {
+    requestTakeTicket(ticket.ticket_id);
+    setSelectedTicket(ticket);
+    const missingStr = (ticket.missing_fields || ['код оборудования']).map(missingFieldLabel).join(', ');
+    setReplyText(
+      `Здравствуйте! Для автоматической регистрации вашей заявки уточните, пожалуйста: ${missingStr}.`
+    );
+    setStatusMessage(null);
+    setHoldStartedAt(Date.now());
+  };
+
+  useEffect(() => {
+    if (!db) return;
+    const wanted = peekTakeTicket();
+    if (!wanted) return;
+    const ticket = db.open_tickets.find((t) => t.ticket_id === wanted);
+    if (ticket && selectedTicket?.ticket_id !== wanted) takeTicket(ticket);
+  }, [db, selectedTicket?.ticket_id]);
+
+  const pendingTickets = useMemo(() => {
+    if (!db) return [];
+    return db.open_tickets.filter(
+      (t) => t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0)
+    );
+  }, [db]);
+
+  const activeTickets = useMemo(() => {
+    if (!db) return [];
+    return db.open_tickets.filter(
+      (t) => t.status !== 'WAITING_DISPATCHER' && (!t.missing_fields || t.missing_fields.length === 0)
+    );
+  }, [db]);
 
   if (!db) {
     return <p className="text-[11px] text-[var(--oc-muted)]">Загрузка очереди диспетчера…</p>;
   }
 
-  const pendingTickets = db.open_tickets.filter(
-    (t) => t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0)
-  );
-  const activeTickets = db.open_tickets.filter(
-    (t) => t.status !== 'WAITING_DISPATCHER' && (!t.missing_fields || t.missing_fields.length === 0)
-  );
-
-  const handleOpenTicketInspector = (ticket: Ticket) => {
-    setSelectedTicket(ticket);
-    const missingStr = (ticket.missing_fields || ['код оборудования (например, ХУ-17)']).join(', ');
-    setReplyText(
-      `Здравствуйте! Для автоматической регистрации вашей заявки уточните, пожалуйста: ${missingStr}.`
-    );
+  const hangUp = () => {
+    clearTakeTicket();
+    setSelectedTicket(null);
+    setHoldStartedAt(null);
     setStatusMessage(null);
   };
 
@@ -58,7 +112,7 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({ db, on
       });
       const data = await res.json();
       if (data.success) {
-        setStatusMessage('Уточнение отправлено клиенту.');
+        setStatusMessage('Уточнение ушло клиенту. Линия ещё ваша.');
         const updatedTicket: Ticket = {
           ...selectedTicket,
           messages: [
@@ -121,167 +175,117 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({ db, on
         t.ticket_id === selectedTicket.ticket_id ? completedTicket : t
       ),
     });
-    setSelectedTicket(null);
+    hangUp();
   };
+
+  const applyQuick = (kind: 'facts' | 'when' | 'code') => {
+    if (!selectedTicket) return;
+    if (kind === 'facts') {
+      const missingStr = (selectedTicket.missing_fields || ['код оборудования']).map(missingFieldLabel).join(', ');
+      setReplyText(`Здравствуйте! Чтобы оформить заявку, уточните: ${missingStr}.`);
+      return;
+    }
+    if (kind === 'when') {
+      setReplyText('Когда удобен выезд инженера? Напишите день и окно по времени.');
+      return;
+    }
+    setReplyText('Подскажите локальный код оборудования на шильдике — например, ХУ-17 или ЧИЛ-01.');
+  };
+
+  const live = selectedTicket;
+  const waitingLine = pendingTickets.filter((t) => t.ticket_id !== live?.ticket_id);
 
   return (
     <div id="operator-console-page" className="grid gap-3">
       <PageSection
-        title="ИИ-диспетчер"
-        description="Очередь оператора: входящее → пробелы в фактах → подтверждение → исполнение."
+        title="Обращения"
+        description="Входящие на линии — взять, уточнить, провести в 1С."
         status={
           pendingTickets.length
-            ? { tone: 'warning', label: 'НА ПРОВЕРКЕ' }
-            : { tone: 'success', label: 'В НОРМЕ' }
+            ? { tone: 'warning', label: 'НА ЛИНИИ' }
+            : { tone: 'success', label: 'СВОБОДНО' }
         }
       />
 
-      <section className="oc-card" aria-label="Очередь оператора">
-        <div className="flex items-center justify-between border-b border-[var(--oc-border)] px-3 py-2">
-          <h2 className="oc-section-title">Ожидают диспетчера</h2>
-          <StatusBadge
-            tone={pendingTickets.length ? 'warning' : 'success'}
-            label={pendingTickets.length ? 'ОЖИДАНИЕ' : 'В НОРМЕ'}
-          />
-        </div>
-        <div className="table-scroll">
-          <table className="oc-table min-w-[640px]">
-            <thead>
-              <tr>
-                <th>ID заявки</th>
-                <th>Приоритет</th>
-                <th>Проблема</th>
-                <th>Не хватает</th>
-                <th>Действие</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendingTickets.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-4 text-center text-[var(--oc-muted)]">
-                    Нет заявок, требующих оператора
-                  </td>
-                </tr>
-              )}
-              {pendingTickets.map((ticket) => (
-                <tr key={ticket.ticket_id} className="row-critical">
-                  <td className="font-mono text-[11px]">{ticket.ticket_id}</td>
-                  <td>
-                    <StatusBadge
-                      tone={ticket.priority === 'high' || ticket.priority === 'critical' ? 'danger' : 'warning'}
-                      label={ruPriority(ticket.priority)}
-                    />
-                  </td>
-                  <td className="max-w-[240px] truncate">{ticket.summary}</td>
-                  <td className="text-[11px] text-[var(--oc-muted)]">
-                    {(ticket.missing_fields || []).join(', ') || '—'}
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="text-[11px] text-[var(--oc-accent)] hover:underline"
-                      onClick={() => handleOpenTicketInspector(ticket)}
-                    >
-                      Открыть
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="oc-card" aria-label="В работе">
-        <div className="border-b border-[var(--oc-border)] px-3 py-2">
-          <h2 className="oc-section-title">В работе</h2>
-        </div>
-        <div className="table-scroll">
-          <table className="oc-table min-w-[640px]">
-            <thead>
-              <tr>
-                <th>ID заявки</th>
-                <th>Оборудование</th>
-                <th>Проблема</th>
-                <th>Приоритет</th>
-                <th>SLA</th>
-                <th>Группа</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeTickets.map((t) => (
-                <tr key={t.ticket_id}>
-                  <td className="font-mono text-[11px]">{t.ticket_id}</td>
-                  <td className="font-mono text-[11px]">{t.asset_id}</td>
-                  <td className="max-w-[220px] truncate">{t.summary}</td>
-                  <td>
-                    <StatusBadge
-                      tone={t.priority === 'high' || t.priority === 'critical' ? 'warning' : 'info'}
-                      label={ruPriority(t.priority)}
-                    />
-                  </td>
-                  <td className="font-mono text-[11px]">
-                    {new Date(t.sla_deadline).toLocaleTimeString('ru-RU', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </td>
-                  <td className="text-[var(--oc-muted)]">{t.assigned_group}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {selectedTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div
-            className="oc-card flex max-h-[90vh] w-full max-w-2xl flex-col"
-            role="dialog"
-            aria-labelledby="hitl-dialog-title"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--oc-border)] px-3 py-2">
-              <div>
-                <h3 id="hitl-dialog-title" className="oc-section-title">
-                  Подтверждение решения · {selectedTicket.ticket_id}
-                </h3>
-                <p className="text-[10px] text-[var(--oc-muted)]">
-                  Входящее → пробелы в фактах → подтверждение → 1С
-                </p>
-              </div>
-              <button type="button" onClick={() => setSelectedTicket(null)} className="p-1 text-[var(--oc-muted)]">
-                <X className="h-4 w-4" />
+      {live && (
+        <section className="oc-card overflow-hidden" aria-label="Вы на линии">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oc-border)] px-3 py-2">
+            <div className="min-w-0">
+              <h2 className="oc-section-title">Вы на линии · {live.ticket_id}</h2>
+              <p className="text-[11px] text-[var(--oc-muted)]">
+                {channelLabel(ticketChannel(live))} · {customerName(db, live.customer_id)} · в эфире{' '}
+                {holdStartedAt ? formatHold(now - holdStartedAt) : '0:00'}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <StatusBadge tone={live.priority === 'high' || live.priority === 'critical' ? 'danger' : 'warning'} label={ruPriority(live.priority)} />
+              <button
+                type="button"
+                onClick={hangUp}
+                className="rounded-md border border-[var(--oc-border)] px-2 py-1 text-[11px] hover:bg-[var(--oc-surface-2)]"
+              >
+                Вернуть в очередь
               </button>
             </div>
+          </div>
 
-            <div className="grid gap-2 overflow-y-auto px-3 py-2 text-[12px]">
-              <div>
-                <p className="text-[10px] uppercase text-[var(--oc-muted)]">Входящее</p>
-                <p>{selectedTicket.description}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase text-[var(--oc-muted)]">Не хватает / факты</p>
-                <p>{(selectedTicket.missing_fields || []).join(', ') || 'заполнено'}</p>
-              </div>
-              <div className="max-h-36 space-y-1 overflow-y-auto rounded border border-[var(--oc-border)] bg-[var(--oc-bg)] p-2">
-                {(selectedTicket.messages || []).map((msg) => (
-                  <p key={msg.id} className="text-[11px]">
-                    <span className="text-[var(--oc-muted)]">{msg.author_name}: </span>
-                    {msg.text}
-                  </p>
+          <div className="grid gap-3 p-3 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="min-w-0 space-y-2">
+              <p className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Диалог</p>
+              <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] p-2">
+                {(live.messages || []).length === 0 && (
+                  <p className="rounded-md bg-[var(--oc-surface-2)] px-2 py-1.5 text-[12px] leading-snug">{lastClientText(live)}</p>
+                )}
+                {(live.messages || []).map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`max-w-[92%] rounded-md px-2 py-1.5 text-[12px] leading-snug ${
+                      msg.sender === 'client'
+                        ? 'bg-[var(--oc-surface-2)]'
+                        : msg.sender === 'operator'
+                          ? 'ml-auto bg-[var(--oc-accent-soft)] text-[var(--oc-accent)]'
+                          : 'text-[var(--oc-muted)]'
+                    }`}
+                  >
+                    <p className="text-[10px] opacity-70">{msg.author_name}</p>
+                    <p className="break-words">{msg.text}</p>
+                  </div>
                 ))}
               </div>
+              <div className="flex flex-wrap gap-1">
+                <button type="button" className="rounded-md border border-[var(--oc-border)] px-2 py-0.5 text-[11px] hover:bg-[var(--oc-surface-2)]" onClick={() => applyQuick('facts')}>
+                  Спросить недостающее
+                </button>
+                <button type="button" className="rounded-md border border-[var(--oc-border)] px-2 py-0.5 text-[11px] hover:bg-[var(--oc-surface-2)]" onClick={() => applyQuick('code')}>
+                  Код камеры
+                </button>
+                <button type="button" className="rounded-md border border-[var(--oc-border)] px-2 py-0.5 text-[11px] hover:bg-[var(--oc-surface-2)]" onClick={() => applyQuick('when')}>
+                  Окно выезда
+                </button>
+              </div>
               <label className="block">
-                <span className="text-[10px] uppercase text-[var(--oc-muted)]">Черновик ответа</span>
+                <span className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Ответ клиенту</span>
                 <textarea
                   rows={3}
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  className="mt-0.5 w-full rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] p-2 text-xs"
+                  className="mt-0.5 w-full rounded-md border border-[var(--oc-border)] bg-[var(--oc-bg)] p-2 text-xs leading-snug"
                 />
               </label>
-              <div className="grid grid-cols-2 gap-2">
+            </div>
+
+            <div className="min-w-0 space-y-2">
+              <p className="text-[10px] uppercase tracking-wide text-[var(--oc-muted)]">Не хватает</p>
+              <div className="flex flex-wrap gap-1">
+                {(live.missing_fields || []).length === 0 ? (
+                  <StatusBadge tone="success" label="ФАКТЫ ЕСТЬ" />
+                ) : (
+                  (live.missing_fields || []).map((field) => (
+                    <StatusBadge key={field} tone="warning" label={missingFieldLabel(field)} />
+                  ))
+                )}
+              </div>
+              <div className="grid gap-2">
                 <label className="text-[11px]">
                   Оборудование
                   <input
@@ -299,39 +303,138 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({ db, on
                   />
                 </label>
               </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={handleSendClarification}
+                  disabled={isSending}
+                  className="inline-flex items-center gap-1 rounded-md border border-[var(--oc-border)] px-3 py-1.5 text-[12px] hover:bg-[var(--oc-surface-2)] disabled:opacity-50"
+                >
+                  <Send className="h-3 w-3" />
+                  Отправить
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApproveAndCommitTicket}
+                  className="inline-flex items-center gap-1 rounded-md bg-[var(--status-success-soft)] px-3 py-1.5 text-[12px] font-medium text-[var(--status-success)]"
+                >
+                  Провести в 1С
+                </button>
+              </div>
+              {statusMessage && <p className="text-[11px] text-[var(--oc-muted)]">{statusMessage}</p>}
             </div>
-
-            <div className="flex flex-wrap gap-1.5 border-t border-[var(--oc-border)] px-3 py-2">
-              <button
-                type="button"
-                onClick={handleSendClarification}
-                disabled={isSending}
-                className="inline-flex items-center gap-1 rounded-md border border-[var(--oc-border)] px-3 py-1 text-[12px] hover:bg-[var(--oc-surface-2)] disabled:opacity-50"
-              >
-                <Send className="h-3 w-3" />
-                Отправить
-              </button>
-              <button
-                type="button"
-                onClick={handleApproveAndCommitTicket}
-                className="rounded-md bg-[var(--status-success-soft)] px-3 py-1 text-[12px] font-medium text-[var(--status-success)]"
-              >
-                Подтвердить
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedTicket(null)}
-                className="rounded-md bg-[var(--status-danger-soft)] px-3 py-1 text-[12px] font-medium text-[var(--status-danger)]"
-              >
-                Отклонить
-              </button>
-            </div>
-            {statusMessage && (
-              <p className="px-3 pb-2 text-[11px] text-[var(--oc-muted)]">{statusMessage}</p>
-            )}
           </div>
-        </div>
+        </section>
       )}
+
+      <section className="oc-card overflow-hidden" aria-label="Очередь на линии">
+        <div className="flex items-center justify-between border-b border-[var(--oc-border)] px-3 py-2">
+          <h2 className="oc-section-title">{live ? 'Ещё ждут' : 'На линии'}</h2>
+          <StatusBadge
+            tone={pendingTickets.length ? 'warning' : 'success'}
+            label={pendingTickets.length ? String(pendingTickets.length) : 'СВОБОДНО'}
+          />
+        </div>
+        <div className="grid gap-2 p-3">
+          {!pendingTickets.length && (
+            <p className="py-4 text-center text-[12px] text-[var(--oc-muted)]">Линия свободна — входящих нет.</p>
+          )}
+          {(live ? waitingLine : pendingTickets).map((ticket) => (
+            <article
+              key={ticket.ticket_id}
+              className={`oc-on-line rounded-lg border border-[var(--oc-border)] bg-[var(--oc-bg)] px-3 py-2.5 ${
+                ticket.priority === 'critical' || ticket.priority === 'high' ? 'row-critical' : ''
+              }`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] text-[var(--oc-muted)]">
+                    {channelLabel(ticketChannel(ticket))} · {ticket.ticket_id} · {customerName(db, ticket.customer_id)}
+                  </p>
+                  <p className="mt-1 text-[13px] leading-snug">{ticket.summary}</p>
+                  <p className="mt-1 break-words text-[12px] leading-snug text-[var(--oc-muted)]">«{lastClientText(ticket)}»</p>
+                  {(ticket.missing_fields || []).length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {(ticket.missing_fields || []).map((field) => (
+                        <StatusBadge key={field} tone="warning" label={missingFieldLabel(field)} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[var(--oc-accent-soft)] px-3 py-1.5 text-[12px] font-medium text-[var(--oc-accent)]"
+                  onClick={() => takeTicket(ticket)}
+                >
+                  <Phone className="h-3 w-3" aria-hidden="true" />
+                  Взять обращение
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="oc-card" aria-label="В работе">
+        <div className="border-b border-[var(--oc-border)] px-3 py-2">
+          <h2 className="oc-section-title">В работе</h2>
+        </div>
+        <div className="table-scroll">
+          <table className="oc-table oc-table-stack">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Оборудование</th>
+                <th>Проблема</th>
+                <th>Приоритет</th>
+                <th>SLA</th>
+                <th>Группа</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeTickets.map((t) => (
+                <tr key={t.ticket_id}>
+                  <td className="font-mono text-[11px]" data-label="ID">
+                    {t.ticket_id}
+                  </td>
+                  <td className="font-mono text-[11px]" data-label="Оборудование">
+                    {t.asset_id}
+                  </td>
+                  <td data-label="Проблема">{t.summary}</td>
+                  <td data-label="Приоритет">
+                    <StatusBadge
+                      tone={t.priority === 'high' || t.priority === 'critical' ? 'warning' : 'info'}
+                      label={ruPriority(t.priority)}
+                    />
+                  </td>
+                  <td className="font-mono text-[11px]" data-label="SLA">
+                    {new Date(t.sla_deadline).toLocaleTimeString('ru-RU', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </td>
+                  <td className="text-[var(--oc-muted)]" data-label="Группа">
+                    {t.assigned_group}
+                  </td>
+                  <td>
+                    {onStartTicket && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--oc-accent)]"
+                        onClick={() => onStartTicket(t.ticket_id)}
+                      >
+                        <Play className="h-3 w-3" aria-hidden="true" />
+                        Приступить
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 };
