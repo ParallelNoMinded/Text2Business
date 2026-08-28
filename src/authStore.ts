@@ -1,4 +1,6 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
+import { mkdirSync, readFileSync, writeFileSync } from 'fs';
+import path from 'path';
 import { ActivityEvent, PublicUser, UserRole, UserStatus } from './types';
 import { firstRegisterError, normalizePhoneDigits } from './registerValidation';
 
@@ -27,6 +29,74 @@ const usersByEmail = new Map<string, StoredUser>();
 const usersById = new Map<string, StoredUser>();
 const sessions = new Map<string, SessionRecord>();
 const activityLog: ActivityEvent[] = [];
+
+const DEFAULT_USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
+const runningTests = Boolean(process.env.NODE_TEST_CONTEXT) || process.argv.some((a) => a.includes('--test'));
+let persistEnabled = !runningTests;
+let persistFile = process.env.AUTH_USERS_FILE || DEFAULT_USERS_FILE;
+
+function persistAllowed(): boolean {
+  return persistEnabled && Boolean(persistFile);
+}
+
+function isStoredUser(value: unknown): value is StoredUser {
+  if (!value || typeof value !== 'object') return false;
+  const u = value as StoredUser;
+  return (
+    typeof u.id === 'string' &&
+    typeof u.firstName === 'string' &&
+    typeof u.lastName === 'string' &&
+    typeof u.email === 'string' &&
+    typeof u.passwordSalt === 'string' &&
+    typeof u.passwordHash === 'string' &&
+    (u.role === 'admin' || u.role === 'dispatcher') &&
+    (u.status === 'active' || u.status === 'blocked') &&
+    typeof u.createdAt === 'string'
+  );
+}
+
+function persistUsers() {
+  if (!persistAllowed()) return;
+  try {
+    mkdirSync(path.dirname(persistFile), { recursive: true });
+    const payload = {
+      users: [...usersById.values()],
+      activity: activityLog.slice(0, 200),
+    };
+    writeFileSync(persistFile, JSON.stringify(payload, null, 2), { encoding: 'utf8' });
+  } catch (err) {
+    console.warn('Не удалось сохранить пользователей:', err);
+  }
+}
+
+function loadPersistedUsers() {
+  if (!persistAllowed()) return;
+  try {
+    const raw = readFileSync(persistFile, 'utf8');
+    const parsed = JSON.parse(raw) as { users?: unknown; activity?: unknown };
+    const users = Array.isArray(parsed.users) ? parsed.users.filter(isStoredUser) : [];
+    usersByEmail.clear();
+    usersById.clear();
+    for (const user of users) {
+      usersByEmail.set(normalizeEmail(user.email), user);
+      usersById.set(user.id, user);
+    }
+    if (Array.isArray(parsed.activity)) {
+      activityLog.length = 0;
+      for (const item of parsed.activity) {
+        if (!item || typeof item !== 'object') continue;
+        const ev = item as ActivityEvent;
+        if (typeof ev.id === 'string' && typeof ev.email === 'string' && typeof ev.action === 'string') {
+          activityLog.push(ev);
+        }
+      }
+    }
+  } catch (err: any) {
+    if (err && err.code !== 'ENOENT') {
+      console.warn('Не удалось прочитать сохранённых пользователей:', err);
+    }
+  }
+}
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -67,6 +137,7 @@ export function recordActivity(user: PublicUser | StoredUser, action: string, de
     detail,
   });
   if (activityLog.length > 200) activityLog.length = 200;
+  persistUsers();
 }
 
 export function listActivity(): ActivityEvent[] {
@@ -98,6 +169,7 @@ function createUser(input: {
   };
   usersByEmail.set(user.email, user);
   usersById.set(user.id, user);
+  persistUsers();
   return user;
 }
 
@@ -115,6 +187,7 @@ function seedIfMissing(input: {
 }
 
 export function seedDefaultUsers() {
+  loadPersistedUsers();
   seedIfMissing({
     firstName: 'Админ',
     lastName: 'Системы',
@@ -280,6 +353,7 @@ export function adminPatchUser(
   user.role = nextRole;
   user.status = nextStatus;
   if (user.status === 'blocked') destroySessionsForUser(user.id);
+  persistUsers();
   return { user: toPublicUser(user) };
 }
 
@@ -300,13 +374,42 @@ export function updateOwnProfile(
     user.passwordSalt = salt.toString('hex');
     user.passwordHash = hashPassword(patch.password, salt).toString('hex');
   }
+  persistUsers();
   return { user: toPublicUser(user) };
 }
 
 export function resetAuthStoreForTests() {
+  persistEnabled = false;
   usersByEmail.clear();
   usersById.clear();
   sessions.clear();
   activityLog.length = 0;
-  seedDefaultUsers();
+  seedIfMissing({
+    firstName: 'Админ',
+    lastName: 'Системы',
+    email: process.env.ADMIN_EMAIL || 'admin@text2business.local',
+    password: process.env.ADMIN_PASSWORD || 'admin123',
+    role: 'admin',
+    phone: '79990000001',
+  });
+  seedIfMissing({
+    firstName: 'Иван',
+    lastName: 'Диспетчеров',
+    email: process.env.DISPATCHER_EMAIL || 'dispatcher@text2business.local',
+    password: process.env.DISPATCHER_PASSWORD || 'dispatcher123',
+    role: 'dispatcher',
+    phone: '79990000002',
+  });
+}
+
+export function persistAuthRoundTripForTests(file: string) {
+  persistFile = file;
+  persistEnabled = true;
+  persistUsers();
+  usersByEmail.clear();
+  usersById.clear();
+  sessions.clear();
+  activityLog.length = 0;
+  loadPersistedUsers();
+  persistEnabled = false;
 }

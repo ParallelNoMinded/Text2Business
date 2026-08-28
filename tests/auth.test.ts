@@ -1,8 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'fs';
+import os from 'os';
+import path from 'path';
 import {
   getUserBySession,
   loginUser,
+  persistAuthRoundTripForTests,
   registerDispatcher,
   resetAuthStoreForTests,
   toPublicUser,
@@ -52,6 +56,29 @@ test('публичный пользователь не содержит хеш �
   } as any);
   assert.equal((publicUser as any).passwordHash, undefined);
   assert.equal((publicUser as any).passwordSalt, undefined);
+});
+
+test('регистрация сохраняется на диск и читается после перезагрузки', () => {
+  resetAuthStoreForTests();
+  const created = registerDispatcher({
+    firstName: 'Соня',
+    lastName: 'Файлова',
+    email: 'sonya.persist@example.com',
+    password: 'password1',
+    phone: '+7 999 555-44-33',
+  });
+  assert.ok('user' in created);
+  if (!('user' in created)) return;
+  const file = path.join(os.tmpdir(), `t2b-users-${Date.now()}.json`);
+  persistAuthRoundTripForTests(file);
+  const raw = readFileSync(file, 'utf8');
+  assert.equal(raw.includes('password1'), false);
+  assert.ok(raw.includes('sonya.persist@example.com'));
+  const again = loginUser('sonya.persist@example.com', 'password1');
+  assert.ok('sessionId' in again);
+  if (!('sessionId' in again)) return;
+  assert.equal(again.user.firstName, 'Соня');
+  assert.equal(again.user.phone, '79995554433');
 });
 
 test('вход по неверному паролю не выдаёт сессию', () => {
