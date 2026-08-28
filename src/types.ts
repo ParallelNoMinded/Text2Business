@@ -129,6 +129,10 @@ export interface ProcessingResult {
   is_dry_run: boolean;
   guardrail_triggered?: boolean;
   guardrail_reason?: string;
+  auto_commit?:
+    | { success: true; action: 'CREATE' | 'UPDATE'; ticket: Ticket }
+    | { success: false; status: number; error: string }
+    | null;
 }
 
 export interface ScenarioPreset {

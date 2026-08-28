@@ -1,14 +1,6 @@
 import React from 'react';
 import { SCENARIO_PRESETS } from '../scenarios';
-import {
-  Play,
-  RotateCcw,
-  Mail,
-  PhoneCall,
-  Send,
-  Globe,
-  Clock,
-} from 'lucide-react';
+import { RotateCcw, Mail, PhoneCall, Send, Globe, Clock } from 'lucide-react';
 
 interface ScenarioRunnerProps {
   selectedPresetId: string;
@@ -39,12 +31,10 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
   onRunDispatch,
   isLoading,
   onResetInput,
-  theme = 'dark',
 }) => {
-  const isDark = theme === 'dark';
-
-  // Keydown listener for Ctrl+Enter / Cmd+Enter
+  // Ctrl+Enter / Cmd+Enter — быстрый запуск разбора
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       if (!isLoading && rawText.trim()) {
@@ -56,108 +46,85 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
   const getChannelIcon = (ch: string) => {
     switch (ch) {
       case 'email':
-        return <Mail className="h-3.5 w-3.5" />;
+        return <Mail className="h-3.5 w-3.5" aria-hidden="true" />;
       case 'call_transcript':
-        return <PhoneCall className="h-3.5 w-3.5" />;
+        return <PhoneCall className="h-3.5 w-3.5" aria-hidden="true" />;
       case 'telegram':
-        return <Send className="h-3.5 w-3.5" />;
+        return <Send className="h-3.5 w-3.5" aria-hidden="true" />;
       default:
-        return <Globe className="h-3.5 w-3.5" />;
+        return <Globe className="h-3.5 w-3.5" aria-hidden="true" />;
     }
   };
 
   return (
-    <div
-      id="scenario-runner-panel"
-      className={`rounded-2xl p-4 sm:p-5 transition-all border ${
-        isDark
-          ? 'bg-[#06060e]/95 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
-          : 'bg-white border-slate-300 shadow-sm text-slate-900'
-      }`}
-    >
-      {/* Header Bar */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
+    <div id="scenario-runner-panel" className="sheet p-4 sm:p-5">
+      {/* Шапка бланка */}
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-rule pb-3">
         <div>
-          <div className="flex items-center space-x-2">
-            <span className={`h-2 w-2 rounded-full ${isDark ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-blue-900'}`}></span>
-            <h2 className={`text-xs font-mono font-extrabold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              Обращение
-            </h2>
-          </div>
-          <p
-            className={`text-xs mt-0.5 font-sans ${
-              isDark ? 'text-slate-400' : 'text-slate-700 font-medium'
-            }`}
-          >
-            Выберите пресет быстрой загрузки или введите сообщение
+          <h1 className="text-lg font-bold text-ink">Входящее обращение</h1>
+          <p className="mt-1 text-sm leading-relaxed text-ink-2">
+            Выберите готовый случай или впишите текст обращения
           </p>
         </div>
 
-        {/* Reset Button */}
         <button
           id="reset-input-btn"
           type="button"
           onClick={onResetInput}
-          className={`flex items-center space-x-1 px-2.5 py-1 text-[11px] font-mono border rounded-lg transition ${
-            isDark
-              ? 'text-slate-400 hover:text-white bg-[#080810] hover:bg-white/10 border-white/10'
-              : 'text-slate-700 hover:text-blue-950 bg-slate-100 hover:bg-slate-200 border-slate-300 font-bold'
-          }`}
-          title="Сбросить введенные данные к значениям пресета"
+          className="inline-flex min-h-11 items-center gap-1.5 border border-rule-strong px-3 font-mono text-[11px] uppercase tracking-wider text-ink-2 transition hover:bg-panel-2 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          title="Вернуть поля к значениям выбранного случая"
         >
-          <RotateCcw className="h-3 w-3" />
+          <RotateCcw className="h-3 w-3" aria-hidden="true" />
           <span>Сброс</span>
         </button>
       </div>
 
-      {/* Preset Pills */}
-      <div className="my-3 space-y-1.5">
-        <label
-          className={`block text-[10px] font-mono font-bold uppercase tracking-wider ${
-            isDark ? 'text-slate-400' : 'text-blue-950'
-          }`}
+      {/* Готовые случаи — корешки картотеки */}
+      <div className="my-3">
+        <span
+          id="preset-group-label"
+          className="mb-1.5 block font-sans text-sm font-semibold text-ink-2"
         >
-          Быстрые кейсы
-        </label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          Готовые случаи
+        </span>
+        <div
+          role="group"
+          aria-labelledby="preset-group-label"
+          className="grid grid-cols-2 gap-px bg-rule sm:grid-cols-4"
+        >
           {SCENARIO_PRESETS.map((preset) => {
             const isSelected = selectedPresetId === preset.id;
+            const isEscalation = preset.id === 'tc-04';
             return (
               <button
                 key={preset.id}
                 id={`preset-pill-${preset.id}`}
+                type="button"
                 onClick={() => onSelectPreset(preset.id)}
-                className={`text-left px-3 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col justify-between ${
+                aria-pressed={isSelected}
+                className={`flex min-h-20 min-w-0 flex-col justify-between gap-1 overflow-hidden px-3 py-3 text-left font-sans text-sm transition ${
                   isSelected
-                    ? isDark
-                      ? 'bg-cyan-950/60 border-cyan-500/80 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.2)] ring-1 ring-cyan-500/40'
-                      : 'bg-blue-900 border-blue-950 text-white font-extrabold ring-1 ring-blue-900 shadow-sm'
-                    : isDark
-                    ? 'bg-[#05050a]/80 border-white/10 text-slate-400 hover:border-cyan-500/40 hover:text-slate-200'
-                    : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-blue-900 hover:bg-slate-100 font-semibold'
+                    ? 'bg-accent text-on-accent'
+                    : 'bg-paper text-ink-2 hover:bg-panel-2 hover:text-ink'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold">{preset.code}</span>
+                <span className="flex min-w-0 items-start justify-between gap-2">
+                  <span className="shrink-0 tracking-wider">{preset.code}</span>
                   <span
-                    className={`text-[9px] px-1 py-0.2 rounded font-bold uppercase ${
-                      preset.id === 'tc-04'
-                        ? isDark
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                          : 'bg-rose-100 text-rose-950 border border-rose-300 font-extrabold'
-                        : isSelected
-                        ? isDark
-                          ? 'bg-cyan-500/20 text-cyan-300'
-                          : 'bg-blue-800 text-white'
-                        : isDark
-                        ? 'bg-slate-700/30 text-slate-400'
-                        : 'bg-slate-200 text-slate-700'
+                    className={`min-w-0 break-words text-right text-xs uppercase leading-snug tracking-wider ${
+                      isSelected
+                        ? 'text-on-accent/85'
+                        : isEscalation
+                        ? 'text-attention'
+                        : 'text-ink-3'
                     }`}
                   >
                     {preset.badge}
                   </span>
-                </div>
-                <span className={`text-[10px] truncate mt-1 ${isSelected && !isDark ? 'text-blue-100' : 'text-slate-500'}`}>
+                </span>
+                <span
+                  className={`block min-w-0 break-words text-sm leading-snug ${isSelected ? 'text-on-accent/90' : 'text-ink-2'}`}
+                >
                   {preset.title}
                 </span>
               </button>
@@ -166,14 +133,13 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
         </div>
       </div>
 
-      {/* Inputs Form */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      {/* Графы бланка */}
+      <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label
-              className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${
-                isDark ? 'text-cyan-400' : 'text-blue-950'
-              }`}
+              htmlFor="channel-select"
+              className="mb-1 block font-sans text-sm font-semibold text-ink-2"
             >
               Канал связи
             </label>
@@ -182,20 +148,14 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                 id="channel-select"
                 value={channel}
                 onChange={(e) => setChannel(e.target.value)}
-                className={`w-full border rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none appearance-none pr-8 ${
-                  isDark
-                    ? 'bg-[#080810] border-cyan-500/30 text-white focus:border-cyan-400'
-                    : 'bg-slate-50 border-slate-300 text-blue-950 font-bold focus:border-blue-900'
-                }`}
+                className="min-h-11 w-full appearance-none border border-rule bg-paper px-3 pr-8 font-sans text-base text-ink focus:border-rule-strong focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
               >
-                <option value="email">Email (Электронная почта)</option>
-                <option value="call_transcript">
-                  Транскрипт звонка (Call Transcript)
-                </option>
-                <option value="telegram">Telegram Бот / Чат</option>
-                <option value="portal">Сервисный Веб-Портал</option>
+                <option value="email">Электронная почта</option>
+                <option value="call_transcript">Запись телефонного звонка</option>
+                <option value="telegram">Telegram</option>
+                <option value="portal">Веб-портал</option>
               </select>
-              <div className={`absolute right-2.5 top-2.5 pointer-events-none ${isDark ? 'text-cyan-500' : 'text-blue-900'}`}>
+              <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3">
                 {getChannelIcon(channel)}
               </div>
             </div>
@@ -203,11 +163,10 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
 
           <div>
             <label
-              className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${
-                isDark ? 'text-cyan-400' : 'text-blue-950'
-              }`}
+              htmlFor="incoming-time-input"
+              className="mb-1 block font-sans text-sm font-semibold text-ink-2"
             >
-              Время получения (Timestamp)
+              Время получения
             </label>
             <div className="relative">
               <input
@@ -215,34 +174,26 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
                 type="text"
                 value={incomingTime}
                 onChange={(e) => setIncomingTime(e.target.value)}
-                className={`w-full border rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none pr-8 ${
-                  isDark
-                    ? 'bg-[#080810] border-cyan-500/30 text-white focus:border-cyan-400'
-                    : 'bg-slate-50 border-slate-300 text-blue-950 font-bold focus:border-blue-900'
-                }`}
+                className="min-h-11 w-full border border-rule bg-paper px-3 pr-8 font-sans text-base tabular-nums text-ink focus:border-rule-strong focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
               />
-              <Clock className={`absolute right-2.5 top-2 h-3.5 w-3.5 pointer-events-none ${isDark ? 'text-cyan-500' : 'text-blue-900'}`} />
+              <Clock
+                className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-3"
+                aria-hidden="true"
+              />
             </div>
           </div>
         </div>
 
-        {/* Text Area */}
+        {/* Основная графа — текст обращения */}
         <div>
-          <div className="flex items-center justify-between mb-1">
+          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3">
             <label
-              className={`block text-[10px] font-mono font-bold uppercase tracking-wider ${
-                isDark ? 'text-cyan-400' : 'text-blue-950'
-              }`}
+              htmlFor="raw-text-input"
+              className="block font-sans text-sm font-semibold text-ink-2"
             >
-              Текст входящего обращения
+              Текст обращения
             </label>
-            <span
-              className={`text-[10px] font-mono ${
-                isDark ? 'text-slate-400' : 'text-slate-700 font-bold'
-              }`}
-            >
-              Ctrl + Enter для запуска
-            </span>
+            <span className="font-mono text-[10px] text-ink-3">Ctrl + Enter — разобрать</span>
           </div>
           <textarea
             id="raw-text-input"
@@ -250,43 +201,36 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Введите неструктурированный текст обращения..."
-            className={`w-full border rounded-xl p-3 text-xs placeholder-slate-400 focus:outline-none font-sans leading-relaxed shadow-inner resize-none ${
-              isDark
-                ? 'bg-[#080810] border-cyan-500/30 text-slate-100 focus:border-cyan-400'
-                : 'bg-slate-50 border-slate-300 text-slate-900 font-semibold focus:border-blue-900'
-            }`}
+            placeholder="Впишите текст обращения…"
+            className="w-full resize-none rounded-lg border border-rule bg-paper p-4 text-base leading-relaxed text-ink placeholder:text-ink-3 focus:border-rule-strong focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
           />
         </div>
 
-        {/* Primary CTA Button */}
+        {/* Действие — печать-штамп «принять в работу» */}
         <button
           id="run-dispatch-btn"
           type="button"
           onClick={onRunDispatch}
           disabled={isLoading || !rawText.trim()}
-          className={`w-full font-extrabold py-3 px-4 rounded-xl shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-[0.99] ${
-            isDark
-              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-cyan-500/10'
-              : 'bg-blue-900 hover:bg-blue-950 text-white shadow-blue-900/20'
-          } ${isLoading || !rawText.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+          aria-busy={isLoading}
+          className="flex min-h-12 w-full items-center justify-center gap-2 border border-accent bg-accent px-4 font-sans text-base uppercase tracking-[0.14em] text-on-accent transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:cursor-not-allowed disabled:opacity-45"
         >
           {isLoading ? (
             <>
-              <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs uppercase tracking-wider font-mono">
-                Идет Обработка AI...
-              </span>
+              <span
+                className="h-3.5 w-3.5 rounded-full border border-current border-t-transparent motion-safe:animate-spin"
+                aria-hidden="true"
+              />
+              <span>Обработка…</span>
             </>
           ) : (
-            <>
-              <Play className="w-4 h-4 fill-current" />
-              <span className="text-xs uppercase tracking-wider font-mono">
-                ▶ ЗАПУСТИТЬ AI-ДИСПЕТЧЕРИЗАЦИЮ (Ctrl+Enter)
-              </span>
-            </>
+            <span>Разобрать обращение</span>
           )}
         </button>
+
+        <p role="status" aria-live="polite" className="sr-only">
+          {isLoading ? 'Обращение обрабатывается, подождите.' : ''}
+        </p>
       </div>
     </div>
   );

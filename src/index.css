@@ -1,64 +1,814 @@
 @import "tailwindcss";
 
-@layer utilities {
-  .glass-card-dark {
-    background: rgba(10, 10, 20, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(34, 211, 238, 0.18);
+/* ==========================================================================
+   ЖУРНАЛ РЕГИСТРАЦИИ ЗАЯВОК — система оформления
+   --------------------------------------------------------------------------
+   Направление: архивно-канцелярское. Носитель — разлинованный журнал
+   регистрации обращений: левая графа входящих номеров, строка на заявку,
+   сухая пометка статуса. Палитра выведена из носителя, не из трендов:
+   бумага журнала (холодный светло-серый), графит типографской краски,
+   приглушённые чернила как единственный акцент.
+
+   Требования docs/ux-audit/08-requirements.md:
+   - спокойная нейтральная база, без насыщенных фонов;
+   - один акцентный цвет на экран;
+   - красный только для настоящих ошибок;
+   - ничто не движется без действия пользователя.
+   ========================================================================== */
+
+:root,
+.light {
+  /* Мягкая нейтральная бумага: уровни видны без тяжёлых рамок. */
+  --paper: #f5f6f7;
+  --panel: #ffffff;
+  --panel-2: #eceff2;
+  --rule: #d9dee3;
+  --rule-strong: #b9c2ca;
+
+  --ink: #19232d;
+  --ink-2: #465563;
+  --ink-3: #5e6c78;
+
+  /* Спокойный служебный синий: заметный, но не яркий. */
+  --accent: #35698f;
+  --accent-hover: #285777;
+  --accent-bg: #e3edf4;
+  --on-accent: #ffffff;
+
+  --warn: #7d5d1f;
+  --warn-bg: #f5ecd9;
+
+  --danger: #91463f;
+  --danger-bg: #f5e5e2;
+
+  --shadow-sheet: 0 10px 30px color-mix(in srgb, var(--ink) 6%, transparent);
+
+  /* Авторизация всегда использует защищённый графитовый контур независимо от темы приложения. */
+  --auth-surface: #12171c;
+  --auth-foreground: #e3e7ea;
+}
+
+.dark {
+  /* Нейтральный графит снижает цветовую нагрузку в длинной смене. */
+  --paper: #171b1f;
+  --panel: #1e2328;
+  --panel-2: #282e34;
+  --rule: #343b42;
+  --rule-strong: #4b555e;
+
+  --ink: #e7eaed;
+  --ink-2: #b9c1c8;
+  --ink-3: #929da6;
+
+  --accent: #79a9c9;
+  --accent-hover: #91bad4;
+  --accent-bg: #263b49;
+  --on-accent: #101820;
+
+  --warn: #d5b36e;
+  --warn-bg: #3a3222;
+
+  --danger: #dc9188;
+  --danger-bg: #412b29;
+
+  --shadow-sheet: 0 14px 36px rgb(0 0 0 / 0.16);
+}
+
+@theme inline {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-bg: var(--accent-bg);
+  --color-on-accent: var(--on-accent);
+
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-auth-surface: var(--auth-surface);
+  --color-auth-foreground: var(--auth-foreground);
+
+  /* Спокойная прикладная геометрия: поверхности различимы, но не похожи на промо-карточки. */
+  --radius-sheet: 10px;
+}
+
+/* Широкие мониторы диспетчерской: до 1920px контент занимает всю доступную
+   ширину, дальше растёт вместе с экраном. Смысл ограничения — не сузить
+   рабочую область, а не дать графам расползтись на нечитаемую длину. */
+@media (min-width: 1920px) {
+  .wide-container {
+    max-width: 2200px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .wide-container {
+    max-width: 2560px;
+  }
+}
+
+@layer base {
+  html {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: clip;
+    background-color: var(--paper);
+    color: var(--ink);
   }
 
+  body,
+  #root {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    background-color: var(--paper);
+  }
+
+  body {
+    overflow-x: clip;
+    font-size: 1rem;
+    line-height: 1.55;
+    font-feature-settings: "tnum" 1; /* табличные цифры: номера и время не «прыгают» */
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-size: max(1rem, 16px);
+  }
+
+  /* Видимый фокус на всём интерактивном: диспетчер работает и с клавиатуры. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: var(--accent-bg);
+    color: var(--ink);
+  }
+
+  /* Спокойные переходы: короткие, не привлекают внимание к себе. */
+  :where(a, button, input, select, textarea) {
+    transition-property: background-color, border-color, color;
+    transition-duration: 140ms;
+    transition-timing-function: ease-out;
+  }
+}
+
+@layer components {
+  /* ---------------------------------------------------------------------
+     СИГНАТУРНЫЙ ЭЛЕМЕНТ: строка журнала регистрации.
+     Не карточка с рамкой и тенью, а строка разлинованного разворота:
+     номер в левом поле, разлиновка вместо границ, пометка статуса справа.
+     --------------------------------------------------------------------- */
+  .journal {
+    overflow: hidden;
+    background-color: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sheet);
+  }
+
+  .journal-head {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--rule-strong);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .journal-row {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.875rem 1rem 0.875rem 0;
+    border-bottom: 1px solid var(--rule);
+    border-left: 3px solid transparent;
+    padding-left: 1rem;
+    background-color: transparent;
+  }
+
+  .journal-row:last-child {
+    border-bottom: none;
+  }
+
+  .journal-row:hover {
+    background-color: var(--panel-2);
+  }
+
+  .journal-row[data-selected="true"] {
+    background-color: var(--panel-2);
+    border-left-color: var(--accent);
+  }
+
+  .journal-row[data-attention="true"] {
+    border-left-color: var(--warn);
+  }
+
+  /* Входящий номер: моноширинный, в левом поле, как в графе журнала. */
+  .reg-no {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-3);
+    letter-spacing: 0.02em;
+  }
+
+  /* Пометка статуса: сухая рамка-штамп, а не светящаяся плашка.
+     Статус читается подписью, цвет — только вспомогательный признак. */
+  .stamp {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid currentColor;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1.5;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* Лист бланка: основная поверхность вместо «стеклянной карточки». */
+  .sheet {
+    background-color: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 0.625rem;
+  }
+
+  dialog.sheet,
+  [role="dialog"].sheet {
+    box-shadow: var(--shadow-sheet);
+  }
+
+  .section-kicker {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+
+  .page-header { display: flex; flex-direction: column; gap: 1rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--rule); }
+  .page-title { margin-top: 0.5rem; max-width: 52rem; font-family: var(--font-sans); font-size: clamp(1.75rem, 3vw, 2.5rem); font-weight: 700; line-height: 1.15; letter-spacing: -0.03em; color: var(--ink); text-wrap: balance; }
+  .page-description { margin-top: 0.75rem; max-width: 44rem; font-size: 1rem; line-height: 1.6; color: var(--ink-2); }
+  .section-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+  .section-title { font-size: 1.25rem; font-weight: 700; color: var(--ink); }
+  .section-description { margin-top: 0.25rem; font-size: 0.875rem; line-height: 1.5; color: var(--ink-2); }
+
+  .journal-section { display: flex; gap: 1.25rem; padding: 1.5rem 0; border-top: 1px solid var(--rule-strong); border-bottom: 1px solid var(--rule); }
+  .journal-index, .journal-row-index { display: flex; width: 2.5rem; flex: 0 0 2.5rem; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 0.8125rem; color: var(--ink-3); }
+  .journal-list { border-top: 1px solid var(--rule); }
+  .journal-list .journal-row, button.journal-row { display: flex; min-height: 4.5rem; align-items: center; gap: 1rem; border-right: 0; border-left: 0; padding: 0.75rem 0.5rem 0.75rem 0; color: var(--ink); }
+
+  .ui-button { display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 0.625rem; padding: 0.625rem 1rem; font-size: 0.875rem; font-weight: 700; }
+  .ui-button-primary { background: var(--accent); color: var(--on-accent); }
+  .ui-button-primary:hover { background: var(--accent-hover); }
+  .ui-button-secondary { border: 1px solid var(--rule); background: var(--panel); color: var(--ink); }
+  .ui-button-secondary:hover { background: var(--panel-2); }
+  .ui-button-danger { background: var(--danger); color: var(--on-accent); }
+  .ui-button-ghost { color: var(--ink-2); }
+
+  .status-notice { display: flex; gap: 0.75rem; border-left: 3px solid var(--rule-strong); background: var(--panel-2); padding: 0.875rem 1rem; color: var(--ink-2); }
+  .status-notice-info { border-color: var(--accent); background: var(--accent-bg); color: var(--ink); }
+  .status-notice-warning { border-color: var(--warn); background: var(--warn-bg); color: var(--ink); }
+  .status-notice-danger { border-color: var(--danger); background: var(--danger-bg); color: var(--ink); }
+  .empty-state { display: flex; min-height: 8rem; align-items: center; justify-content: center; gap: 1rem; border: 1px dashed var(--rule-strong); padding: 1.5rem; text-align: left; }
+
+  @media (min-width: 640px) { .page-header { flex-direction: row; align-items: flex-end; justify-content: space-between; } }
+
+  .control {
+    min-height: 2.75rem;
+    border: 1px solid var(--rule);
+    border-radius: 0.625rem;
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  .primary-action {
+    min-height: 2.75rem;
+    border-radius: 0.625rem;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 700;
+  }
+
+  .primary-action:hover {
+    background: var(--accent-hover);
+  }
+
+  /* Демо-стенд просматривают на широких диспетчерских мониторах.
+     Микротекст здесь не используется: основной слой — 16 px, служебный — 14 px. */
+  .demo-readable {
+    font-size: 1rem;
+  }
+
+  .demo-readable .text-xs,
+  .demo-readable .text-\[10px\],
+  .demo-readable .text-\[11px\],
+  .demo-readable .text-\[12px\] {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .demo-readable .text-\[9px\] {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+  }
+
+  .demo-readable :is(input, select, textarea) {
+    min-height: 3rem;
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+
+  .demo-readable textarea {
+    min-height: 10rem;
+  }
+
+  .demo-readable .stamp {
+    font-size: 0.8125rem;
+  }
+
+  .timeline-spine {
+    position: relative;
+    padding-left: 1.5rem;
+  }
+
+  .timeline-spine::before {
+    content: "";
+    position: absolute;
+    left: 0.3rem;
+    top: 0.35rem;
+    bottom: 0.35rem;
+    width: 1px;
+    background: var(--rule-strong);
+  }
+
+  .timeline-spine::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.3rem;
+    width: 0.65rem;
+    height: 0.65rem;
+    border: 2px solid var(--accent);
+    border-radius: 999px;
+    background: var(--panel);
+  }
+
+  /* Графа бланка: подпись сверху, значение снизу, разделено линией. */
+  .field-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.375rem 0;
+    border-bottom: 1px dotted var(--rule);
+  }
+
+  .field-row:last-child {
+    border-bottom: none;
+  }
+
+  /* ---------------------------------------------------------------------
+     РАЗВОРОТ ЖУРНАЛА: таблица реестра.
+     Разлиновка вместо рамок и «зебры»: горизонтальные линии граф, левая
+     графа номеров моноширинным, шапка — сухая подпись бланка.
+     --------------------------------------------------------------------- */
+  .ledger {
+    width: 100%;
+    text-align: left;
+    border-collapse: collapse;
+  }
+
+  .ledger thead th {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--rule-strong);
+    background-color: var(--panel-2);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+
+  .ledger tbody td {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--rule);
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--ink-2);
+    vertical-align: middle;
+  }
+
+  .ledger tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .ledger tbody tr:hover td {
+    background-color: var(--panel-2);
+  }
+
+  /* Первая графа — входящий номер: моноширинный, как в книге регистрации. */
+  .ledger tbody td:first-child {
+    font-family: var(--font-mono);
+    color: var(--ink);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  /* Ключевое значение строки: читается первым при просмотре графы. */
+  .ledger .cell-key {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .ledger .cell-mono {
+    font-family: var(--font-mono);
+    color: var(--ink-2);
+  }
+
+  /* Совместимость: старые «стеклянные» классы переопределены на бланк,
+     чтобы неоновое свечение не осталось нигде в старой разметке. */
+  .glass-card-dark,
   .glass-card-light {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(226, 232, 240, 0.9);
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
   }
 
-  .glow-cyan {
-    text-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
-  }
-
+  .glow-cyan,
   .glow-purple {
-    text-shadow: 0 0 12px rgba(168, 85, 247, 0.6);
+    text-shadow: none;
+    color: var(--accent);
   }
 
   .glow-border-cyan {
-    box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
+    box-shadow: none;
+    border-color: var(--rule-strong);
   }
 
-  .field-grid-dark {
-    background-size: 40px 40px;
-    background-image: 
-      linear-gradient(to right, rgba(34, 211, 238, 0.04) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(34, 211, 238, 0.04) 1px, transparent 1px);
-  }
-
+  .field-grid-dark,
   .field-grid-light {
-    background-size: 40px 40px;
-    background-image: 
-      linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+    background-image: none;
+  }
+
+  /* Затемнение под модальным окном: спокойное, без размытия и свечения. */
+  .scrim {
+    background-color: color-mix(in srgb, var(--ink) 55%, transparent);
+  }
+
+  /* ---------------------------------------------------------------------
+     ИЕРАРХИЯ МАСШТАБОМ.
+     Драма берётся из масштаба и плотности, а не из цвета. Но отношение
+     кегля 7:1 (92px против 13px) превращало подпись в приписку: цифра
+     «02» без прочитанной подписи не значит ничего, поэтому подпись —
+     часть показателя, а не сноска к нему. Отношение снижено до ~3,5:1:
+     цифра по-прежнему главная и видна с трёх метров, подпись читается
+     с рабочего расстояния без усилия.
+     --------------------------------------------------------------------- */
+  .figure {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: clamp(2.5rem, 3.6vw, 3.5rem);
+    /* При меньшем кегле вес 300 выглядит блёкло — цифра держится формой. */
+    font-weight: 400;
+    line-height: 0.95;
+    letter-spacing: -0.035em;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  .figure-sm {
+    font-size: clamp(1.75rem, 2.4vw, 2.25rem);
+    line-height: 1;
+    letter-spacing: -0.025em;
+  }
+
+  /* Подпись показателя читается самостоятельно, а не только контрастирует
+     с цифрой, поэтому не самый бледный тон в палитре. */
+  .figure-label {
+    display: block;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+    color: var(--ink-2);
+  }
+
+  /* Сводка смены: графы через вертикальную разлиновку, без карточек. */
+  .figure-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    background-color: var(--panel);
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  @media (min-width: 768px) {
+    .figure-strip {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .figure-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 1.125rem 1rem 1rem;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    min-width: 0;
+  }
+
+  .figure-cell:last-child {
+    border-right: none;
+  }
+
+  .figure-cell-action {
+    position: relative;
+    text-align: left;
+    color: inherit;
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .figure-cell-action:hover {
+    background-color: var(--panel-2);
+  }
+
+  .figure-cell-active {
+    background-color: var(--accent-bg);
+    box-shadow: inset 0 -3px 0 var(--accent);
+  }
+
+  .figure-hint {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--ink-3);
+  }
+
+  @media (min-width: 768px) {
+    .figure-cell {
+      border-bottom: none;
+    }
+  }
+
+  /* Очень плотная графа: диспетчер держит в поле зрения максимум строк. */
+  .ledger-dense tbody td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+
+  .ledger-dense thead th {
+    padding: 0.625rem 1rem;
+  }
+
+  /* Рабочие экраны используют служебные подписи как вторичный слой, но не микротекст. */
+  :where(#operator-console-page, #database-inspector-page, #channels-config-page) :where(
+      .text-xs,
+      [class*="text-[10px]"],
+      [class*="text-[11px]"],
+      [class*="text-[12px]"]
+    ) {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  :where(#operator-console-page, #database-inspector-page, #channels-config-page) :where(button, input, select) {
+    min-height: 2.75rem;
+  }
+
+  @media (max-width: 767px) {
+    .figure {
+      font-size: 2.375rem;
+    }
+
+    .figure-cell {
+      padding: 1.25rem;
+    }
+  }
+
+  /* Полоса срока: тонкая линейка вместо цветной плашки. */
+  .sla-track {
+    position: relative;
+    height: 3px;
+    width: 100%;
+    min-width: 3.5rem;
+    background-color: var(--rule);
+    overflow: hidden;
+  }
+
+  .sla-fill {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    background-color: var(--ink-2);
+    /* Движение привязано к данным: полоса ползёт вместе с обратным отсчётом. */
+    transition: width 900ms linear, background-color 300ms ease-out;
+  }
+
+  .sla-fill[data-state="warn"] {
+    background-color: var(--warn);
+  }
+
+  .sla-fill[data-state="over"] {
+    background-color: var(--danger);
+  }
+
+  /* Клавиша: подсказка горячей клавиши в тексте. */
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.375rem;
+    padding: 0.0625rem 0.3125rem;
+    border: 1px solid var(--rule-strong);
+    border-bottom-width: 2px;
+    border-radius: 2px;
+    background-color: var(--panel-2);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  /* ---------------------------------------------------------------------
+     КАРУСЕЛЬ УЗКОГО ЭКРАНА.
+     На телефоне и планшете графа журнала листается свайпом: строка на
+     шесть колонок не сжимается в нечитаемый столбик и не требует
+     горизонтальной прокрутки таблицы. На широком мониторе карусель не
+     применяется — там графа видна целиком, и прятать данные за прокрутку
+     было бы потерей информации.
+     --------------------------------------------------------------------- */
+  .swipe-rail {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.25rem;
+  }
+
+  .swipe-rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .swipe-card {
+    flex: 0 0 86%;
+    min-width: 0;
+    scroll-snap-align: start;
+  }
+
+  @media (min-width: 640px) {
+    .swipe-card {
+      flex-basis: 47%;
+    }
+  }
+
+  /* Точка-указатель: и индикатор позиции, и кнопка перехода для тех,
+     кому свайп недоступен. */
+  .swipe-dot {
+    display: block;
+    height: 0.5rem;
+    width: 0.5rem;
+    border-radius: 999px;
+    background-color: var(--rule-strong);
+    transition: width 160ms ease-out, background-color 160ms ease-out;
+  }
+
+  .swipe-dot[data-active="true"] {
+    width: 1.25rem;
+    background-color: var(--accent);
+  }
+
+  /* ---------------------------------------------------------------------
+     ОСМЫСЛЕННОЕ ДВИЖЕНИЕ.
+     Движется только то, что связано с изменением данных: поступила новая
+     запись, строка ушла из графы, значение обновилось. Декоративной
+     пульсации и бесконечных анимаций в системе нет.
+     --------------------------------------------------------------------- */
+
+  /* Новая запись в журнале: короткая проливка поля, один раз. */
+  @keyframes row-ink {
+    from {
+      background-color: var(--accent-bg);
+    }
+    to {
+      background-color: transparent;
+    }
+  }
+
+  .row-fresh {
+    animation: row-ink 1400ms ease-out 1;
+  }
+
+  /* Значение обновилось: подчёркивание проступает и уходит. */
+  @keyframes value-ink {
+    0% {
+      box-shadow: inset 0 -1.5em 0 0 var(--accent-bg);
+    }
+    100% {
+      box-shadow: inset 0 0 0 0 transparent;
+    }
+  }
+
+  .value-changed {
+    animation: value-ink 900ms ease-out 1;
+  }
+
+  /* Строка снята с учёта: гаснет и сжимается перед удалением. */
+  @keyframes row-settle {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateX(0.75rem);
+    }
+  }
+
+  .row-leaving {
+    animation: row-settle 260ms ease-in forwards;
+  }
+
+  /* Скелет графы: спокойная заливка без «мерцающего» градиента. */
+  @keyframes skeleton-breathe {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 0.85;
+    }
+  }
+
+  .skeleton-line {
+    height: 0.625rem;
+    background-color: var(--rule);
+    animation: skeleton-breathe 1600ms ease-in-out infinite;
+  }
+
+  /* Устаревшие данные: лист заметно приглушён, но остаётся читаемым. */
+  .is-stale {
+    opacity: 0.55;
+    filter: saturate(0.6);
+    transition: opacity 200ms ease-out;
   }
 }
 
-/* Antigravity Custom scrollbar */
+/* Уважение к системной настройке: никакого движения, если его отключили. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
-.dark ::-webkit-scrollbar-track {
-  background: #020204;
+
+::-webkit-scrollbar-track {
+  background: var(--paper);
 }
-.dark ::-webkit-scrollbar-thumb {
-  background: rgba(34, 211, 238, 0.25);
-  border-radius: 3px;
-}
-.light ::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-.light ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.4);
-  border-radius: 3px;
+
+::-webkit-scrollbar-thumb {
+  background: var(--rule-strong);
+  border: 2px solid var(--paper);
+  border-radius: 0;
 }

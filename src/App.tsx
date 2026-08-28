@@ -1,30 +1,70 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Header, TabType } from './components/Header';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Header } from './components/Header';
+import { HelpView } from './components/HelpView';
+import { tabsForRole, type TabType } from './navigation';
 import { LandingHome } from './components/LandingHome';
 import { ChannelsConfigView } from './components/ChannelsConfigView';
 import { OperatorConsoleView } from './components/OperatorConsoleView';
 import { DatabaseInspectorView } from './components/DatabaseInspectorView';
 import { LogsTracesView } from './components/LogsTracesView';
-import { ArchitectureView } from './components/ArchitectureView';
-import { GithubTokenModal } from './components/GithubTokenModal';
+import { DocumentationView } from './components/DocumentationView';
+import { GeminiTokenModal } from './components/GeminiTokenModal';
 import { ScenarioRunner } from './components/ScenarioRunner';
 import { FactExtractorView } from './components/FactExtractorView';
 import { DispatchCard } from './components/DispatchCard';
-import { ExecutionTraceTimeline } from './components/ExecutionTraceTimeline';
+import { CommandPalette, PaletteCommand } from './components/CommandPalette';
 import { SCENARIO_PRESETS } from './scenarios';
 import { ProcessingResult } from './types';
 import { apiFetch } from './api';
-import { INITIAL_DATABASE, DatabaseSchema } from './mockDb';
+import { createInitialDatabase, DatabaseSchema } from './mockDb';
+import { SignInView } from './components/SignInView';
+import { UserManagementView } from './components/UserManagementView';
+import { clearDemoRole, readDemoUser, saveDemoRole } from './demoSession';
+
+/** Разделы стенда для командной палитры — порядок совпадает с полосой меню. */
+const PALETTE_SECTIONS: { tab: TabType; label: string; hint: string }[] = [
+  { tab: 'operator', label: 'Диспетчер', hint: 'Рабочее место: проверка и подтверждение заявок' },
+  { tab: 'database', label: 'Реестр заявок', hint: 'Сохранённые заявки, оборудование, договоры' },
+  { tab: 'console', label: 'Демо-стенд', hint: 'Разбор входящего обращения по шагам' },
+  { tab: 'channels', label: 'Каналы', hint: 'Источники входящих обращений' },
+  { tab: 'logs_traces', label: 'Логи и трейсы', hint: 'Техническая трассировка запросов' },
+  { tab: 'architecture', label: 'Документация', hint: 'Описание проекта и архитектурные схемы' },
+  { tab: 'home', label: 'Главная', hint: 'Обзор стенда' },
+  { tab: 'help', label: 'Справка', hint: 'Порядок работы в смене, сроки и статусы' },
+];
 
 export default function App() {
+  const [user, setUser] = useState(() => readDemoUser());
+  const role = user?.role ?? 'dispatcher';
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [geminiActive, setGeminiActive] = useState(true);
-  const [selectedModel, setSelectedModel] = useState<string>('gpt-4o');
+  // Признак живой модели приходит от сервера (/api/health), а не задаётся вручную.
+  const [geminiActive, setGeminiActive] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>('gemini-3.5-flash-lite');
   const [isDryRun, setIsDryRun] = useState<boolean>(true);
+  const swipeStartRef = useRef<{ x: number; y: number; blocked: boolean } | null>(null);
+  const [swipeAnnouncement, setSwipeAnnouncement] = useState('');
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
 
-  // GITHUB_MODELS_TOKEN state (memory only, never persisted to localStorage)
-  const [githubToken, setGithubToken] = useState<string>('');
+  // Подсказка о свайпах — только при первом визите с узкого экрана.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.innerWidth >= 1280) return;
+    if (window.localStorage.getItem('swipe-hint-seen') === '1') return;
+    setShowSwipeHint(true);
+  }, []);
+
+  const dismissSwipeHint = useCallback(() => {
+    setShowSwipeHint(false);
+    try {
+      window.localStorage.setItem('swipe-hint-seen', '1');
+    } catch {
+      /* приватный режим — просто не запоминаем */
+    }
+  }, []);
+
+  // GEMINI_API_KEY state (memory only, never persisted to localStorage)
+  const [geminiApiKey, setGeminiApiKey] = useState<string>('');
   const [isTokenModalOpen, setIsTokenModalOpen] = useState<boolean>(false);
 
   // Sync token with server on mount & model change
@@ -32,31 +72,60 @@ export default function App() {
     apiFetch('/api/llm/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: githubToken, model: selectedModel }),
+      body: JSON.stringify({ token: geminiApiKey, model: selectedModel }),
     }).catch(() => {});
-  }, [githubToken, selectedModel]);
+  }, [geminiApiKey, selectedModel]);
+
+  // Признак живой модели берём с сервера, а не предполагаем.
+  useEffect(() => {
+    let cancelled = false;
+
+    const readModelStatus = () => {
+      apiFetch('/api/health')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (cancelled || !data) return;
+          setGeminiActive(!!data.gemini_enabled);
+        })
+        .catch(() => {
+          if (!cancelled) setGeminiActive(false);
+        });
+    };
+
+    readModelStatus();
+    const timer = window.setInterval(readModelStatus, 30_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const handleSelectModel = (newModel: string) => {
     setSelectedModel(newModel);
-    // Prompt token modal if user selects model and no token is set
-    if (!githubToken) {
+    // Окно токена нужно только когда ни одна модель не отвечает.
+    // Если сервер уже держит живую модель, просить ключ не за что.
+    if (!geminiApiKey && !geminiActive) {
       setIsTokenModalOpen(true);
     }
   };
 
   const handleSaveToken = (newToken: string) => {
-    setGithubToken(newToken);
+    setGeminiApiKey(newToken);
   };
 
-  // DB State
-  const [db, setDb] = useState<DatabaseSchema>(INITIAL_DATABASE);
+  // Реестр автономного стенда живёт только в памяти вкладки.
+  const [db, setDb] = useState<DatabaseSchema>(() => createInitialDatabase());
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Live Demo Workbench (tab: console)
   const [selectedPresetId, setSelectedPresetId] = useState<string>('tc-01');
   const [rawText, setRawText] = useState<string>(SCENARIO_PRESETS[0].raw_text);
   const [channel, setChannel] = useState<string>(SCENARIO_PRESETS[0].channel);
-  const [incomingTime, setIncomingTime] = useState<string>(SCENARIO_PRESETS[0].incoming_time);
+  const [incomingTime, setIncomingTime] = useState<string>(() => new Date().toISOString());
+  // Отправитель обращения: в ряде случаев имя клиента есть только здесь,
+  // а не в тексте письма, поэтому оно участвует в определении контрагента.
+  const [sender, setSender] = useState<string>(SCENARIO_PRESETS[0].sender);
   const [result, setResult] = useState<ProcessingResult | null>(null);
   const [isRunningDispatch, setIsRunningDispatch] = useState<boolean>(false);
   const [isCommitting, setIsCommitting] = useState<boolean>(false);
@@ -68,7 +137,8 @@ export default function App() {
     setSelectedPresetId(preset.id);
     setRawText(preset.raw_text);
     setChannel(preset.channel);
-    setIncomingTime(preset.incoming_time);
+    setIncomingTime(new Date().toISOString());
+    setSender(preset.sender);
     setResult(null);
     setCommitSuccessMsg(null);
   };
@@ -79,6 +149,8 @@ export default function App() {
 
   const handleRunDispatch = async () => {
     if (!rawText.trim()) return;
+    const receivedAt = new Date().toISOString();
+    setIncomingTime(receivedAt);
     setIsRunningDispatch(true);
     setCommitSuccessMsg(null);
     setResult(null);
@@ -89,18 +161,20 @@ export default function App() {
         body: JSON.stringify({
           text: rawText,
           channel,
-          incoming_time: incomingTime || undefined,
+          incoming_time: receivedAt,
+          sender: sender || undefined,
           is_dry_run: true,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setCommitSuccessMsg(`❌ Ошибка: ${data.error || res.status}`);
+        setCommitSuccessMsg(`Ошибка: ${data.error || res.status}`);
         return;
       }
       setResult(data);
+      setCommitSuccessMsg('Симуляция завершена. Данные не сохранены в реестре.');
     } catch (err: any) {
-      setCommitSuccessMsg(`❌ Сетевая ошибка: ${err.message}`);
+      setCommitSuccessMsg(`Сетевая ошибка: ${err.message}`);
     } finally {
       setIsRunningDispatch(false);
     }
@@ -110,27 +184,14 @@ export default function App() {
     if (!result?.ticket_payload) return;
     setIsCommitting(true);
     setCommitSuccessMsg(null);
-    try {
-      const res = await apiFetch('/api/commit-ticket', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ticket_payload: result.ticket_payload,
-          action: result.recommended_action,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setCommitSuccessMsg(`❌ Коммит отклонен: ${data.error || res.status}`);
-        return;
-      }
-      setCommitSuccessMsg(`✅ Заявка ${data.ticket.ticket_id} подтверждена оператором и сохранена в БД (${data.action}).`);
-      await fetchDatabase();
-    } catch (err: any) {
-      setCommitSuccessMsg(`❌ Ошибка коммита: ${err.message}`);
-    } finally {
-      setIsCommitting(false);
-    }
+
+    const ticket = result.ticket_payload as DatabaseSchema['open_tickets'][number];
+    setDb((current) => ({
+      ...current,
+      open_tickets: [ticket, ...current.open_tickets.filter((item) => item.ticket_id !== ticket.ticket_id)],
+    }));
+    setCommitSuccessMsg(`Заявка ${ticket.ticket_id || 'без номера'} подтверждена и добавлена в локальный реестр.`);
+    setIsCommitting(false);
   };
 
   // Apply Theme class to document element
@@ -144,64 +205,111 @@ export default function App() {
     }
   }, [theme]);
 
-  // Fetch Database on Mount
-  const fetchDatabase = useCallback(async () => {
-    try {
-      const res = await apiFetch('/api/database');
-      if (res.ok) {
-        const data = await res.json();
-        setDb(data);
-      }
-    } catch (err) {
-      console.warn('Backend server database fetch fallback:', err);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDatabase();
-    const interval = setInterval(() => {
-      fetchDatabase();
-    }, 2500);
-    return () => clearInterval(interval);
-  }, [fetchDatabase]);
-
   const handleUpdateDb = (newDb: DatabaseSchema) => {
     setDb(newDb);
-    apiFetch('/api/database', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newDb),
-    }).catch((err) => console.warn('Sync DB error:', err));
   };
 
-  // Reset Database
   const handleResetDatabase = async () => {
     setIsLoading(true);
-    try {
-      await apiFetch('/api/database/reset', { method: 'POST' });
-      await fetchDatabase();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
+    setDb(createInitialDatabase());
+    setIsLoading(false);
   };
 
   const pendingOperatorCount = (db.open_tickets || []).filter(
     (t) => t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0)
   ).length;
 
-  const isDark = theme === 'dark';
+  // Действия палитры: то, что диспетчер делает часто, но что не является перходом.
+  const paletteActions: PaletteCommand[] = [
+    {
+      id: 'act-theme',
+      label: theme === 'dark' ? 'Включить светлое оформление' : 'Включить тёмное оформление',
+      hint: 'Смена оформления для работы при разном освещении',
+      group: 'Действия',
+      run: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
+    },
+    {
+      id: 'act-dry-run',
+      label: isDryRun ? 'Выключить безопасный режим' : 'Включить безопасный режим',
+      hint: 'Безопасный режим не пишет заявки в 1С:ERP',
+      group: 'Действия',
+      run: () => setIsDryRun(!isDryRun),
+    },
+    {
+      id: 'act-token',
+      label: 'Настроить токен доступа к модели',
+      hint: 'Технические настройки подключения к LLM',
+      group: 'Действия',
+      run: () => setIsTokenModalOpen(true),
+    },
+  ];
+
+  if (!user) {
+    return <SignInView onSelectRole={(selectedRole) => setUser(saveDemoRole(selectedRole))} />;
+  }
+
+  /* Права доступа берутся из общего списка разделов (src/navigation.ts).
+     Раньше здесь лежала вторая копия правила, которую нужно было править
+     синхронно с меню в шапке. */
+  const allowedTabs: TabType[] = tabsForRole(role);
+  const safeActiveTab: TabType = allowedTabs.includes(activeTab) ? activeTab : 'home';
+
+  const isSwipeConflictTarget = (target: EventTarget | null) => {
+    if (!(target instanceof Element)) return true;
+    if (target.closest('input, textarea, select, button, a, summary, [role="button"], [role="dialog"], [contenteditable="true"], .swipe-rail')) {
+      return true;
+    }
+
+    let element: Element | null = target;
+    while (element) {
+      if (element instanceof HTMLElement && element.scrollWidth > element.clientWidth + 1) {
+        const overflowX = window.getComputedStyle(element).overflowX;
+        if (overflowX === 'auto' || overflowX === 'scroll') return true;
+      }
+      element = element.parentElement;
+    }
+    return false;
+  };
+
+  const handleTabTouchStart = (event: React.TouchEvent<HTMLElement>) => {
+    if (window.innerWidth >= 1280 || event.touches.length !== 1) {
+      swipeStartRef.current = null;
+      return;
+    }
+
+    swipeStartRef.current = {
+      x: event.touches[0].clientX,
+      y: event.touches[0].clientY,
+      blocked: isSwipeConflictTarget(event.target),
+    };
+  };
+
+  const handleTabTouchEnd = (event: React.TouchEvent<HTMLElement>) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start || start.blocked || event.changedTouches.length !== 1) return;
+
+    const deltaX = event.changedTouches[0].clientX - start.x;
+    const deltaY = event.changedTouches[0].clientY - start.y;
+    if (Math.abs(deltaX) < 72 || Math.abs(deltaX) < Math.abs(deltaY) * 1.35) return;
+
+    const currentIndex = allowedTabs.indexOf(safeActiveTab);
+    const nextIndex = deltaX < 0 ? currentIndex + 1 : currentIndex - 1;
+    if (nextIndex < 0 || nextIndex >= allowedTabs.length) return;
+
+    const nextTab = allowedTabs[nextIndex];
+    const nextLabel = PALETTE_SECTIONS.find(({ tab }) => tab === nextTab)?.label ?? nextTab;
+    setActiveTab(nextTab);
+    dismissSwipeHint();
+    setSwipeAnnouncement(`Открыт раздел «${nextLabel}»`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
-    <div
-      className={`min-h-screen flex flex-col justify-between font-sans antialiased transition-colors duration-200 ${
-        isDark ? 'bg-[#020204] text-slate-100' : 'bg-slate-100 text-slate-900'
-      }`}
-    >
+    <div className="min-h-screen flex flex-col justify-between font-sans antialiased bg-paper text-ink">
       {/* Streamlined Header */}
       <Header
-        activeTab={activeTab}
+        activeTab={safeActiveTab}
         setActiveTab={setActiveTab}
         theme={theme}
         setTheme={setTheme}
@@ -211,32 +319,71 @@ export default function App() {
         selectedModel={selectedModel}
         setSelectedModel={handleSelectModel}
         pendingOperatorCount={pendingOperatorCount}
-        githubToken={githubToken}
+        geminiApiKey={geminiApiKey}
         onOpenTokenModal={() => setIsTokenModalOpen(true)}
+        role={role}
+        userName={user.name}
+        onSignOut={async () => {
+          clearDemoRole();
+          setUser(null);
+          setActiveTab('home');
+          setDb(createInitialDatabase());
+        }}
+      />
+
+      {/* Командная палитра: Ctrl+K из любого раздела стенда */}
+      <CommandPalette
+        sections={PALETTE_SECTIONS.filter(({ tab }) => allowedTabs.includes(tab))}
+        onNavigate={setActiveTab}
+        actions={paletteActions}
       />
 
       {/* GITHUB_MODELS_TOKEN Setup Modal */}
-      <GithubTokenModal
+      <GeminiTokenModal
         isOpen={isTokenModalOpen}
         onClose={() => setIsTokenModalOpen(false)}
-        token={githubToken}
+        token={geminiApiKey}
         onSaveToken={handleSaveToken}
         selectedModel={selectedModel}
         theme={theme}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      {/* Рабочая область занимает всю ширину монитора: ограничитель задан
+          один раз в .wide-container, чтобы графы журнала не сжимались в
+          узкую колонку по центру широкого экрана. */}
+      <main
+        className="wide-container mx-auto w-full flex-1 touch-pan-y px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
+        onTouchStart={handleTabTouchStart}
+        onTouchEnd={handleTabTouchEnd}
+      >
+        <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {swipeAnnouncement}
+        </span>
+        {showSwipeHint && (
+          <aside className="mb-5 flex items-center justify-between gap-3 border border-rule bg-panel px-3 py-2 xl:hidden" aria-label="Подсказка навигации">
+            <p className="min-w-0 font-sans text-sm text-ink-2">
+              <span className="font-semibold text-ink">Смахните влево или вправо</span>
+              <span className="block truncate text-xs text-ink-3">
+                Между соседними разделами рабочего места
+              </span>
+            </p>
+            <button type="button" onClick={dismissSwipeHint} className="ui-button ui-button-secondary shrink-0" aria-label="Закрыть подсказку">
+              Понятно
+            </button>
+          </aside>
+        )}
         {/* TAB 0: LANDING HOME PAGE */}
-        {activeTab === 'home' && (
+        {safeActiveTab === 'home' && (
           <LandingHome
             setActiveTab={setActiveTab}
-            theme={theme}
+            role={role}
+            pendingCount={pendingOperatorCount}
           />
         )}
 
         {/* TAB 1: CONNECTORS & CHANNELS CONFIG */}
-        {activeTab === 'channels' && (
+        {safeActiveTab === 'channels' && (
           <ChannelsConfigView
             theme={theme}
             onNavigateToConsole={() => setActiveTab('console')}
@@ -244,32 +391,20 @@ export default function App() {
         )}
 
         {/* TAB 1.5: LIVE DISPATCH WORKBENCH (console) */}
-        {activeTab === 'console' && (
-          <div className="space-y-4">
-            <div
-              className={`rounded-2xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                isDark
-                  ? 'bg-[#060612]/90 border-cyan-500/30 text-white'
-                  : 'bg-white border-slate-300 text-slate-950 shadow-sm'
-              }`}
-            >
+        {safeActiveTab === 'console' && (
+          <div className="demo-readable flex flex-col gap-5">
+            <div className="sheet flex flex-col justify-between gap-3 p-5 sm:flex-row sm:items-start sm:p-6">
               <div>
-                <h2 className={`text-sm font-mono font-extrabold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-                  Демо-стенд AI-Диспетчера (4 сценария ТЗ)
-                </h2>
-                <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-800 font-medium'}`}>
-                  Обращение → извлечение фактов → решение движка → трассировка. Любое выполнение — dry-run;
-                  подтверждённый коммит в БД делает оператор (кнопка «Подтвердить»).
+                <h1 className="font-sans text-xl font-bold tracking-tight text-ink sm:text-2xl">Демо-стенд разбора обращения</h1>
+                <p className="mt-2 max-w-2xl font-sans text-base leading-relaxed text-ink-2">
+                  Здесь можно проверить разбор обращения без изменения рабочей очереди.
                 </p>
               </div>
-              <span className={`text-[11px] font-mono px-3 py-1.5 rounded-lg border font-bold whitespace-nowrap ${
-                isDark ? 'bg-amber-500/10 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-950 border-amber-400'
-              }`}>
-                ⚠ ТЕСТОВЫЙ РЕЖИМ (dry-run)
-              </span>
+              <span className="stamp shrink-0 text-warn">Симуляция — данные не сохраняются</span>
             </div>
 
-            <ScenarioRunner
+            <div className={result ? 'grid items-start gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]' : ''}>
+              <ScenarioRunner
               selectedPresetId={selectedPresetId}
               onSelectPreset={handleSelectPreset}
               rawText={rawText}
@@ -284,35 +419,23 @@ export default function App() {
               isLoading={isRunningDispatch}
               onResetInput={handleResetInput}
               theme={theme}
-            />
+              />
 
-            <FactExtractorView
-              facts={result?.extracted_facts || null}
-              theme={theme}
-            />
+              {result && <div className="flex min-w-0 flex-col gap-5">
+                <FactExtractorView facts={result.extracted_facts} theme={theme} />
+                <DispatchCard result={result} commitSuccessMsg={commitSuccessMsg} theme={theme} />
+              </div>}
+            </div>
 
-            <DispatchCard
-              result={result}
-              onCommitLive={handleCommitLive}
-              isCommitting={isCommitting}
-              commitSuccessMsg={commitSuccessMsg}
-              theme={theme}
-            />
+            {!result && <div className="empty-state">
+              <h2 className="text-base font-bold text-ink">Результат появится после разбора</h2>
+            </div>}
 
-            <ExecutionTraceTimeline
-              trace={result?.trace || []}
-              theme={theme}
-            />
-
-            <div
-              className={`rounded-2xl p-4 border text-xs font-mono ${
-                isDark
-                  ? 'bg-[#060612]/90 border-cyan-500/20 text-slate-400'
-                  : 'bg-white border-slate-300 text-slate-700 font-medium shadow-sm'
-              }`}
-            >
-              Ожидаемый результат пресета:{' '}
-              <span className={isDark ? 'text-cyan-300 font-bold' : 'text-blue-950 font-extrabold'}>
+            <div className="sheet flex flex-wrap items-baseline gap-x-3 gap-y-2 p-4 sm:p-5">
+              <span className="font-mono text-sm font-medium uppercase tracking-[0.08em] text-ink-2">
+                Ожидаемый результат
+              </span>
+              <span className="font-sans text-base leading-relaxed text-ink">
                 {SCENARIO_PRESETS.find((p) => p.id === selectedPresetId)?.expected_outcome}
               </span>
             </div>
@@ -320,7 +443,7 @@ export default function App() {
         )}
 
         {/* TAB 2: OPERATOR HITL WORKBENCH */}
-        {activeTab === 'operator' && (
+        {safeActiveTab === 'operator' && (
           <OperatorConsoleView
             db={db}
             onUpdateDb={handleUpdateDb}
@@ -329,7 +452,7 @@ export default function App() {
         )}
 
         {/* TAB 3: DATABASE REGISTRY */}
-        {activeTab === 'database' && (
+        {safeActiveTab === 'database' && (
           <DatabaseInspectorView
             db={db}
             onResetDatabase={handleResetDatabase}
@@ -340,35 +463,31 @@ export default function App() {
         )}
 
         {/* TAB 4: LOGS & TRACES */}
-        {activeTab === 'logs_traces' && (
+        {safeActiveTab === 'logs_traces' && (
           <LogsTracesView theme={theme} db={db} />
         )}
 
         {/* TAB 5: ARCHITECTURE REPORT & C4 SCHEMAS */}
-        {activeTab === 'architecture' && (
-          <ArchitectureView theme={theme} />
+        {safeActiveTab === 'architecture' && role === 'admin' && (
+          <DocumentationView theme={theme} />
+        )}
+
+        {safeActiveTab === 'users' && role === 'admin' && (
+          <UserManagementView />
+        )}
+
+        {/* TAB 6: СПРАВКА — доступна обеим ролям */}
+        {safeActiveTab === 'help' && (
+          <HelpView role={role} onNavigate={setActiveTab} />
         )}
       </main>
 
       {/* Antigravity Footer */}
-      <footer
-        className={`border-t mt-8 py-5 text-center text-xs font-mono transition-colors ${
-          isDark
-            ? 'border-white/10 bg-[#020204] text-slate-500'
-            : 'border-slate-300 bg-white text-slate-700'
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center space-x-2">
-            <span className={`h-2 w-2 rounded-full ${isDark ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-blue-900'}`}></span>
-            <span className={`font-bold ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-              Текстовый AI-Диспетчер для бизнеса
-            </span>
-            <span>/ Промышленная архитектура</span>
-          </div>
-          <p className="text-[11px]">
-            Архитектор AI-решений / Техлид AI-внедрений • Full-Stack контейнер Cloud Run
-          </p>
+      {/* Нижний колонтитул бланка: служебные пометки, как под таблицей журнала. */}
+      <footer className="mt-8 border-t border-rule bg-panel py-4">
+        <div className="wide-container mx-auto flex w-full flex-col gap-1 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <p className="text-xs font-semibold text-ink-2">Text2Business · Диспетчерская обращений</p>
+          <p className="font-mono text-[11px] text-ink-3">Защищённый рабочий контур · данные сверяются с реестром</p>
         </div>
       </footer>
     </div>

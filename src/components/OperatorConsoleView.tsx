@@ -1,22 +1,20 @@
-import React, { useState } from 'react';
-import {
-  AlertTriangle,
-  UserCheck,
-  Send,
-  MessageSquare,
-  CheckCircle,
-  Clock,
-  ShieldAlert,
-  Edit,
-  Building,
-  Cpu,
-  RefreshCw,
-  X,
-  FileCheck,
-} from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { RefreshCw, AlertTriangle, Users } from 'lucide-react';
 import { DatabaseSchema } from '../mockDb';
-import { Ticket, TicketMessage } from '../types';
+import { Ticket } from '../types';
 import { apiFetch } from '../api';
+import { useNow, formatRemaining } from '../hooks/useNow';
+import { ShiftFigures, ShiftFigure } from './ShiftFigures';
+import { SwipeRail } from './SwipeRail';
+import { ClarifyDialog } from './ClarifyDialog';
+import { DemoStreamControl } from './DemoStreamControl';
+import {
+  completeDemoClarification,
+  generateIncomingTicket,
+  StreamPace,
+  PACE_INTERVAL_MS,
+} from '../demoStream';
+import { formatFieldLabels } from '../fieldLabels';
 
 interface OperatorConsoleViewProps {
   db: DatabaseSchema | null;
@@ -24,50 +22,336 @@ interface OperatorConsoleViewProps {
   theme?: 'dark' | 'light';
 }
 
-export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
-  db,
-  onUpdateDb,
-  theme = 'dark',
-}) => {
-  const isDark = theme === 'dark';
+/** Данные считаются устаревшими, если с последней сверки прошло больше минуты. */
+const STALE_AFTER_MS = 60_000;
+
+/** Отпечаток заявки для сверки версий: по нему видно, что её изменил кто-то ещё. */
+const fingerprint = (t: Ticket | undefined) =>
+  t ? `${t.status}|${t.updated_at || ''}|${(t.missing_fields || []).join(',')}` : 'GONE';
+
+/**
+ * Рабочее место диспетчера.
+ *
+ * Иерархия строится на масштабе, а не на цвете: сводка смены гигантскими
+ * моноширинными цифрами, под ней очень плотные графы журнала. Палитра
+ * прежняя, монохромная; цвет означает состояние, а не оформление.
+ *
+ * Движение здесь всегда привязано к данным (08-requirements.md): тикает
+ * обратный отсчёт срока, проступает новая строка журнала, гаснет строка,
+ * ушедшая в работу. Декоративной пульсации нет.
+ */
+export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({ db, onUpdateDb }) => {
+  const now = useNow(1000);
+
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isWaitingForClient, setIsWaitingForClient] = useState(false);
+  const clarificationTimerRef = useRef<number | null>(null);
+  const [isCommitting, setIsCommitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusKind, setStatusKind] = useState<'ok' | 'error'>('ok');
 
-  // Manual completion form states inside modal
-  const [manualAssetCode, setManualAssetCode] = useState('ХУ-17');
-  const [manualSiteId, setManualSiteId] = useState('S-MSK-01');
+  // Сверка с сервером: время последней успешной сверки и её ошибка.
+  const [lastSyncAt, setLastSyncAt] = useState<number>(() => Date.now());
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
-  if (!db) {
-    return (
-      <div className="p-6 text-center text-xs font-mono text-slate-400">
-        // Загрузка данных Диспетчера...
-      </div>
-    );
-  }
+  // Конфликт: заявку успел изменить другой диспетчер.
+  const [conflict, setConflict] = useState<{ ticket: Ticket; theirStatus: string } | null>(null);
 
-  // Pending HITL tickets (status WAITING_DISPATCHER or action REQUEST_CLARIFICATION or has missing_fields)
-  const pendingTickets = db.open_tickets.filter(
-    (t) => t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0)
+  // Клавиатурная навигация по графе ожидающих.
+  const [cursor, setCursor] = useState(0);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  // Демонстрационный поток обращений — нужен для показа, не для смены.
+  const [streamRunning, setStreamRunning] = useState(false);
+  const [streamPace, setStreamPace] = useState<StreamPace>('busy');
+  const [streamCount, setStreamCount] = useState(0);
+
+  // Отметки для осмысленного движения: новые и уходящие строки.
+  const seenRef = useRef<Set<string> | null>(null);
+  const [freshIds, setFreshIds] = useState<string[]>([]);
+  const [leavingIds, setLeavingIds] = useState<string[]>([]);
+  const [queueQuery, setQueueQuery] = useState('');
+  const [queueSort, setQueueSort] = useState<'risk' | 'newest' | 'priority'>('risk');
+  const [figureFilter, setFigureFilter] = useState<string | null>(null);
+  const queueRef = useRef<HTMLDivElement>(null);
+
+  const isStale = now - lastSyncAt > STALE_AFTER_MS;
+
+  useEffect(
+    () => () => {
+      if (clarificationTimerRef.current !== null) {
+        window.clearTimeout(clarificationTimerRef.current);
+      }
+    },
+    []
   );
 
-  const activeTickets = db.open_tickets.filter(
-    (t) => t.status !== 'WAITING_DISPATCHER' && (!t.missing_fields || t.missing_fields.length === 0)
+  const allPendingTickets = useMemo(
+    () =>
+      (db?.open_tickets || []).filter(
+        (t) => t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0)
+      ),
+    [db]
   );
 
-  const handleOpenTicketInspector = (ticket: Ticket) => {
+  const allActiveTickets = useMemo(
+    () =>
+      (db?.open_tickets || []).filter(
+        (t) =>
+          t.status !== 'WAITING_DISPATCHER' && (!t.missing_fields || t.missing_fields.length === 0)
+      ),
+    [db]
+  );
+
+  const matchesQuery = useCallback((ticket: Ticket) => {
+    const query = queueQuery.trim().toLocaleLowerCase('ru-RU');
+    if (!query) return true;
+    return [ticket.ticket_id, ticket.summary, ticket.description, ticket.asset_id, ticket.assigned_group]
+      .filter(Boolean)
+      .some((value) => String(value).toLocaleLowerCase('ru-RU').includes(query));
+  }, [queueQuery]);
+
+  const sortTickets = useCallback((tickets: Ticket[]) => {
+    const priorityRank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+    return [...tickets].sort((a, b) => {
+      if (queueSort === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      if (queueSort === 'priority') return (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9);
+      const aRemaining = new Date(a.sla_deadline).getTime() - now;
+      const bRemaining = new Date(b.sla_deadline).getTime() - now;
+      return aRemaining - bRemaining;
+    });
+  }, [queueSort, now]);
+
+  const pendingTickets = useMemo(() => {
+    if (figureFilter && figureFilter !== 'pending') return [];
+    return sortTickets(allPendingTickets.filter(matchesQuery));
+  }, [allPendingTickets, figureFilter, matchesQuery, sortTickets]);
+
+  const activeTickets = useMemo(() => {
+    let tickets = allActiveTickets.filter(matchesQuery);
+    if (figureFilter === 'pending') return [];
+    if (figureFilter === 'at-risk') tickets = tickets.filter((t) => {
+      const remaining = formatRemaining(t.sla_deadline, now);
+      return remaining.atRisk && !remaining.overdue;
+    });
+    if (figureFilter === 'overdue') tickets = tickets.filter((t) => formatRemaining(t.sla_deadline, now).overdue);
+    return sortTickets(tickets);
+  }, [allActiveTickets, figureFilter, matchesQuery, now, sortTickets]);
+
+  /**
+   * Состояние срока по заявке: остаток, доля пройденного времени и степень
+   * тревоги. Расчёт общий для широкой таблицы и для карточек узкого экрана,
+   * чтобы отсчёт в обоих представлениях не разошёлся.
+   */
+  const slaView = (t: Ticket) => {
+    const r = formatRemaining(t.sla_deadline, now);
+
+    const created = new Date(t.created_at).getTime();
+    const deadline = new Date(t.sla_deadline).getTime();
+    const total = Math.max(deadline - created, 1);
+    const elapsed = Math.min(Math.max(now - created, 0), total);
+
+    return {
+      r,
+      percent: r.overdue ? 100 : (elapsed / total) * 100,
+      state: r.overdue ? 'over' : r.atRisk ? 'warn' : 'ok',
+      textClass: r.overdue ? 'text-danger' : r.atRisk ? 'text-warn' : 'text-ink',
+    };
+  };
+
+  /* ----------------------------------------------------------------------
+     Осмысленное движение: отмечаем строки, которых не было в прошлый раз.
+     ---------------------------------------------------------------------- */
+  useEffect(() => {
+    const ids = (db?.open_tickets || []).map((t) => t.ticket_id);
+
+    // Первый проход только запоминает состав — журнал не «вспыхивает» целиком.
+    if (seenRef.current === null) {
+      seenRef.current = new Set(ids);
+      return;
+    }
+
+    const incoming = ids.filter((id) => !seenRef.current!.has(id));
+    if (incoming.length === 0) return;
+
+    incoming.forEach((id) => seenRef.current!.add(id));
+    setFreshIds(incoming);
+
+    const timer = window.setTimeout(() => setFreshIds([]), 1500);
+    return () => window.clearTimeout(timer);
+  }, [db]);
+
+  /* ----------------------------------------------------------------------
+     Демонстрационный поток: подаёт обращения сам, чтобы на защите был виден
+     живой журнал. Заявки собираются из настоящих справочников базы.
+     ---------------------------------------------------------------------- */
+  useEffect(() => {
+    if (!streamRunning || !db) return;
+
+    const timer = window.setInterval(() => {
+      const ticket = generateIncomingTicket(db);
+      if (!ticket) return;
+
+      onUpdateDb({ ...db, open_tickets: [ticket, ...(db.open_tickets || [])] });
+      setStreamCount((n) => n + 1);
+    }, PACE_INTERVAL_MS[streamPace]);
+
+    return () => window.clearInterval(timer);
+  }, [streamRunning, streamPace, db, onUpdateDb]);
+
+  /* ----------------------------------------------------------------------
+     Сводка смены: считаем по живому времени, отмечаем изменившиеся цифры.
+     ---------------------------------------------------------------------- */
+  const figures = useMemo<ShiftFigure[]>(() => {
+    const atRisk = allActiveTickets.filter((t) => {
+      const r = formatRemaining(t.sla_deadline, now);
+      return r.atRisk && !r.overdue;
+    }).length;
+
+    const overdue = allActiveTickets.filter((t) => formatRemaining(t.sla_deadline, now).overdue).length;
+
+    return [
+      {
+        id: 'pending',
+        label: 'Ожидают уточнения',
+        value: allPendingTickets.length,
+        note:
+          allPendingTickets.length > 0
+            ? 'Разберите эти обращения первыми — по ним не хватает данных для 1С.'
+            : 'Все поступившие обращения разобраны автоматически.',
+        tone: pendingTickets.length > 0 ? 'warn' : 'neutral',
+      },
+      {
+        id: 'at-risk',
+        label: 'Срок под угрозой',
+        value: atRisk,
+        note: 'До нарушения SLA меньше часа.',
+        tone: atRisk > 0 ? 'warn' : 'neutral',
+      },
+      {
+        id: 'overdue',
+        label: 'Просрочено',
+        value: overdue,
+        note: 'Срок по договору уже нарушен, начисляется неустойка.',
+        tone: overdue > 0 ? 'danger' : 'neutral',
+      },
+      {
+        id: 'active',
+        label: 'В работе',
+        value: allActiveTickets.length,
+        note: 'Передано в 1С:ERP и назначено на выездную группу.',
+        tone: 'neutral',
+      },
+    ];
+  }, [allPendingTickets.length, allActiveTickets, now]);
+
+  // Подчёркиваем цифру только когда значение реально изменилось.
+  const prevFiguresRef = useRef<Record<string, number>>({});
+  const [changedFigureIds, setChangedFigureIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const prev = prevFiguresRef.current;
+    const changed = figures.filter((f) => prev[f.id] !== undefined && prev[f.id] !== f.value);
+    prevFiguresRef.current = Object.fromEntries(figures.map((f) => [f.id, f.value]));
+
+    if (changed.length === 0) return;
+    setChangedFigureIds(changed.map((f) => f.id));
+    const timer = window.setTimeout(() => setChangedFigureIds([]), 1000);
+    return () => window.clearTimeout(timer);
+  }, [figures]);
+
+  /* ----------------------------------------------------------------------
+     Сверка с сервером.
+     ---------------------------------------------------------------------- */
+  const syncFromServer = useCallback(async (): Promise<DatabaseSchema | null> => {
+    setIsSyncing(true);
+    setSyncError(null);
+    try {
+      const res = await apiFetch('/api/database');
+      if (!res.ok) throw new Error(`сервер ответил ${res.status}`);
+      const fresh = (await res.json()) as DatabaseSchema;
+      onUpdateDb(fresh);
+      setLastSyncAt(Date.now());
+      return fresh;
+    } catch (err: any) {
+      setSyncError(err?.message || 'нет связи с сервером');
+      return null;
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [onUpdateDb]);
+
+  /* ----------------------------------------------------------------------
+     Клавиатура: j/k и стрелки водят по графе, Enter открывает,
+     цифра открывает строку напрямую. Диспетчер не тянется к мыши.
+     ---------------------------------------------------------------------- */
+  const focusRow = useCallback((index: number) => {
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-row-index="${index}"] button`);
+    el?.focus();
+  }, []);
+
+  const handleListKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
+    if (pendingTickets.length === 0) return;
+
+    const move = (delta: number) => {
+      e.preventDefault();
+      const next = (cursor + delta + pendingTickets.length) % pendingTickets.length;
+      setCursor(next);
+      focusRow(next);
+    };
+
+    if (e.key === 'ArrowDown' || e.key === 'j') return move(1);
+    if (e.key === 'ArrowUp' || e.key === 'k') return move(-1);
+
+    if (e.key === 'Home') {
+      e.preventDefault();
+      setCursor(0);
+      focusRow(0);
+      return;
+    }
+    if (e.key === 'End') {
+      e.preventDefault();
+      const last = pendingTickets.length - 1;
+      setCursor(last);
+      focusRow(last);
+      return;
+    }
+
+    // Цифра — прямой переход к строке графы.
+    if (/^[1-9]$/.test(e.key)) {
+      const index = Number(e.key) - 1;
+      if (index < pendingTickets.length) {
+        e.preventDefault();
+        setCursor(index);
+        openTicket(pendingTickets[index]);
+      }
+    }
+  };
+
+  /* ----------------------------------------------------------------------
+     Действия диспетчера.
+     ---------------------------------------------------------------------- */
+  const openTicket = (ticket: Ticket) => {
+    if (clarificationTimerRef.current !== null) {
+      window.clearTimeout(clarificationTimerRef.current);
+      clarificationTimerRef.current = null;
+    }
+    setIsWaitingForClient(false);
     setSelectedTicket(ticket);
-    const missingStr = (ticket.missing_fields || ['код оборудования (например, ХУ-17)']).join(', ');
+    const missingStr = formatFieldLabels(
+      ticket.missing_fields || ['код оборудования (например, ХУ-17)']
+    );
     setReplyText(
       `Здравствуйте! Для автоматической регистрации вашей заявки уточните, пожалуйста: ${missingStr}.`
     );
     setStatusMessage(null);
   };
 
-  // Send clarification reply to client in Bot & DB
   const handleSendClarification = async () => {
-    if (!selectedTicket || !replyText.trim()) return;
+    if (!selectedTicket || !replyText.trim() || !db) return;
     setIsSending(true);
     setStatusMessage(null);
 
@@ -84,390 +368,685 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
       });
 
       const data = await res.json();
-      if (data.success) {
-        setStatusMessage('✅ Уточнение успешно отправлено клиенту в Telegram бот!');
+      if (!data.success) throw new Error(data.error || 'нет свя��и с ботом');
 
-        // Update local state DB
-        const updatedTicket: Ticket = {
-          ...selectedTicket,
-          messages: [
-            ...(selectedTicket.messages || []),
-            {
-              id: `m-${Date.now()}`,
-              sender: 'operator',
-              author_name: 'Дежурный Диспетчер',
-              text: replyText,
-              timestamp: new Date().toISOString(),
-              channel: selectedTicket.channel,
-            },
-          ],
-          history: [
-            ...(selectedTicket.history || []),
-            {
-              timestamp: new Date().toISOString(),
-              note: `Диспетчер направил запрос уточнения: "${replyText}"`,
-              author: 'Оператор HITL',
-            },
-          ],
-        };
+      setStatusKind('ok');
+      setStatusMessage('Уточнение отправлено клиенту.');
 
-        const newOpenTickets = db.open_tickets.map((t) =>
+      const updatedTicket: Ticket = {
+        ...selectedTicket,
+        updated_at: new Date().toISOString(),
+        messages: [
+          ...(selectedTicket.messages || []),
+          {
+            id: `m-${Date.now()}`,
+            sender: 'operator',
+            author_name: 'Дежурный диспетчер',
+            text: replyText,
+            timestamp: new Date().toISOString(),
+            channel: selectedTicket.channel,
+          },
+        ],
+        history: [
+          ...(selectedTicket.history || []),
+          {
+            timestamp: new Date().toISOString(),
+            note: `Диспетчер направил запрос уточнения: "${replyText}"`,
+            author: 'Диспетчер',
+          },
+        ],
+      };
+
+      onUpdateDb({
+        ...db,
+        open_tickets: db.open_tickets.map((t) =>
           t.ticket_id === selectedTicket.ticket_id ? updatedTicket : t
-        );
-        onUpdateDb({ ...db, open_tickets: newOpenTickets });
-        setSelectedTicket(updatedTicket);
-      } else {
-        setStatusMessage(`❌ Ошибка отправки: ${data.error || 'Не удалось связаться с ботом'}`);
+        ),
+      });
+      setSelectedTicket(updatedTicket);
+
+      if (!updatedTicket.chat_id && (updatedTicket.missing_fields || []).length > 0) {
+        setIsWaitingForClient(true);
+        setStatusMessage('Запрос доставлен. Ожидаем ответ клиента…');
+        clarificationTimerRef.current = window.setTimeout(async () => {
+          const clarification = completeDemoClarification(db, updatedTicket);
+          clarificationTimerRef.current = null;
+          setIsWaitingForClient(false);
+
+          if (!clarification) {
+            setStatusKind('error');
+            setStatusMessage('Клиент ответил, но данные не удалось сопоставить. Отправьте запрос повторно.');
+            return;
+          }
+
+          const completedDb: DatabaseSchema = {
+            ...db,
+            open_tickets: db.open_tickets.map((ticket) =>
+              ticket.ticket_id === updatedTicket.ticket_id ? clarification.ticket : ticket
+            ),
+          };
+          onUpdateDb(completedDb);
+          setSelectedTicket(clarification.ticket);
+          setReplyText('');
+          setStatusKind('ok');
+          setStatusMessage(`Ответ получен. Заполнено: ${formatFieldLabels(clarification.completedFields)}. Заявка готова к подтверждению.`);
+
+          await apiFetch('/api/database', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(completedDb),
+          });
+        }, 1800);
       }
     } catch (err: any) {
-      setStatusMessage(`❌ Ошибка сервера: ${err.message}`);
+      setStatusKind('error');
+      setStatusMessage(`Не удалось отправить: ${err.message}`);
     } finally {
       setIsSending(false);
     }
   };
 
-  // Complete & Approve Ticket in 1C
-  const handleApproveAndCommitTicket = () => {
-    if (!selectedTicket) return;
+  /** Заявка, укомплектованная диспетчером и готовая к передаче в 1С. */
+  const buildCommittedTicket = (ticket: Ticket): Ticket => ({
+    ...ticket,
+    status: 'IN_PROGRESS',
+    missing_fields: [],
+    updated_at: new Date().toISOString(),
+    history: [
+      ...(ticket.history || []),
+      {
+        timestamp: new Date().toISOString(),
+        note: 'Диспетчер подтвердил данные. Заявка передана в 1С:ERP.',
+        author: 'Диспетчер',
+      },
+    ],
+  });
 
-    const completedTicket: Ticket = {
-      ...selectedTicket,
-      asset_id: manualAssetCode === 'ХУ-17' ? 'A-1001' : selectedTicket.asset_id,
-      site_id: manualSiteId || selectedTicket.site_id,
-      status: 'IN_PROGRESS',
-      missing_fields: [],
-      history: [
-        ...(selectedTicket.history || []),
-        {
-          timestamp: new Date().toISOString(),
-          note: `Диспетчер вручную подтвердил данные. Заявка передана в 1С:ERP (Приоритет: HIGH).`,
-          author: 'Диспетчер',
-        },
-      ],
+  /**
+   * Подтверждение с оптимистичным обновлением.
+   *
+   * Строка уходит из графы сразу — диспетчер не ждёт сеть. Затем идёт
+   * сверка версии на сервере: если заявку успел взять другой диспетчер,
+   * показываем конфликт и откатываем изменение. Если запись не удалась,
+   * состояние возвращается к прежнему с понятным объяснением.
+   */
+  const handleCommit = async (force = false) => {
+    if (!selectedTicket || !db) return;
+    if (isWaitingForClient || (selectedTicket.missing_fields || []).length > 0) {
+      setStatusKind('error');
+      setStatusMessage('Сначала дождитесь ответа клиента и заполнения обязательных данных.');
+      return;
+    }
+
+    const ticketId = selectedTicket.ticket_id;
+    const snapshot = db;
+    const openedFingerprint = fingerprint(
+      snapshot.open_tickets.find((t) => t.ticket_id === ticketId)
+    );
+
+    setIsCommitting(true);
+    setStatusMessage(null);
+
+    // Оптимистично: строка гаснет и уходит из графы немедленно.
+    setLeavingIds((ids) => [...ids, ticketId]);
+    const optimisticDb: DatabaseSchema = {
+      ...snapshot,
+      open_tickets: snapshot.open_tickets.map((t) =>
+        t.ticket_id === ticketId ? buildCommittedTicket(t) : t
+      ),
+    };
+    onUpdateDb(optimisticDb);
+
+    const rollback = (message: string) => {
+      onUpdateDb(snapshot);
+      setLeavingIds((ids) => ids.filter((id) => id !== ticketId));
+      setStatusKind('error');
+      setStatusMessage(message);
     };
 
-    const newOpenTickets = db.open_tickets.map((t) =>
-      t.ticket_id === selectedTicket.ticket_id ? completedTicket : t
-    );
-    onUpdateDb({ ...db, open_tickets: newOpenTickets });
-    setSelectedTicket(null);
+    try {
+      // Сверка версии: не изменил ли заявку кто-то ещё, пока бланк был открыт.
+      if (!force) {
+        const check = await apiFetch('/api/database');
+        if (check.ok) {
+          const server = (await check.json()) as DatabaseSchema;
+          const theirs = server.open_tickets?.find((t) => t.ticket_id === ticketId);
+          if (fingerprint(theirs) !== openedFingerprint) {
+            onUpdateDb(snapshot);
+            setLeavingIds((ids) => ids.filter((id) => id !== ticketId));
+            setConflict({
+              ticket: selectedTicket,
+              theirStatus: theirs ? theirs.status : 'снята с учёта',
+            });
+            setIsCommitting(false);
+            return;
+          }
+        }
+      }
+
+      const committedTicket = optimisticDb.open_tickets.find((ticket) => ticket.ticket_id === ticketId);
+      const res = await apiFetch('/api/commit-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'UPDATE_TICKET',
+          confirmed_view: true,
+          ticket_payload: committedTicket,
+        }),
+      });
+      if (!res.ok) throw new Error(`сервер ответил ${res.status}`);
+
+      setLastSyncAt(Date.now());
+      setSelectedTicket(null);
+      setConflict(null);
+      window.setTimeout(() => setLeavingIds((ids) => ids.filter((id) => id !== ticketId)), 300);
+    } catch (err: any) {
+      rollback(
+        `Заявка не передана в 1С: ${err.message}. Изменение отменено, данные вернулись к прежним.`
+      );
+    } finally {
+      setIsCommitting(false);
+    }
   };
 
-  return (
-    <div id="operator-console-page" className="space-y-6">
-      {/* Top Banner */}
-      <div
-        className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-          isDark
-            ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
-            : 'bg-white border-slate-300 text-slate-950 shadow-md'
-        }`}
-      >
-        <div>
-          <div className="flex items-center space-x-2">
-            <UserCheck className={`h-5 w-5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`} />
-            <h2 className={`text-sm font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950 font-extrabold'}`}>
-              Рабочее Место Диспетчера
-            </h2>
-          </div>
-          <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'}`}>
-            Разрешение неопределенностей, интерактивный диалог с клиентом в боте, ручное дообогащение данных и передача в 1С:ERP.
-          </p>
+  /* ----------------------------------------------------------------------
+     Состояние: данные ещё не загружены.
+     ---------------------------------------------------------------------- */
+  if (!db) {
+    return (
+      <div className="flex flex-col gap-6" aria-busy="true">
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-3">
+          Загрузка журнала смены…
+        </p>
+        <div className="figure-strip">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="figure-cell gap-3">
+              <div className="skeleton-line w-24" />
+              <div className="skeleton-line h-12 w-16" />
+              <div className="skeleton-line w-full" />
+            </div>
+          ))}
         </div>
+        <div className="journal p-3">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-4 border-b border-rule py-3 last:border-0">
+              <div className="skeleton-line w-20" />
+              <div className="skeleton-line flex-1" />
+              <div className="skeleton-line w-16" />
+            </div>
+          ))}
+        </div>
+        <span className="sr-only" role="status">
+          Идёт загрузка данных смены
+        </span>
+      </div>
+    );
+  }
 
-        <div className="flex items-center space-x-2 font-mono text-xs">
-          {pendingTickets.length > 0 ? (
-            <span className={`px-3 py-1.5 rounded-xl border font-bold animate-pulse flex items-center space-x-1.5 ${
-              isDark
-                ? 'bg-red-500/20 text-red-300 border-red-500/40'
-                : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
-            }`}>
-              <AlertTriangle className={`h-4 w-4 ${isDark ? 'text-red-400' : 'text-red-700'}`} />
-              <span>{pendingTickets.length} Заявок требуют внимания</span>
-            </span>
-          ) : (
-            <span className={`px-3 py-1.5 rounded-xl border font-bold flex items-center space-x-1.5 ${
-              isDark
-                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                : 'bg-emerald-100 text-emerald-950 border-emerald-400 font-extrabold'
-            }`}>
-              <CheckCircle className={`h-4 w-4 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} />
-              <span>Все обращения укомплектованы</span>
-            </span>
+  return (
+    <div id="operator-console-page" className="flex flex-col gap-6">
+      {/* Шапка листа */}
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        {/* Заголовок без пояснения: назначение экрана видно по самим графам,
+            а описание занимало строку в самом верху каждой смены. */}
+        <h1 className="text-balance font-sans text-3xl font-bold tracking-tight text-ink">
+          Рабочее место диспетчера
+        </h1>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="font-mono text-[11px] text-ink-3 tabular-nums">
+            Сверка{' '}
+            {new Date(lastSyncAt).toLocaleTimeString('ru-RU', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            })}
+          </span>
+          <button
+            type="button"
+            onClick={syncFromServer}
+            disabled={isSyncing}
+            className="inline-flex min-h-9 items-center gap-2 border border-rule bg-panel px-3 font-sans text-sm font-semibold text-ink hover:bg-panel-2 disabled:text-ink-3"
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`}
+              aria-hidden="true"
+            />
+            <span>Сверить</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Состояние: сверка не удалась */}
+      {syncError && (
+        <div
+          role="alert"
+          className="flex flex-col gap-2 border border-danger-bg bg-danger-bg px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p className="font-sans text-sm leading-relaxed text-danger">
+            <span className="font-medium">Нет связи с сервером журнала:</span> {syncError}. Данные на
+            экране могли устареть.
+          </p>
+          <button
+            type="button"
+            onClick={syncFromServer}
+            className="inline-flex min-h-9 shrink-0 items-center justify-center border border-danger px-3 font-sans text-sm font-semibold text-danger hover:bg-paper"
+          >
+            Повторить
+          </button>
+        </div>
+      )}
+
+      {/* Состояние: данные давно не сверялись */}
+      {isStale && !syncError && (
+        <div className="flex flex-col gap-2 border border-rule-strong bg-warn-bg px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-sans text-sm leading-relaxed text-warn">
+            Данные не сверялись больше минуты.
+          </p>
+          <button
+            type="button"
+            onClick={syncFromServer}
+            className="inline-flex min-h-9 shrink-0 items-center justify-center border border-warn px-3 font-sans text-sm font-semibold text-warn hover:bg-panel"
+          >
+            Обновить журнал
+          </button>
+        </div>
+      )}
+
+      {/* Сводка смены: сигнатурная резкая иерархия */}
+      <ShiftFigures
+        figures={figures}
+        changedIds={changedFigureIds}
+        activeId={figureFilter}
+        onSelect={(id) => {
+          setFigureFilter((current) => current === id ? null : id);
+          window.setTimeout(() => queueRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+        }}
+      />
+
+      <div ref={queueRef} className="sheet flex flex-col gap-3 p-4 scroll-mt-4" aria-label="Управление очередью">
+        <div className="flex flex-col gap-3 md:flex-row">
+          <label className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <span className="font-sans text-xs font-semibold text-ink-2">Поиск по очереди</span>
+            <input
+              type="search"
+              value={queueQuery}
+              onChange={(event) => setQueueQuery(event.target.value)}
+              placeholder="Номер, описание, оборудование или группа"
+              className="ui-input"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 md:w-56">
+            <span className="font-sans text-xs font-semibold text-ink-2">Сортировка</span>
+            <select value={queueSort} onChange={(event) => setQueueSort(event.target.value as typeof queueSort)} className="ui-input">
+              <option value="risk">По риску срока</option>
+              <option value="newest">Сначала новые</option>
+              <option value="priority">По критичности</option>
+            </select>
+          </label>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="font-sans text-sm text-ink-2" role="status">
+            Показано: {pendingTickets.length + activeTickets.length} из {allPendingTickets.length + allActiveTickets.length}
+          </p>
+          {(queueQuery || figureFilter || queueSort !== 'risk') && (
+            <button type="button" className="ui-button ui-button-secondary" onClick={() => {
+              setQueueQuery('');
+              setQueueSort('risk');
+              setFigureFilter(null);
+            }}>
+              Сбросить условия
+            </button>
           )}
         </div>
       </div>
 
-      {/* SECTION 1: PENDING HITL TICKETS (RED GLOW ATTENTION) */}
-      <div className="space-y-3">
-        <h3 className={`text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-1.5 ${
-          isDark ? 'text-amber-400' : 'text-amber-700 font-extrabold'
-        }`}>
-          <ShieldAlert className="h-4 w-4" />
-          <span>Обращения, Требующие Уточнения Данных Диспетчером ({pendingTickets.length})</span>
-        </h3>
+      {/* Служебный пульт скрыт из основного потока смены. */}
+      <details className="border-y border-rule py-3">
+        <summary className="cursor-pointer text-sm font-semibold text-ink-2">Демонстрационный поток обращений</summary>
+        <div className="mt-3">
+          <DemoStreamControl
+            isRunning={streamRunning}
+            onToggle={() => setStreamRunning((v) => !v)}
+            pace={streamPace}
+            onPaceChange={setStreamPace}
+            deliveredCount={streamCount}
+          />
+        </div>
+      </details>
+
+      {/* Графа 1: ожидают уточнения */}
+      <section className="flex flex-col gap-3" aria-labelledby="pending-heading">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2
+            id="pending-heading"
+            className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-3"
+          >
+            Требуют уточнения данных · {pendingTickets.length}
+          </h2>
+          {/* Подсказка горячих клавиш нужна там, где есть клавиатура. */}
+          {pendingTickets.length > 0 && (
+            <p className="hidden items-center gap-1.5 font-mono text-[10px] text-ink-3 lg:flex">
+              <span className="kbd">j</span>
+              <span className="kbd">k</span>
+              переход
+              <span className="kbd ml-1">1</span>–<span className="kbd">9</span>
+              открыть
+            </p>
+          )}
+        </div>
 
         {pendingTickets.length === 0 ? (
-          <div className={`p-5 rounded-2xl border text-center text-xs font-mono ${isDark ? 'bg-[#030712] border-slate-800 text-slate-500' : 'bg-slate-100 border-slate-300 text-slate-900 font-semibold'}`}>
-            // Нет неполных обращений. AI-Диспетчер автоматически обработал 100% поступивших сообщений.
-          </div>
+          /* Пусто — хорошая новость, а не отсутствие данных. Одна спокойная
+             строка вместо крупной цифры: ноль уже показан в сводке смены
+             выше, и повторять его большим ке��лем незачем. */
+          <p className="journal px-4 py-4 font-sans text-sm text-ink-2">
+            Неполных обращений нет.
+          </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <>
+          {/* Узкий экран: обращение целиком в карточке, листается свайпом. */}
+          <SwipeRail
+            label="Обращения, требующие уточнения"
+            count={pendingTickets.length}
+            className="lg:hidden"
+          >
             {pendingTickets.map((ticket) => (
-              <div
+              <article
                 key={ticket.ticket_id}
-                onClick={() => handleOpenTicketInspector(ticket)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer hover:scale-[1.01] ${
-                  isDark
-                    ? 'bg-[#090814] border-red-500/40 hover:border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
-                    : 'bg-white border-red-400 hover:border-red-600 shadow-md text-slate-950'
-                }`}
+                className={`swipe-card sheet flex flex-col gap-2 p-4 ${
+                  freshIds.includes(ticket.ticket_id) ? 'row-fresh' : ''
+                } ${leavingIds.includes(ticket.ticket_id) ? 'row-leaving' : ''}`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${
-                    isDark
-                      ? 'text-amber-400 bg-amber-500/10 border-amber-500/30'
-                      : 'text-amber-950 bg-amber-100 border-amber-400 font-extrabold'
-                  }`}>
-                    {ticket.ticket_id}
-                  </span>
-                  <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded border flex items-center space-x-1 ${
-                    isDark
-                      ? 'text-red-400 bg-red-500/10 border-red-500/30'
-                      : 'text-red-950 bg-red-100 border-red-400 font-extrabold'
-                  }`}>
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-ping"></span>
-                    <span>Уточнение Данных</span>
-                  </span>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="reg-no tabular-nums">{ticket.ticket_id}</span>
+                  <span className="stamp shrink-0 text-warn">Уточнить</span>
                 </div>
 
-                <h4 className={`text-xs font-bold mb-1 ${isDark ? 'text-white' : 'text-slate-950 font-extrabold'}`}>
-                  {ticket.summary || 'Неполное обращение без кода оборудования'}
-                </h4>
-                <p className={`text-[11px] mb-3 line-clamp-2 ${isDark ? 'text-slate-400' : 'text-slate-900 font-medium'}`}>
+                <p className="font-sans text-base font-medium leading-snug text-ink">
+                  {ticket.summary || 'Обращение без кода оборудования'}
+                </p>
+                <p className="line-clamp-3 font-sans text-sm leading-relaxed text-ink-2">
                   {ticket.description}
                 </p>
 
-                {ticket.missing_fields && (
-                  <div className="mb-3 flex flex-wrap gap-1 font-mono text-[10px]">
-                    <span className={isDark ? 'text-slate-400' : 'text-slate-900 font-bold'}>Отсутствует:</span>
-                    {ticket.missing_fields.map((field) => (
-                      <span key={field} className={`px-2 py-0.5 rounded border font-bold ${
-                        isDark
-                          ? 'bg-red-950/80 text-red-300 border-red-500/40'
-                          : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
-                      }`}>
-                        ⚠️ {field}
-                      </span>
-                    ))}
-                  </div>
+                {ticket.missing_fields && ticket.missing_fields.length > 0 && (
+                  <p className="font-sans text-sm text-warn">
+                    Не хватает: {formatFieldLabels(ticket.missing_fields)}
+                  </p>
                 )}
 
-                <div className={`flex items-center justify-between pt-2 border-t text-[11px] font-mono font-bold ${
-                  isDark
-                    ? 'border-slate-700/30 text-cyan-400'
-                    : 'border-slate-200 text-blue-950 font-extrabold'
-                }`}>
-                  <span>Открыть интерактивный диалог</span>
-                  <MessageSquare className="h-4 w-4" />
-                </div>
-              </div>
+                <button
+                  type="button"
+                  onClick={() => openTicket(ticket)}
+                  className="ui-button ui-button-primary mt-1 w-full"
+                >
+                  Открыть диалог
+                </button>
+              </article>
             ))}
-          </div>
-        )}
-      </div>
+          </SwipeRail>
 
-      {/* SECTION 2: REGULAR IN-PROGRESS TICKETS */}
-      <div className="space-y-3 pt-4">
-        <h3 className={`text-xs font-mono font-bold uppercase tracking-wider ${
-          isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'
-        }`}>
-          Все Укомплектованные Заявки в Работе ({activeTickets.length})
-        </h3>
-
-        <div className={`rounded-2xl p-4 border overflow-x-auto ${isDark ? 'bg-[#060612]/90 border-cyan-500/20' : 'bg-white border-slate-300 shadow-sm'}`}>
-          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-950'}`}>
-            <thead className={`font-mono uppercase text-[10px] border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-slate-200 text-slate-950 font-extrabold border-slate-300'}`}>
-              <tr>
-                <th className="p-3">ID Заявки</th>
-                <th className="p-3">Объект / Ассет</th>
-                <th className="p-3">Суть Обращения</th>
-                <th className="p-3">Приоритет</th>
-                <th className="p-3">SLA Дедлайн</th>
-                <th className="p-3">Группа</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/20 font-sans">
-              {activeTickets.map((t) => (
-                <tr key={t.ticket_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100/80'}>
-                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-amber-400' : 'text-amber-800 font-extrabold'}`}>{t.ticket_id}</td>
-                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-cyan-400' : 'text-blue-950 font-extrabold'}`}>{t.asset_id}</td>
-                  <td className="p-3 font-semibold">{t.summary}</td>
-                  <td className="p-3">
-                    <span className={`px-2 py-0.5 rounded border font-mono font-bold text-[10px] ${
-                      isDark
-                        ? 'bg-red-950/80 text-red-300 border-red-500/40'
-                        : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
-                    }`}>
-                      {t.priority.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="p-3 font-mono font-semibold">
-                    {new Date(t.sla_deadline).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td className={`p-3 font-mono ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>{t.assigned_group}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* INTERACTIVE DIALOGUE & CLARIFICATION INSPECTOR MODAL */}
-      {selectedTicket && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div
-            className={`w-full max-w-2xl rounded-2xl p-6 border shadow-2xl flex flex-col max-h-[90vh] ${
-              isDark ? 'bg-[#090918] border-cyan-500/40 text-white' : 'bg-white border-slate-400 text-slate-950 shadow-2xl'
-            }`}
+          {/* Широкий экран: графа журнала целиком, без прокрутки и листания. */}
+          <ul
+            ref={listRef}
+            className="journal hidden lg:block"
+            onKeyDown={handleListKeyDown}
+            aria-label="Обращения, требующие уточнения"
           >
-            {/* Modal Header */}
-            <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-slate-700/30' : 'border-slate-300'}`}>
-              <div className="flex items-center space-x-2.5">
-                <div className={`p-2 rounded-xl border ${
-                  isDark
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                    : 'bg-amber-100 text-amber-950 border-amber-400 font-extrabold'
-                }`}>
-                  <MessageSquare className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className={`text-sm font-mono font-bold uppercase ${
-                    isDark ? 'text-amber-400' : 'text-amber-900 font-extrabold'
-                  }`}>
-                    Интерактивный Диалог Диспетчера (Заявка {selectedTicket.ticket_id})
-                  </h3>
-                  <span className={`text-[11px] font-mono ${
-                    isDark ? 'text-slate-400' : 'text-slate-700 font-bold'
-                  }`}>
-                    Канал: {selectedTicket.channel || 'Telegram Bot'}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedTicket(null)}
-                className={isDark ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-950'}
+            <li className="journal-head" aria-hidden="true">
+              <span className="w-6">№</span>
+              <span className="w-24">Номер</span>
+              <span className="flex-1">Суть обращения</span>
+              <span>Отметка</span>
+            </li>
+
+            {pendingTickets.map((ticket, index) => (
+              <li
+                key={ticket.ticket_id}
+                data-row-index={index}
+                className={[
+                  freshIds.includes(ticket.ticket_id) ? 'row-fresh' : '',
+                  leavingIds.includes(ticket.ticket_id) ? 'row-leaving' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
               >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Chat Messages History Stream */}
-            <div className={`flex-1 overflow-y-auto my-4 space-y-3 p-3 rounded-xl border font-sans text-xs ${
-              isDark ? 'bg-black/40 border-slate-800' : 'bg-slate-100 border-slate-300'
-            }`}>
-              {(selectedTicket.messages || [
-                {
-                  id: 'm-0',
-                  sender: 'client',
-                  author_name: 'Клиент',
-                  text: selectedTicket.description,
-                  timestamp: selectedTicket.created_at,
-                },
-              ]).map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`p-3 rounded-xl max-w-[85%] ${
-                    msg.sender === 'operator'
-                      ? isDark
-                        ? 'bg-cyan-950/60 border border-cyan-500/40 text-cyan-200 ml-auto'
-                        : 'bg-blue-100 border border-blue-400 text-blue-950 font-semibold ml-auto shadow-sm'
-                      : msg.sender === 'bot'
-                      ? isDark
-                        ? 'bg-purple-950/60 border border-purple-500/40 text-purple-200 ml-auto'
-                        : 'bg-purple-100 border border-purple-400 text-purple-950 font-semibold ml-auto shadow-sm'
-                      : isDark
-                      ? 'bg-slate-800/80 border border-slate-700 text-slate-200 mr-auto'
-                      : 'bg-white border border-slate-300 text-slate-950 font-semibold mr-auto shadow-sm'
-                  }`}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCursor(index);
+                    openTicket(ticket);
+                  }}
+                  onFocus={() => setCursor(index)}
+                  tabIndex={index === cursor ? 0 : -1}
+                  data-attention="true"
+                  data-selected={index === cursor ? 'true' : undefined}
+                  className="journal-row flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-4"
+                  aria-label={`Открыть диалог по заявке ${ticket.ticket_id}`}
                 >
-                  <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1 opacity-90">
-                    <span>{msg.author_name}</span>
-                    <span>{new Date(msg.timestamp).toLocaleTimeString('ru-RU')}</span>
-                  </div>
-                  <p className="leading-relaxed">{msg.text}</p>
-                </div>
-              ))}
+                  <span className="reg-no w-6 shrink-0 tabular-nums">
+                    {index < 9 ? index + 1 : '·'}
+                  </span>
+                  <span className="reg-no w-24 shrink-0 tabular-nums">{ticket.ticket_id}</span>
+
+                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="font-sans text-sm font-medium text-ink">
+                      {ticket.summary || 'Обращение без кода оборудования'}
+                    </span>
+                    <span className="line-clamp-2 font-sans text-sm leading-relaxed text-ink-2">
+                      {ticket.description}
+                    </span>
+                    {ticket.missing_fields && ticket.missing_fields.length > 0 && (
+                      <span className="font-sans text-xs text-warn">
+                        Не хватает: {formatFieldLabels(ticket.missing_fields)}
+                      </span>
+                    )}
+                  </span>
+
+                  <span className="stamp shrink-0 text-warn">Уточнить</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          </>
+        )}
+      </section>
+
+      {/* Графа 2: заявки в работе с живым обратным отсчётом */}
+      <section className="flex flex-col gap-3" aria-labelledby="active-heading">
+        <h2
+          id="active-heading"
+          className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-3"
+        >
+          Заявки в работе · {activeTickets.length}
+        </h2>
+
+        {activeTickets.length === 0 ? (
+          <div className="journal px-4 py-6 font-sans text-sm text-ink-2">
+            В работе нет ни одной заявки.
+          </div>
+        ) : (
+          <>
+            {/* Узкий экран: вместо таблицы на шесть колонок — карточка заявки. */}
+            <SwipeRail
+              label="Заявки в работе"
+              count={activeTickets.length}
+              className={`lg:hidden ${isStale ? 'is-stale' : ''}`}
+            >
+              {activeTickets.map((t) => {
+                const { r, percent, state, textClass } = slaView(t);
+
+                return (
+                  <article
+                    key={t.ticket_id}
+                    className={`swipe-card sheet flex flex-col gap-2 p-4 ${
+                      leavingIds.includes(t.ticket_id) ? 'row-leaving' : ''
+                    }`}
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="reg-no tabular-nums">{t.ticket_id}</span>
+                      <span className="font-mono text-sm uppercase text-ink-3">{t.priority}</span>
+                    </div>
+
+                    <p className="font-sans text-base font-medium leading-snug text-ink">
+                      {t.summary}
+                    </p>
+                    <p className="font-mono text-sm text-ink-2">
+                      {t.asset_id} · {t.assigned_group}
+                    </p>
+
+                    <div className="mt-1 flex flex-col gap-1.5">
+                      <span className={`font-mono text-sm tabular-nums ${textClass}`}>
+                        {r.text}
+                        {r.overdue && <span className="ml-1.5">просрочено</span>}
+                      </span>
+                      <span className="sla-track" aria-hidden="true">
+                        <span
+                          className="sla-fill"
+                          data-state={state}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </span>
+                    </div>
+                  </article>
+                );
+              })}
+            </SwipeRail>
+
+            {/* Широкий экран: полный разворот журнала во всю рабочую ширину. */}
+            <div className={`journal hidden lg:block ${isStale ? 'is-stale' : ''}`}>
+              <table className="ledger ledger-dense">
+                <thead>
+                  <tr>
+                    <th>Номер</th>
+                    <th>Оборудование</th>
+                    <th>Суть обращения</th>
+                    <th>Критичность</th>
+                    <th>Остаток срока</th>
+                    <th>Группа</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeTickets.map((t) => {
+                    const { r, percent, state, textClass } = slaView(t);
+
+                    return (
+                      <tr
+                        key={t.ticket_id}
+                        className={leavingIds.includes(t.ticket_id) ? 'row-leaving' : ''}
+                      >
+                        <td>{t.ticket_id}</td>
+                        <td className="cell-mono">{t.asset_id}</td>
+                        <td className="cell-key">{t.summary}</td>
+                        <td className="cell-mono uppercase">{t.priority}</td>
+                        <td>
+                          <span className="flex flex-col gap-1">
+                            <span className={`font-mono text-xs tabular-nums ${textClass}`}>
+                              {r.text}
+                              {r.overdue && <span className="ml-1.5 text-[10px]">просрочено</span>}
+                            </span>
+                            <span className="sla-track" aria-hidden="true">
+                              <span
+                                className="sla-fill"
+                                data-state={state}
+                                style={{ width: `${percent}%` }}
+                              />
+                            </span>
+                          </span>
+                        </td>
+                        <td className="cell-mono">{t.assigned_group}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
+          </>
+        )}
+      </section>
 
-            {/* Operator Manual Entry / Clarification Controls */}
-            <div className={`space-y-3 font-mono text-xs border-t pt-3 ${isDark ? 'border-slate-700/30' : 'border-slate-300'}`}>
-              {/* Missing Information Highlight */}
-              <div className={`p-2.5 rounded-xl border text-[11px] flex items-center justify-between ${
-                isDark
-                  ? 'bg-red-950/40 border-red-500/30 text-red-300'
-                  : 'bg-red-100 border-red-400 text-red-950 font-extrabold'
-              }`}>
-                <span>⚠️ Требуется уточнить: Код Оборудования / Складской Цех</span>
-                <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-700 font-bold'}`}>AI Confidence: 65%</span>
-              </div>
+      {/* Бланк уточнения */}
+      {selectedTicket && (
+        <ClarifyDialog
+          ticket={selectedTicket}
+          replyText={replyText}
+          onChangeReply={setReplyText}
+            onClose={() => {
+              if (clarificationTimerRef.current !== null) {
+                window.clearTimeout(clarificationTimerRef.current);
+                clarificationTimerRef.current = null;
+              }
+              setIsWaitingForClient(false);
+              setSelectedTicket(null);
+            }}
+            onSend={handleSendClarification}
+            onCommit={() => handleCommit(false)}
+            isSending={isSending}
+            isWaitingForClient={isWaitingForClient}
+            isCommitting={isCommitting}
+          statusMessage={statusMessage}
+          statusKind={statusKind}
+        />
+      )}
 
-              {/* Operator Reply Input */}
+      {/* Состояние: конфликт — заявку изменил другой диспетчер */}
+      {conflict && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 scrim"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="conflict-title"
+          aria-describedby="conflict-body"
+        >
+          <div className="sheet w-full max-w-md">
+            <div className="flex items-start gap-3 border-b border-rule-strong px-4 py-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
               <div>
-                <label className={`block text-[11px] font-bold mb-1 ${
-                  isDark ? 'text-slate-400' : 'text-slate-950 font-extrabold'
-                }`}>
-                  Текст запроса клиенту в бот Telegram:
-                </label>
-                <textarea
-                  rows={2}
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  className={`w-full p-2.5 rounded-xl text-xs focus:outline-none transition ${
-                    isDark
-                      ? 'bg-black/60 border border-slate-700 text-white focus:ring-1 focus:ring-cyan-500'
-                      : 'bg-white border border-slate-400 text-slate-950 font-semibold focus:border-blue-950 focus:ring-1 focus:ring-blue-950'
-                  }`}
-                />
+                <h2 id="conflict-title" className="font-sans text-sm font-semibold text-ink">
+                  Заявку уже изменили
+                </h2>
+                <p className="mt-0.5 font-mono text-[11px] text-ink-3 tabular-nums">
+                  {conflict.ticket.ticket_id}
+                </p>
               </div>
+            </div>
 
-              {/* Quick Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col gap-3 px-4 py-3">
+              <p id="conflict-body" className="font-sans text-sm leading-relaxed text-ink-2">
+                Заявку изменил другой диспетчер — на сервере она в состоянии{' '}
+                <span className="font-mono text-ink">{conflict.theirStatus}</span>. Ваши изменения не
+                записаны.
+              </p>
+
+              <p className="flex items-start gap-2 border border-rule bg-panel-2 px-3 py-2 font-sans text-sm leading-relaxed text-ink-2">
+                <Users className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-3" aria-hidden="true" />
+                <span>Перехват нужен только если версия коллеги точно ошибочна.</span>
+              </p>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <button
-                  onClick={handleSendClarification}
-                  disabled={isSending}
-                  className={`flex-1 py-2.5 px-4 rounded-xl font-bold flex items-center justify-center space-x-1.5 transition ${
-                    isDark
-                      ? 'bg-sky-500 hover:bg-sky-400 text-slate-950'
-                      : 'bg-sky-600 hover:bg-sky-700 text-white font-extrabold shadow-sm'
-                  }`}
+                  type="button"
+                  onClick={async () => {
+                    setConflict(null);
+                    setSelectedTicket(null);
+                    await syncFromServer();
+                  }}
+                  className="inline-flex min-h-11 flex-1 items-center justify-center bg-accent px-4 font-sans text-sm font-medium text-on-accent hover:bg-accent-hover"
                 >
-                  {isSending ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  <span>Отправить клиенту в бот</span>
+                  Оставить коллеге
                 </button>
-
                 <button
-                  onClick={handleApproveAndCommitTicket}
-                  className={`flex-1 py-2.5 px-4 rounded-xl font-bold flex items-center justify-center space-x-1.5 transition ${
-                    isDark
-                      ? 'bg-emerald-900 hover:bg-emerald-800 text-white border border-emerald-700 shadow-md'
-                      : 'bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold shadow-md border border-emerald-950'
-                  }`}
+                  type="button"
+                  onClick={() => {
+                    setConflict(null);
+                    handleCommit(true);
+                  }}
+                  className="inline-flex min-h-11 flex-1 items-center justify-center border border-danger px-4 font-sans text-sm font-medium text-danger hover:bg-danger-bg"
                 >
-                  <FileCheck className="h-4 w-4" />
-                  <span>Утвердить & Передать в 1С</span>
+                  Перехватить заявку
                 </button>
               </div>
-
-              {statusMessage && (
-                <div className={`p-2 rounded-lg text-[11px] font-bold ${
-                  isDark
-                    ? 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-300'
-                    : 'bg-blue-100 border border-blue-400 text-blue-950'
-                }`}>
-                  {statusMessage}
-                </div>
-              )}
             </div>
           </div>
         </div>

@@ -136,67 +136,7 @@ export const INITIAL_DATABASE: DatabaseSchema = {
       active: true,
     },
   ],
-  open_tickets: [
-    {
-      ticket_id: 'T-884',
-      customer_id: 'C-101',
-      site_id: 'S-MSK-01',
-      asset_id: 'A-1001',
-      priority: 'high',
-      summary: 'Температура поднялась до +5°C, шум компрессора №1',
-      description: 'Поступило первичное обращение по каналу Email. Инженер назначен.',
-      sla_deadline: '2026-08-13T16:55:00+03:00',
-      assigned_group: 'Группа №2 (Холод-МСК)',
-      status: 'IN_PROGRESS',
-      created_at: '2026-08-13T15:55:00+03:00',
-      history: [
-        {
-          timestamp: '2026-08-13T15:55:00+03:00',
-          note: 'Заявка T-884 автоматически создана из входящего письма.',
-          author: 'AI Dispatcher System',
-        },
-      ],
-    },
-    {
-      ticket_id: 'T-880',
-      customer_id: 'C-202',
-      site_id: 'S-SPB-03',
-      asset_id: 'A-3001',
-      priority: 'medium',
-      summary: 'Необходимо плановое ТО чиллера ЧИЛ-01',
-      description: 'Поступил запрос от клиента по каналу Telegram.',
-      sla_deadline: '2026-08-14T12:00:00+03:00',
-      assigned_group: 'Группа №1 (СПб Сервис)',
-      status: 'WAITING_DISPATCHER',
-      created_at: '2026-08-13T14:00:00+03:00',
-      missing_fields: ['asset_code', 'preferred_time'],
-      messages: [
-        {
-          id: 'm-1',
-          sender: 'client',
-          author_name: 'Михаил (СПб)',
-          text: 'Добрый день! Нужно плановое ТО чиллера на Пулковском шоссе.',
-          timestamp: '2026-08-13T14:00:00+03:00',
-          channel: 'telegram',
-        },
-        {
-          id: 'm-2',
-          sender: 'bot',
-          author_name: 'AI-Диспетчер',
-          text: '🤖 Обращение получено. Требуется уточнение данных.',
-          timestamp: '2026-08-13T14:00:05+03:00',
-          channel: 'telegram',
-        },
-      ],
-      history: [
-        {
-          timestamp: '2026-08-13T14:00:00+03:00',
-          note: 'Создана неполная заявка T-880. Передано в HITL диспетчеру.',
-          author: 'AI Dispatcher Core',
-        },
-      ],
-    },
-  ],
+  open_tickets: [],
   closed_tickets: [
     {
       ticket_id: 'T-801',
@@ -242,3 +182,8 @@ export const INITIAL_DATABASE: DatabaseSchema = {
     },
   ],
 };
+
+/** Возвращает независимую начальную базу без активных заявок. */
+export function createInitialDatabase(): DatabaseSchema {
+  return JSON.parse(JSON.stringify(INITIAL_DATABASE));
+}

@@ -20,6 +20,81 @@ export function extractDigits(input: string | null | undefined): string {
   return input.replace(/[^0-9]/g, '');
 }
 
+/**
+ * Приводит наименование организации к сопоставимому виду: убирает форму
+ * собственности и кавычки. 'ООО "СеверФуд"' и 'СеверФуд' дают одну строку.
+ */
+export function normalizeOrgName(input: string | null | undefined): string {
+  if (!input) return '';
+  return input
+    .toLowerCase()
+    .replace(/\b(ооо|оао|пао|зао|ао|ип|нао)\b/g, '')
+    .replace(/[«»"'`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Служебные слова адреса, не различающие объекты между собой
+const ADDRESS_STOPWORDS = new Set([
+  'улица',
+  'ул',
+  'шоссе',
+  'проспект',
+  'пр',
+  'город',
+  'г',
+  'дом',
+  'д',
+  'склад',
+  'корпус',
+  'на',
+  'стр',
+  'строение',
+  'офис',
+  'территория',
+]);
+
+/**
+ * Разбивает адрес на значимые основы слов. Сравнение по основам снимает
+ * различия падежей: 'Дмитровском' и 'Дмитровское' дают одну основу.
+ */
+export function addressTokens(input: string | null | undefined): string[] {
+  if (!input) return [];
+  return input
+    .toLowerCase()
+    .replace(/[.,;:()]/g, ' ')
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 4 && !ADDRESS_STOPWORDS.has(t) && !/^\d+$/.test(t))
+    .map((t) => t.slice(0, 6));
+}
+
+/** Номера домов и корпусов из адреса (числа длиной 1-4 знака). */
+export function extractAddressNumbers(input: string | null | undefined): string[] {
+  if (!input) return [];
+  return (input.match(/\b\d{1,4}\b/g) || []).filter((n) => n.length <= 4);
+}
+
+/**
+ * Совпадение адресов: требуется общая основа названия улицы и, если номера
+ * домов указаны с обеих сторон, совпадение номера. Это не даёт объединить
+ * 'Дмитровское шоссе, 100' и 'Дмитровское шоссе, 42'.
+ */
+export function addressesMatch(
+  queryTokens: string[],
+  queryNumbers: string[],
+  candidateAddress: string
+): boolean {
+  if (queryTokens.length === 0) return false;
+  const candTokens = addressTokens(candidateAddress);
+  const streetHit = queryTokens.some((t) => candTokens.includes(t));
+  if (!streetHit) return false;
+
+  const candNumbers = extractAddressNumbers(candidateAddress);
+  if (queryNumbers.length === 0 || candNumbers.length === 0) return true;
+  return queryNumbers.some((n) => candNumbers.includes(n));
+}
+
 // --- PII Masking (phones, INN, emails) ---
 const PII_PATTERNS: RegExp[] = [
   /\+?\d[\d\s\-()]{8,}\d/g, // phone numbers with separators
@@ -364,20 +439,26 @@ export function runDeterministicDispatch(
   const siteAddr = facts.site_info.value?.toLowerCase() || '';
   const rawLower = rawText.toLowerCase();
 
+  const custNorm = normalizeOrgName(custName);
+  const queryAddrTokens = addressTokens(siteAddr);
+  const queryAddrNumbers = extractAddressNumbers(siteAddr);
+
   const knownContractors = db.contractors.filter((c) => {
-    const cName = c.name.toLowerCase();
-    const cClean = cName.replace(/ооо|пао|зао|ао|"/g, '').trim();
-    return (
-      (custName && (cName.includes(custName) || cClean.includes(custName))) ||
-      (cClean.length >= 3 && rawLower.includes(cClean))
-    );
+    const cClean = normalizeOrgName(c.name);
+    if (!cClean) return false;
+    // Сравнение в обе стороны: модель может вернуть как 'СеверФуд',
+    // так и 'ООО "СеверФуд"' — оба варианта должны находить контрагента.
+    const nameMatch = !!custNorm && (cClean.includes(custNorm) || custNorm.includes(cClean));
+    return nameMatch || (cClean.length >= 3 && normalizeOrgName(rawLower).includes(cClean));
   });
 
   const matchedSites: Site[] = db.sites.filter((s) => {
-    const nameMatch = custName && s.customer_name.toLowerCase().includes(custName);
-    const addrMatch = siteAddr && s.address.toLowerCase().includes(siteAddr);
-    const rawMatch = rawLower.includes(s.customer_name.toLowerCase()) ||
-      (s.address.toLowerCase().split(',')[1] && rawLower.includes(s.address.toLowerCase().split(',')[1].trim()));
+    const sNorm = normalizeOrgName(s.customer_name);
+    const nameMatch = !!custNorm && !!sNorm && (sNorm.includes(custNorm) || custNorm.includes(sNorm));
+    const addrMatch = addressesMatch(queryAddrTokens, queryAddrNumbers, s.address);
+    const rawMatch =
+      (sNorm.length >= 3 && normalizeOrgName(rawLower).includes(sNorm)) ||
+      addressesMatch(addressTokens(rawLower), extractAddressNumbers(rawLower), s.address);
     return nameMatch || addrMatch || rawMatch;
   });
 
@@ -407,10 +488,12 @@ export function runDeterministicDispatch(
 
   const targetAssetDigits = extractDigits(facts.asset_code.value);
 
-  const addressMatchedSites = db.sites.filter((s) => {
-    const sAddr = s.address.toLowerCase();
-    return siteAddr && sAddr.includes(siteAddr);
-  });
+  // Адрес из обращения приходит в свободной форме ('склад на Дмитровском
+  // шоссе, 100'), в реестре он записан канонически ('г. Москва, Дмитровское
+  // шоссе, 100'). Сопоставление идёт по основам слов и номеру дома.
+  const addressMatchedSites = db.sites.filter((s) =>
+    addressesMatch(queryAddrTokens, queryAddrNumbers, s.address)
+  );
 
   if (addressMatchedSites.length === 1) {
     selectedSite = addressMatchedSites[0];
@@ -622,7 +705,7 @@ export function runDeterministicDispatch(
   });
 
   if (recommendedAction === 'REJECT') {
-    customerReply = `Контр-агент не заведен в базу и не обслуживается.`;
+    customerReply = `Контрагент не заведён в базу и не обслуживается.`;
   } else if (recommendedAction === 'UPDATE_TICKET') {
     customerReply = `Здравствуйте! Информация о текущем статусе оборудования принята и добавлена к вашей заявке №${targetTicketId}. Ваша заявка переведена в высший приоритет (CRITICAL). Наш инженер уже находится на связи с объектом.`;
   } else if (recommendedAction === 'CREATE_TICKET') {

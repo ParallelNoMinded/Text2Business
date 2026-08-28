@@ -1,29 +1,21 @@
 import React, { useState } from 'react';
 import { TraceStep } from '../types';
-import { Terminal, ChevronDown, ChevronRight, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface ExecutionTraceTimelineProps {
   trace: TraceStep[];
   theme?: 'dark' | 'light';
 }
 
-export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({
-  trace,
-  theme = 'dark',
-}) => {
-  const isDark = theme === 'dark';
+export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({ trace }) => {
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
 
   if (!trace || trace.length === 0) {
     return (
-      <div
-        className={`rounded-2xl p-5 text-center text-xs font-mono border transition-all ${
-          isDark
-            ? 'bg-[#06060e]/80 border-cyan-500/20 text-slate-500'
-            : 'bg-white border-slate-300 text-slate-700 font-semibold shadow-sm'
-        }`}
-      >
-        // Трассировка появится после выполнения вызова пайплайна...
+      <div className="sheet p-5">
+        <div className="border border-dashed border-rule p-5 text-center font-mono text-xs leading-relaxed text-ink-3">
+          Ход обработки появится здесь после первого обращения.
+        </div>
       </div>
     );
   }
@@ -33,119 +25,89 @@ export const ExecutionTraceTimeline: React.FC<ExecutionTraceTimelineProps> = ({
   };
 
   const totalDuration = trace.reduce((acc, curr) => acc + (curr.duration_ms || 0), 0);
+  const maxDuration = Math.max(...trace.map((s) => s.duration_ms || 0), 1);
 
   return (
-    <div
-      id="execution-trace-panel"
-      className={`rounded-2xl p-4 sm:p-5 transition-all border space-y-4 ${
-        isDark
-          ? 'bg-[#06060e]/90 border-cyan-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-white'
-          : 'bg-white border-slate-300 shadow-sm text-slate-900'
-      }`}
-    >
-      {/* Header Bar */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
-        <div className="flex items-center space-x-2">
-          <Terminal className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-          <h2 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>
-            3. Трассировка выполнения
-          </h2>
-        </div>
-        <div className="flex items-center space-x-3 text-xs font-mono">
-          <span className={isDark ? 'text-slate-400' : 'text-slate-700 font-semibold'}>Шагов: {trace.length}</span>
-          <span
-            className={`px-2.5 py-0.5 rounded-md font-extrabold border ${
-              isDark
-                ? 'bg-cyan-950/60 text-cyan-300 border-cyan-500/40 shadow-[0_0_8px_rgba(34,211,238,0.2)]'
-                : 'bg-blue-50 text-blue-950 border-blue-200'
-            }`}
-          >
-            Общая задержка: {totalDuration} мс
+    <div id="execution-trace-panel" className="sheet p-4 sm:p-5">
+      {/* Графа-заголовок */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-rule pb-3">
+        <h2 className="text-lg font-bold text-ink">
+          <span className="text-ink-3">3 · </span>Ход обработки
+        </h2>
+        <div className="flex items-baseline gap-4 font-mono text-xs text-ink-3">
+          <span>
+            шагов <span className="tabular-nums text-ink-2">{trace.length}</span>
+          </span>
+          <span>
+            всего <span className="tabular-nums text-ink-2">{totalDuration} мс</span>
           </span>
         </div>
       </div>
 
-      {/* Timeline List */}
-      <div className="space-y-2 font-mono">
+      {/* Перечень шагов */}
+      <ol className="font-mono">
         {trace.map((step, idx) => {
           const isExpanded = !!expandedIds[step.id];
-          const isSuccess = step.status === 'SUCCESS';
           const isWarning = step.status === 'WARNING';
+          const share = Math.round(((step.duration_ms || 0) / maxDuration) * 100);
 
           return (
-            <div
-              key={step.id || idx}
-              className={`border rounded-xl overflow-hidden transition-all shadow-inner ${
-                isDark
-                  ? 'bg-[#020204]/90 border-cyan-500/20'
-                  : 'bg-slate-50 border-slate-300'
-              }`}
-            >
-              {/* Step Summary Bar */}
+            <li key={step.id || idx} className="border-b border-rule last:border-b-0">
               <button
                 type="button"
                 onClick={() => toggleExpand(step.id)}
-                className={`w-full text-left p-3 flex items-center justify-between transition ${
-                  isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100'
-                }`}
+                aria-expanded={isExpanded}
+                className="group flex w-full items-baseline gap-3 py-2.5 text-left transition hover:bg-panel-2"
               >
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0">
-                    {isSuccess && <CheckCircle2 className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />}
-                    {isWarning && <AlertCircle className="h-4 w-4 text-amber-500" />}
-                    {!isSuccess && !isWarning && (
-                      <Clock className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
+                <span className="w-5 shrink-0 tabular-nums text-[11px] text-ink-3">
+                  {String(idx + 1).padStart(2, '0')}
+                </span>
+
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-baseline gap-2">
+                    <span className={`truncate text-sm ${isWarning ? 'text-attention' : 'text-ink-2'}`}>
+                      {step.step_name}
+                    </span>
+                    {isWarning && (
+                      <span className="shrink-0 text-[10px] uppercase tracking-wider text-attention">
+                        внимание
+                      </span>
                     )}
-                  </div>
-
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className={`font-mono text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        [{step.step_name}]
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {step.timestamp}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <span
-                    className={`font-mono text-[11px] px-2 py-0.5 rounded border font-extrabold ${
-                      isDark
-                        ? 'text-cyan-300 bg-[#080810] border-white/10'
-                        : 'text-blue-950 bg-white border-slate-300'
-                    }`}
-                  >
-                    {step.duration_ms} ms
+                    <span className="shrink-0 text-[10px] text-ink-3">{step.timestamp}</span>
                   </span>
-                  {isExpanded ? (
-                    <ChevronDown className={`h-4 w-4 ${isDark ? 'text-cyan-400' : 'text-blue-900'}`} />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
-                  )}
-                </div>
+                  {/* Полоса длительности — читается как отметка в графе */}
+                  <span className="mt-1.5 block h-px w-full bg-rule">
+                    <span
+                      className={`block h-px ${isWarning ? 'bg-attention' : 'bg-accent-soft'}`}
+                      style={{ width: `${share}%` }}
+                    />
+                  </span>
+                </span>
+
+                <span className="shrink-0 tabular-nums text-[11px] text-ink-3">
+                  {step.duration_ms} мс
+                </span>
+                {isExpanded ? (
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0 self-center text-ink-2" aria-hidden="true" />
+                ) : (
+                  <ChevronRight
+                    className="h-3.5 w-3.5 shrink-0 self-center text-ink-3 group-hover:text-ink-2"
+                    aria-hidden="true"
+                  />
+                )}
               </button>
 
-              {/* Step Expanded Details */}
               {isExpanded && (
-                <div
-                  className={`p-3 border-t text-xs font-mono overflow-x-auto ${
-                    isDark
-                      ? 'bg-[#05050c] border-cyan-500/20 text-cyan-300/90'
-                      : 'bg-white border-slate-300 text-slate-900 font-medium'
-                  }`}
-                >
-                  <pre className="text-[11px] leading-relaxed whitespace-pre-wrap">
+                <div className="overflow-x-auto border-t border-dashed border-rule bg-panel-2 px-3 py-2.5 pl-8">
+                  <pre className="whitespace-pre-wrap text-[11px] leading-relaxed text-ink-2">
                     {JSON.stringify(step.details, null, 2)}
                   </pre>
                 </div>
               )}
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
     </div>
   );
 };

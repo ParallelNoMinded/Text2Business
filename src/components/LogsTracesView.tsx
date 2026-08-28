@@ -4,28 +4,20 @@ import {
   Activity,
   Layers,
   Search,
-  Filter,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
-  Cpu,
-  Shield,
-  Zap,
   RefreshCw,
-  TrendingUp,
   BarChart2,
 } from 'lucide-react';
 import { SystemLogEntry } from '../types';
 import { apiFetch } from '../api';
 import { DatabaseSchema } from '../mockDb';
+import { IntakeAnalytics } from './IntakeAnalytics';
 
 interface LogsTracesViewProps {
   theme?: 'dark' | 'light';
   db?: DatabaseSchema | null;
 }
 
-export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', db }) => {
-  const isDark = theme === 'dark';
+export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ db }) => {
   const [logFilter, setLogFilter] = useState<'ALL' | 'TELEGRAM' | 'EMAIL' | 'VOICE' | 'SYSTEM' | '1C' | 'REST'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [logs, setLogs] = useState<SystemLogEntry[]>([]);
@@ -73,183 +65,169 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
   return (
     <div id="logs-traces-page" className="space-y-6">
       {/* Top Banner */}
-      <div
-        className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-          isDark
-            ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
-            : 'bg-white border-slate-300 text-slate-950 shadow-md'
-        }`}
-      >
+      <div className="flex flex-col justify-between gap-5 border-b border-rule pb-5 sm:flex-row sm:items-end">
         <div>
           <div className="flex items-center space-x-2">
-            <Activity className={`h-5 w-5 ${isDark ? 'text-cyan-400' : 'text-blue-950'}`} />
-            <h2 className={`text-sm font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950 font-extrabold'}`}>
-              Мониторинг, Логи и Трейсы Выполнения
-            </h2>
+            <Activity className="h-4 w-4 text-ink-3" />
+            <h1 className="text-3xl font-bold tracking-tight text-ink">
+              Журнал событий и трассировка
+            </h1>
           </div>
-          <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'}`}>
-            Сквозное логирование входящих запросов, трассировка OpenTelemetry / Arize AI и дашборды метрик работы AI-Диспетчера.
-          </p>
         </div>
 
         {/* View Switcher Tabs */}
         <div className="flex items-center space-x-2 font-mono text-xs">
           <button
             onClick={() => setActiveTab('logs')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
+            aria-current={activeTab === 'logs' ? 'page' : undefined}
+            className={`flex items-center gap-1.5 border px-3 py-2 uppercase tracking-wider transition ${
               activeTab === 'logs'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
+                ? 'border-accent bg-accent text-on-accent'
+                : 'border-rule-strong text-ink-2 hover:bg-panel-2 hover:text-ink'
             }`}
           >
             <Terminal className="h-4 w-4" />
-            <span>Логи Системы</span>
+            <span>События</span>
           </button>
 
           <button
             onClick={() => setActiveTab('traces')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
+            aria-current={activeTab === 'traces' ? 'page' : undefined}
+            className={`flex items-center gap-1.5 border px-3 py-2 uppercase tracking-wider transition ${
               activeTab === 'traces'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
+                ? 'border-accent bg-accent text-on-accent'
+                : 'border-rule-strong text-ink-2 hover:bg-panel-2 hover:text-ink'
             }`}
           >
             <Layers className="h-4 w-4" />
-            <span>OpenTelemetry Трейсы</span>
+            <span>Этапы обработки</span>
           </button>
 
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center space-x-1.5 ${
+            aria-current={activeTab === 'analytics' ? 'page' : undefined}
+            className={`flex items-center gap-1.5 border px-3 py-2 uppercase tracking-wider transition ${
               activeTab === 'analytics'
-                ? isDark
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-blue-950 text-white shadow-md font-extrabold border border-blue-950'
-                : isDark
-                ? 'text-slate-400 hover:text-white'
-                : 'bg-slate-200 text-slate-900 border border-slate-300 hover:bg-slate-300 hover:text-slate-950 font-extrabold'
+                ? 'border-accent bg-accent text-on-accent'
+                : 'border-rule-strong text-ink-2 hover:bg-panel-2 hover:text-ink'
             }`}
           >
             <BarChart2 className="h-4 w-4" />
-            <span>Дашборды Метрик</span>
+            <span>Сводка</span>
           </button>
         </div>
       </div>
 
       {/* METRICS SUMMARY CARDS (по данным прототипа) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Всего Заявок</div>
-          <div className={`text-xl font-black ${isDark ? 'text-cyan-400' : 'text-blue-950'}`}>{totalRequests}</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>открыто: {db?.open_tickets?.length || 0} • закрыто: {db?.closed_tickets?.length || 0}</div>
+        <div className="sheet p-4">
+          <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-ink-3">Всего заявок</div>
+          <div className="font-mono text-2xl tabular-nums text-ink">{totalRequests}</div>
+          <div className="mt-1 text-[10px] leading-relaxed text-ink-3">открыто: {db?.open_tickets?.length || 0} • закрыто: {db?.closed_tickets?.length || 0}</div>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Авто-Диспетчеризация</div>
-          <div className={`text-xl font-black ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{autoRate}%</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>SLA-дедлайн по контракту + бизнес-часам</div>
+        <div className="sheet p-4">
+          <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-ink-3">Обработано без участия</div>
+          <div className="font-mono text-2xl tabular-nums text-ink">{autoRate}%</div>
+          <div className="mt-1 text-[10px] leading-relaxed text-ink-3">по договору и рабочим часам</div>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Ожидают HITL</div>
-          <div className={`text-xl font-black ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>{pendingHITL}</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>требуют уточнения диспетчера</div>
+        <div className="sheet p-4">
+          <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-ink-3">Ожидают уточнения</div>
+          <div className="font-mono text-2xl tabular-nums text-attention">{pendingHITL}</div>
+          <div className="mt-1 text-[10px] leading-relaxed text-ink-3">требуют уточнения диспетчера</div>
         </div>
 
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#060612]/80 border-cyan-500/30 text-white' : 'bg-white border-slate-300 shadow-md text-slate-950'}`}>
-          <div className={`text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'}`}>Средний Latency</div>
-          <div className={`text-xl font-black ${isDark ? 'text-purple-400' : 'text-purple-900'}`}>{avgLatencyMs} ms</div>
-          <div className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>по последним событиям логов</div>
+        <div className="sheet p-4">
+          <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-ink-3">Среднее время ответа</div>
+          <div className="font-mono text-2xl tabular-nums text-ink">{avgLatencyMs} ms</div>
+          <div className="mt-1 text-[10px] leading-relaxed text-ink-3">по последним событиям</div>
         </div>
       </div>
 
       {/* TAB 1: REALTIME SYSTEM LOGS */}
       {activeTab === 'logs' && (
-        <div
-          className={`rounded-2xl p-5 border transition-all ${
-            isDark
-              ? 'bg-[#030712] border-cyan-500/30 text-slate-200'
-              : 'bg-slate-900 border-slate-800 text-slate-200'
-          }`}
-        >
+        <div className="sheet p-5">
           {/* Controls */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800 font-mono text-xs">
-            <div className="flex items-center space-x-2 w-full sm:w-auto">
-              <span className="text-slate-400 font-bold">Канал:</span>
+          <div className="mb-4 flex flex-col items-center justify-between gap-3 border-b border-rule pb-3 font-mono text-xs sm:flex-row">
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <label htmlFor="log-channel-filter" className="uppercase tracking-wider text-ink-3">
+                Канал:
+              </label>
               <select
+                id="log-channel-filter"
                 value={logFilter}
                 onChange={(e: any) => setLogFilter(e.target.value)}
-                className="bg-black/80 border border-slate-700 text-cyan-400 rounded-lg p-1.5 text-xs focus:outline-none"
+                className="min-h-11 border border-rule bg-paper px-2 font-mono text-xs text-ink focus:border-rule-strong focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
               >
-                <option value="ALL">Все Каналы</option>
+                <option value="ALL">Все каналы</option>
                 <option value="TELEGRAM">Telegram</option>
-                <option value="EMAIL">Email</option>
+                <option value="EMAIL">Электронная почта</option>
                 <option value="VOICE">Телефония</option>
-                <option value="SYSTEM">Система / AI</option>
-                <option value="REST">REST / Диспетчер</option>
-                <option value="1C">1C:ERP</option>
+                <option value="SYSTEM">Система</option>
+                <option value="REST">Диспетчер</option>
+                <option value="1C">Учётная система</option>
               </select>
             </div>
 
             <div className="flex items-center space-x-2 w-full sm:w-auto">
               <div className="relative w-full sm:w-64">
+                {/* Раньше подписью служил только placeholder — он исчезает при вводе */}
+                <label htmlFor="log-search-input" className="sr-only">
+                  Поиск по логам
+                </label>
                 <input
-                  type="text"
-                  placeholder="Поиск по логам..."
+                  id="log-search-input"
+                  type="search"
+                  placeholder="Поиск по логам"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-black/80 border border-slate-700 text-white rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none"
+                  className="min-h-11 w-full border border-rule bg-paper pl-8 pr-3 font-mono text-xs text-ink placeholder:text-ink-3 focus:border-rule-strong focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
                 />
-                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                <Search
+                  className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-3"
+                  aria-hidden="true"
+                />
               </div>
 
               <button
+                type="button"
                 onClick={handleRefreshLogs}
-                className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold whitespace-nowrap flex items-center space-x-1"
+                className="inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap border border-rule-strong px-3 font-mono text-xs uppercase tracking-wider text-ink-2 hover:bg-panel-2 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
               >
-                <RefreshCw className="h-3.5 w-3.5" />
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>Обновить</span>
               </button>
             </div>
           </div>
 
           {/* Terminal Console Stream */}
-          <div className="font-mono text-xs space-y-2 max-h-96 overflow-y-auto pr-2">
+          <div className="max-h-96 overflow-y-auto font-mono text-xs">
             {filteredLogs.length === 0 && (
-              <div className="p-6 text-center text-slate-400 border border-dashed border-slate-700 rounded-xl">
-                Событий пока нет. Выполните обращение через демо-стенд (вкладка «Диспетчер») — логи появятся здесь из GET /api/logs.
+              <div className="border border-dashed border-rule p-6 text-center leading-relaxed text-ink-3">
+                Записей пока нет. Отправьте обращение на демо-стенде — события появятся здесь.
               </div>
             )}
             {filteredLogs.map((log) => (
               <div
                 key={log.id}
-                className="p-2.5 rounded-xl bg-black/50 border border-slate-800/80 hover:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition"
+                className="flex flex-col justify-between gap-1 border-b border-rule py-2 last:border-b-0 sm:flex-row sm:items-baseline sm:gap-3"
               >
-                <div className="flex items-center space-x-2.5">
+                <div className="grid min-w-0 grid-cols-[4.75rem_minmax(7.5rem,auto)_minmax(0,1fr)] items-baseline gap-3">
+                  <span className="tabular-nums text-ink-3">
+                    {new Date(log.timestamp).toLocaleTimeString('ru-RU')}
+                  </span>
                   <span
-                    className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
-                      log.level === 'SUCCESS'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                        : log.level === 'WARN'
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                        : 'bg-sky-500/20 text-sky-400 border border-sky-500/40'
+                    className={`whitespace-nowrap text-[10px] uppercase tracking-wider ${
+                      log.level === 'WARN' ? 'text-attention' : 'text-ink-3'
                     }`}
                   >
                     {log.channel}
                   </span>
-                  <span className="text-slate-400 text-[11px]">{new Date(log.timestamp).toLocaleTimeString('ru-RU')}</span>
-                  <span className="text-slate-200">{log.message}</span>
+                  <span className="min-w-0 break-words text-ink-2">{log.message}</span>
                 </div>
                 {log.duration_ms && (
-                  <span className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 whitespace-nowrap self-end sm:self-auto">
+                  <span className="shrink-0 self-end tabular-nums text-[10px] text-ink-3 sm:self-auto">
                     {log.duration_ms} ms
                   </span>
                 )}
@@ -261,76 +239,69 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
 
       {/* TAB 2: OPENTELEMETRY TRACES */}
       {activeTab === 'traces' && (
-        <div
-          className={`rounded-2xl p-5 border transition-all ${
-            isDark
-              ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-4 border-b pb-3 border-slate-700/30 font-mono">
-            <div className="flex items-center space-x-2">
-              <Layers className="h-5 w-5 text-cyan-400" />
-              <h3 className="text-sm font-bold uppercase text-cyan-400">
-                Trace ID: trace_ot_891823719_tg
-              </h3>
+        <div className="sheet p-5">
+          <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-rule pb-3 font-mono">
+            <div className="flex items-baseline gap-2">
+              <Layers className="h-4 w-4 shrink-0 self-center text-ink-3" />
+              <h3 className="text-xs uppercase tracking-[0.14em] text-ink">Этапы обработки</h3>
+              <span className="text-[10px] text-ink-3">№ trace_ot_891823719_tg</span>
             </div>
-            <span className="text-xs text-slate-400">Суммарно: 482 ms • 6 Spans</span>
+            <span className="shrink-0 tabular-nums text-xs text-ink-3">482 ms • 6 этапов</span>
           </div>
 
-          <div className="space-y-3 font-mono text-xs">
+          <div className="font-mono text-xs">
             {/* Span 1 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-sky-400">1. Inbound Webhook Ingress (Telegram)</span>
-                <span className="text-slate-400">12 ms</span>
+            <div className="border-b border-rule py-2.5 last:border-b-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-ink-2">1. Приём обращения из Telegram</span>
+                <span className="shrink-0 tabular-nums text-ink-3">12 ms</span>
               </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-sky-400 h-full w-[5%]" />
+              <div className="mt-1.5 h-1 w-full bg-panel-2">
+                <div className="h-full bg-accent-soft" style={{ width: '5%' }} />
               </div>
             </div>
 
             {/* Span 2 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-amber-400">2. PII Sanitizer & Masking Guardrails</span>
-                <span className="text-slate-400">4 ms</span>
+            <div className="border-b border-rule py-2.5 last:border-b-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-ink-2">2. Маскирование персональных данных</span>
+                <span className="shrink-0 tabular-nums text-ink-3">4 ms</span>
               </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-amber-400 h-full w-[2%]" />
+              <div className="mt-1.5 h-1 w-full bg-panel-2">
+                <div className="h-full bg-accent-soft" style={{ width: '2%' }} />
               </div>
             </div>
 
             {/* Span 3 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-cyan-400">3. Gemini 3.6 Flash Structured Perception</span>
-                <span className="text-slate-400">435 ms</span>
+            <div className="border-b border-rule py-2.5 last:border-b-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-ink-2">3. Разбор текста моделью</span>
+                <span className="shrink-0 tabular-nums text-ink-3">435 ms</span>
               </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-cyan-400 h-full w-[85%]" />
+              <div className="mt-1.5 h-1 w-full bg-panel-2">
+                <div className="h-full bg-accent-soft" style={{ width: '85%' }} />
               </div>
             </div>
 
             {/* Span 4 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-emerald-400">4. Deterministic Rule Match & SLA Evaluation</span>
-                <span className="text-slate-400">9 ms</span>
+            <div className="border-b border-rule py-2.5 last:border-b-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-ink-2">4. Проверка правил и срока по договору</span>
+                <span className="shrink-0 tabular-nums text-ink-3">9 ms</span>
               </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-emerald-400 h-full w-[4%]" />
+              <div className="mt-1.5 h-1 w-full bg-panel-2">
+                <div className="h-full bg-accent-soft" style={{ width: '4%' }} />
               </div>
             </div>
 
             {/* Span 5 */}
-            <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-purple-400">5. 1C:ERP Document Commit via OData REST</span>
-                <span className="text-slate-400">22 ms</span>
+            <div className="border-b border-rule py-2.5 last:border-b-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-ink-2">5. Запись документа в учётную систему</span>
+                <span className="shrink-0 tabular-nums text-ink-3">22 ms</span>
               </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-purple-400 h-full w-[4%]" />
+              <div className="mt-1.5 h-1 w-full bg-panel-2">
+                <div className="h-full bg-accent-soft" style={{ width: '4%' }} />
               </div>
             </div>
           </div>
@@ -338,103 +309,8 @@ export const LogsTracesView: React.FC<LogsTracesViewProps> = ({ theme = 'dark', 
       )}
 
       {/* TAB 3: ANALYTICS DASHBOARDS */}
-      {activeTab === 'analytics' && (
-        <div
-          className={`rounded-2xl p-5 border transition-all ${
-            isDark
-              ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-md'
-              : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-          }`}
-        >
-          <h3 className="text-sm font-mono font-bold uppercase text-cyan-400 mb-4">
-            Распределение Обращений по Каналам и Аналитика AI
-          </h3>
+      {activeTab === 'analytics' && <IntakeAnalytics db={db} logs={logs} />}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-mono text-xs">
-            <div className="p-4 rounded-xl bg-black/40 border border-slate-800 space-y-3">
-              <div className="font-bold text-slate-300">Распределение по Каналам</div>
-
-              <div className="space-y-2">
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Telegram Bot</span>
-                    <span className="text-sky-400 font-bold">48% (616 заявок)</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-sky-400 h-full w-[48%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Email IMAP / MCP</span>
-                    <span className="text-amber-400 font-bold">32% (410 заявок)</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-amber-400 h-full w-[32%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Голосовая Телефония</span>
-                    <span className="text-purple-400 font-bold">14% (180 заявок)</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-purple-400 h-full w-[14%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>REST Swagger API</span>
-                    <span className="text-emerald-400 font-bold">6% (78 заявок)</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-400 h-full w-[6%]" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-black/40 border border-slate-800 space-y-3">
-              <div className="font-bold text-slate-300">Точность Идентификации Фактов</div>
-
-              <div className="space-y-2">
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Код Оборудования (RAG BM25)</span>
-                    <span className="text-emerald-400 font-bold">98.4%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-400 h-full w-[98%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Объект / Контрагент</span>
-                    <span className="text-emerald-400 font-bold">99.1%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-400 h-full w-[99%]" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Оценка SLA Дедлайна</span>
-                    <span className="text-cyan-400 font-bold">100.0%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-cyan-400 h-full w-[100%]" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
