@@ -242,12 +242,12 @@ export const ScenarioRunner: React.FC<ScenarioRunnerProps> = ({
           </div>
           <textarea
             id="raw-text-input"
-            rows={6}
+                        rows={3}
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Введите неструктурированный текст обращения..."
-            className={`w-full border rounded-xl p-4 text-sm placeholder-slate-400 focus:outline-none font-sans leading-relaxed shadow-inner resize-none ${
+            className={`w-full border rounded-xl p-3 text-sm placeholder-slate-400 focus:outline-none font-sans leading-relaxed shadow-inner resize-none ${
               isDark
                 ? 'bg-[#1C1B1B] border-[#2A2A2A] text-slate-100 focus:border-slate-400'
                 : 'bg-slate-50 border-slate-300 text-slate-900 font-semibold focus:border-blue-900'
