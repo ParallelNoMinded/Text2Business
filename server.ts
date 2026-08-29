@@ -902,6 +902,23 @@ app.get('/api/logs', requireDispatchToken, (req, res) => {
   res.json({ logs: systemLogs });
 });
 
+app.post('/api/architecture/render', requireDispatchToken, express.text({ type: 'text/plain', limit: '200kb' }), async (req, res) => {
+  if (typeof req.body !== 'string' || !req.body.includes('@startuml')) {
+    return res.status(400).json({ error: 'Ожидается исходный текст PlantUML.' });
+  }
+  try {
+    const renderResponse = await fetch('https://kroki.io/plantuml/svg', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      body: req.body,
+    });
+    if (!renderResponse.ok) return res.status(502).json({ error: 'Сервис рендеринга схем временно недоступен.' });
+    res.type('image/svg+xml').send(await renderResponse.text());
+  } catch {
+    res.status(502).json({ error: 'Не удалось подключиться к сервису рендеринга схем.' });
+  }
+});
+
 app.post('/api/dispatch', requireDispatchToken, async (req, res) => {
   try {
     const { text, channel = 'email', incoming_time, is_dry_run = true } = req.body;

@@ -17,7 +17,7 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
   token,
   onSaveToken,
   selectedModel,
-  theme = 'light',
+  theme,
 }) => {
   const isDark = theme === 'dark';
   const [inputToken, setInputToken] = useState(token);
@@ -75,22 +75,16 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div
-        className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl transition-all ${
-          isDark
-            ? 'bg-[#060612] border-cyan-500/40 text-white shadow-[0_0_30px_rgba(34,211,238,0.2)]'
-            : 'bg-white border-slate-300 text-slate-900 shadow-xl'
-        }`}
-      >
+    <div className="token-modal-backdrop" role="presentation" onClick={onClose}>
+      <div className="token-modal" role="dialog" aria-modal="true" aria-labelledby="token-modal-title" onClick={(event) => event.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-700/40">
           <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+            <div className="token-modal-icon">
               <Key className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-mono font-bold">Настройка GITHUB_MODELS_TOKEN</h3>
+              <h3 id="token-modal-title" className="text-base font-mono font-bold">Подключение AI-модели</h3>
               <p className="text-xs text-slate-400 font-mono">
                 Подключение нейросетей GitHub Models API
               </p>
@@ -118,7 +112,7 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
             <label className="block text-slate-300 font-bold mb-1.5">
               Введите Personal Access Token (GITHUB_MODELS_TOKEN / GITHUB_TOKEN):
             </label>
-            <div className="relative">
+            <div className="password-input-wrap">
               <input
                 type={showToken ? 'text' : 'password'}
                 value={inputToken}
@@ -133,7 +127,7 @@ export const GithubTokenModal: React.FC<GithubTokenModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowToken(!showToken)}
-                className="absolute right-3 top-3 text-slate-400 hover:text-white"
+                className={`password-input-toggle ${isDark ? 'password-input-toggle-dark' : ''}`}
               >
                 {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>

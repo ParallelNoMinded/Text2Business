@@ -1,0 +1,58 @@
+/* Theme contract: light tokens preserve the approved UI; dark tokens are isolated. */
+.theme-light{
+  --t2b-page:#f7f7f8;
+  --t2b-surface:#ffffff;
+  --t2b-surface-muted:#f8fbfb;
+  --t2b-text:#191923;
+  --t2b-muted:#73737d;
+  --t2b-border:#dedee3;
+  --t2b-primary:#398e8b;
+  --t2b-primary-hover:#2f7775;
+  --t2b-ink:#29263d;
+  --t2b-focus:rgba(57,142,139,.15);
+}
+
+.theme-dark{
+  --t2b-page:#10111a;
+  --t2b-surface:#181a26;
+  --t2b-surface-muted:#202331;
+  --t2b-text:#f5f7fb;
+  --t2b-muted:#b1b8c7;
+  --t2b-border:#34394c;
+  --t2b-primary:#55b9b3;
+  --t2b-primary-hover:#77cbc5;
+  --t2b-ink:#29263d;
+  --t2b-focus:rgba(85,185,179,.24);
+  background:var(--t2b-page);
+  color:var(--t2b-text);
+}
+
+/* Shell */
+.theme-dark .app-shell,.theme-dark .app-main,.theme-dark .app-topbar{background:var(--t2b-page)!important;color:var(--t2b-text)}
+.theme-dark .app-sidebar{background:#29263d}
+.theme-dark .app-navigation-item.is-active,.theme-dark .model-picker-scroll button.is-selected{background:var(--t2b-primary)!important;color:#102020!important}
+.theme-dark .app-navigation-item:hover{background:#ffffff16}
+.theme-dark .app-architecture-link{color:#b7bdca}.theme-dark .app-architecture-link:hover,.theme-dark .app-architecture-link.is-active{color:var(--t2b-primary)}
+.theme-dark .app-date-control,.theme-dark .app-theme-control,.theme-dark .model-picker .app-model-control{border-color:var(--t2b-border)!important;background:var(--t2b-surface)!important;color:var(--t2b-text)!important}
+.theme-dark .model-picker-menu{border-color:var(--t2b-border)!important;background:var(--t2b-surface)!important}.theme-dark .model-picker-scroll button{color:var(--t2b-text)!important}.theme-dark .model-picker-scroll button:hover{color:var(--t2b-text)!important;background:var(--t2b-surface-muted)!important}
+
+/* Common work surfaces, typography and controls. Explicit selectors avoid changing statuses. */
+.theme-dark .app-content [class~="bg-white"],.theme-dark .app-content [class*="bg-white/"]{background:var(--t2b-surface)!important}
+.theme-dark #scenario-runner-panel,.theme-dark #fact-extractor-card,.theme-dark #dispatch-decision-card,.theme-dark #execution-trace-panel,.theme-dark #database-inspector-page>div:nth-child(n+3),.theme-dark #channels-config-page>div:first-child+div>div,.theme-dark #logs-traces-page>div:nth-child(2)>div,.theme-dark #logs-traces-page>div:nth-child(3),.theme-dark .architecture-overview{border-color:var(--t2b-border)!important;background:var(--t2b-surface)!important;color:var(--t2b-text)!important}
+.theme-dark .demo-page-heading,.theme-dark #operator-console-page>div:first-child,.theme-dark #channels-config-page>div:first-child,.theme-dark #logs-traces-page>div:first-child,.theme-dark #database-inspector-page>div:first-child{color:var(--t2b-text)!important}
+.theme-dark .demo-page-heading h2,.theme-dark #operator-console-page>div:first-child h2,.theme-dark #channels-config-page>div:first-child h2,.theme-dark #logs-traces-page>div:first-child h2,.theme-dark #database-inspector-page>div:first-child h2,.theme-dark .architecture-overview h2{color:var(--t2b-text)!important}
+.theme-dark .demo-page-heading p,.theme-dark #operator-console-page>div:first-child p,.theme-dark #channels-config-page>div:first-child p,.theme-dark #logs-traces-page>div:first-child p,.theme-dark #database-inspector-page>div:first-child p,.theme-dark .architecture-overview p{color:var(--t2b-muted)!important}
+.theme-dark .app-content input,.theme-dark .app-content textarea,.theme-dark .app-content select{border-color:var(--t2b-border)!important;background:#12141e!important;color:var(--t2b-text)!important}
+.theme-dark .app-content input:focus,.theme-dark .app-content textarea:focus,.theme-dark .app-content select:focus{border-color:var(--t2b-primary)!important;box-shadow:0 0 0 3px var(--t2b-focus)!important}
+.theme-dark .app-content [class~="bg-slate-50"],.theme-dark .app-content [class~="bg-slate-100"],.theme-dark .app-content [class~="bg-slate-200"]{background:var(--t2b-surface-muted)!important}
+.theme-dark .app-content [class*="border-slate-300"],.theme-dark .app-content [class*="border-slate-200"]{border-color:var(--t2b-border)!important}
+.theme-dark .app-content [class~="text-slate-900"],.theme-dark .app-content [class~="text-slate-800"],.theme-dark .app-content [class~="text-slate-700"]{color:var(--t2b-text)!important}
+.theme-dark .app-content [class~="text-slate-600"],.theme-dark .app-content [class~="text-slate-500"],.theme-dark .app-content [class~="text-slate-400"]{color:var(--t2b-muted)!important}
+
+/* Pages with previously light-only CSS overrides. */
+.theme-dark #channels-config-page>div:nth-child(2),.theme-dark #channels-config-page>div:nth-child(2)>div{background:var(--t2b-surface)!important;border-color:var(--t2b-border)!important}
+.theme-dark #channels-config-page>div:nth-child(2)>div>div:first-child h3{color:var(--t2b-text)!important}.theme-dark #channels-config-page>div:nth-child(3){border-color:#386a68!important;background:#193331!important}
+.theme-dark #operator-console-page table thead,.theme-dark #database-inspector-page table thead{background:#202331!important;color:#c6cbd7!important}.theme-dark #operator-console-page table td,.theme-dark #database-inspector-page table td{color:var(--t2b-text)!important;border-color:var(--t2b-border)!important}
+.theme-dark .home-heading h1,.theme-dark .home-card-copy strong,.theme-dark .home-sla-card{color:var(--t2b-text)!important}.theme-dark .home-heading p,.theme-dark .home-card-copy small,.theme-dark .home-sla-card small{color:var(--t2b-muted)!important}.theme-dark .home-dispatcher-card,.theme-dark .home-attention-card,.theme-dark .home-sla-card{border-color:var(--t2b-border)!important;background:var(--t2b-surface)!important}.theme-dark .home-section-header,.theme-dark .home-ticket-row{border-color:var(--t2b-border)!important}.theme-dark .home-ticket-row:hover{background:var(--t2b-surface-muted)!important}
+.theme-dark #architecture-page .architecture-overview{background:var(--t2b-surface)!important}.theme-dark #architecture-page .architecture-overview-flow button{border-color:var(--t2b-border)!important;color:var(--t2b-text)!important;background:var(--t2b-surface-muted)!important}.theme-dark #architecture-page .architecture-overview-flow button:hover{border-color:var(--t2b-primary)!important;background:#263a3b!important}.theme-dark #architecture-page .architecture-overview-flow button.is-active{color:#102020!important;background:var(--t2b-primary)!important}.theme-dark #architecture-page .architecture-overview-flow button.is-active span,.theme-dark #architecture-page .architecture-overview-flow button.is-active small{color:#173736!important}
+.theme-dark .token-modal{border-color:var(--t2b-border)!important;color:var(--t2b-text)!important;background:var(--t2b-surface)!important}.theme-dark .token-modal h3{color:var(--t2b-text)!important}.theme-dark .token-modal-icon,.theme-dark .token-modal .bg-cyan-500\/10{border-color:#386a68!important;background:#193331!important}.theme-dark .token-modal input{background:#12141e!important;color:var(--t2b-text)!important}

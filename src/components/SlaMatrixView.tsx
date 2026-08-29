@@ -53,7 +53,7 @@ export const SlaMatrixView: React.FC<SlaMatrixViewProps> = ({ theme = 'dark' }) 
             >
               <tr>
                 <th className="py-3 px-4">Тарифный План</th>
-                <th className="py-3 px-4">SLA Отклика</th>
+                <th className="py-3 px-4">Срок ответа</th>
                 <th className="py-3 px-4">Рабочее Окно</th>
                 <th className="py-3 px-4">Штрафные Санкции / Неустойка</th>
                 <th className="py-3 px-4">Приоритет по Умолчанию</th>

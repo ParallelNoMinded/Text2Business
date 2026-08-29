@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import {
   AlertTriangle,
+  UserCheck,
   Send,
   MessageSquare,
+  CheckCircle,
+  Clock,
+  ShieldAlert,
+  Edit,
+  Building,
+  Cpu,
   RefreshCw,
   X,
   FileCheck,
-  ChevronRight,
-  RotateCcw,
-  ChevronLeft,
 } from 'lucide-react';
 import { DatabaseSchema } from '../mockDb';
 import { Ticket, TicketMessage } from '../types';
@@ -23,28 +27,30 @@ interface OperatorConsoleViewProps {
 export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
   db,
   onUpdateDb,
-  theme = 'light',
+  theme = 'dark',
 }) => {
   const isDark = theme === 'dark';
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<'active' | 'closed'>('active');
+  const [channelFilter, setChannelFilter] = useState('ALL');
+  const [priorityFilter, setPriorityFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+
+  const missingFieldLabels: Record<string, string> = {
+    asset_code: 'код оборудования',
+    preferred_time: 'предпочтительное время',
+    site_info: 'объект или адрес',
+    customer_name: 'название заказчика',
+    requested_deadline: 'желаемый срок ответа',
+  };
+  const formatMissingField = (field: string) => missingFieldLabels[field] || field.replaceAll('_', ' ');
 
   // Manual completion form states inside modal
   const [manualAssetCode, setManualAssetCode] = useState('ХУ-17');
   const [manualSiteId, setManualSiteId] = useState('S-MSK-01');
-
-  // Filter states
-  const [filterChannel, setFilterChannel] = useState<string>('all');
-  const [filterPriority, setFilterPriority] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-
-  const handleResetFilters = () => {
-    setFilterChannel('all');
-    setFilterPriority('all');
-    setFilterStatus('all');
-  };
 
   if (!db) {
     return (
@@ -54,31 +60,50 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
     );
   }
 
+  const priorityClass = (priority: string) => `registry-badge registry-priority-${priority}`;
+
   // Pending HITL tickets (status WAITING_DISPATCHER or action REQUEST_CLARIFICATION or has missing_fields)
-  const allPendingTickets = db.open_tickets.filter(
+  const pendingTickets = db.open_tickets.filter(
     (t) => t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0)
   );
 
-  const allActiveTickets = db.open_tickets.filter(
+  const activeTickets = db.open_tickets.filter(
     (t) => t.status !== 'WAITING_DISPATCHER' && (!t.missing_fields || t.missing_fields.length === 0)
   );
 
-  const filterTicket = (t: Ticket) => {
-    if (filterChannel !== 'all' && t.channel && t.channel.toLowerCase() !== filterChannel.toLowerCase()) return false;
-    if (filterPriority !== 'all' && t.priority.toLowerCase() !== filterPriority.toLowerCase()) return false;
-    if (filterStatus !== 'all') {
-      if (filterStatus === 'pending' && !(t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0))) return false;
-      if (filterStatus === 'active' && (t.status === 'WAITING_DISPATCHER' || (t.missing_fields && t.missing_fields.length > 0))) return false;
-    }
-    return true;
+  const getTicketChannel = (ticket: Ticket) => {
+    if (ticket.channel) return ticket.channel.toUpperCase();
+    const messageChannel = ticket.messages?.find((message) => message.channel)?.channel;
+    if (messageChannel) return messageChannel.toUpperCase();
+    const description = ticket.description.toLowerCase();
+    if (description.includes('telegram')) return 'TELEGRAM';
+    if (description.includes('email') || description.includes('письм')) return 'EMAIL';
+    if (description.includes('звон')) return 'CALL_TRANSCRIPT';
+    if (description.includes('голос')) return 'VOICE';
+    if (description.includes('портал')) return 'PORTAL';
+    return 'UNKNOWN';
   };
 
-  const pendingTickets = allPendingTickets.filter(filterTicket);
-  const activeTickets = allActiveTickets.filter(filterTicket);
+  const filterTickets = (tickets: Ticket[]) => tickets.filter((ticket) =>
+    (channelFilter === 'ALL' || getTicketChannel(ticket) === channelFilter) &&
+    (priorityFilter === 'ALL' || ticket.priority === priorityFilter) &&
+    (statusFilter === 'ALL' || ticket.status === statusFilter)
+  );
+  const filteredPendingTickets = filterTickets(pendingTickets);
+  const filteredActiveTickets = filterTickets(activeTickets);
+  const filteredClosedTickets = filterTickets(db.closed_tickets || []);
+
+  const resetFilters = () => {
+    setChannelFilter('ALL');
+    setPriorityFilter('ALL');
+    setStatusFilter('ALL');
+  };
+  const translateStatus = (status: string) => ({ NEW: 'Новая', IN_PROGRESS: 'В работе', WAITING_DISPATCHER: 'Ожидает уточнения', RESOLVED: 'Решена', CLOSED: 'Закрыта' }[status] || status);
+  const translatePriority = (priority: string) => ({ low: 'Низкий', medium: 'Средний', high: 'Высокий', critical: 'Критический' }[priority] || priority);
 
   const handleOpenTicketInspector = (ticket: Ticket) => {
     setSelectedTicket(ticket);
-    const missingStr = (ticket.missing_fields || ['код оборудования (например, ХУ-17)']).join(', ');
+    const missingStr = (ticket.missing_fields || ['код оборудования']).map(formatMissingField).join(', ');
     setReplyText(
       `Здравствуйте! Для автоматической регистрации вашей заявки уточните, пожалуйста: ${missingStr}.`
     );
@@ -174,209 +199,203 @@ export const OperatorConsoleView: React.FC<OperatorConsoleViewProps> = ({
   };
 
   return (
-    <div id="operator-console-page" className="mx-auto w-full max-w-[1780px] pb-24 pt-2 sm:pt-4 lg:pb-8">
-      {/* Page Header */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div id="operator-console-page" className="space-y-6">
+      {/* Top Banner */}
+      <div
+        className={`rounded-2xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+          isDark
+            ? 'bg-[#060612]/90 border-cyan-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
+            : 'bg-white border-slate-300 text-slate-950 shadow-md'
+        }`}
+      >
         <div>
-          <h1 className="text-2xl font-black tracking-tight sm:text-[30px]">Рабочее место диспетчера</h1>
-          <p className={`mt-1 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>
-            Разрешение неопределенностей, интерактивный диалог с клиентом и ручное дообучение данных
+          <h2 className={`text-sm font-mono font-bold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-950 font-extrabold'}`}>
+              Рабочее Место Диспетчера
+            </h2>
+          <p className={`text-xs mt-1 font-sans ${isDark ? 'text-slate-300' : 'text-slate-900 font-semibold'}`}>
+            Разрешение неопределенностей, интерактивный диалог с клиентом в боте, ручное дообогащение данных и передача в 1С:ERP.
           </p>
         </div>
-        {allPendingTickets.length > 0 && (
-          <div className="flex items-center gap-2 self-start rounded-md bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 sm:self-auto">
-            <span>▲</span>
-            <span>{allPendingTickets.length} обращение требует внимания</span>
+
+        <div className="flex items-center space-x-2 font-mono text-xs">
+          {pendingTickets.length > 0 ? (
+            <span className={`px-3 py-1.5 rounded-xl border font-bold animate-pulse flex items-center space-x-1.5 ${
+              isDark
+                ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
+            }`}>
+              <AlertTriangle className={`h-4 w-4 ${isDark ? 'text-red-400' : 'text-red-700'}`} />
+              <span>{pendingTickets.length} Заявок требуют внимания</span>
+            </span>
+          ) : (
+            <span className={`px-3 py-1.5 rounded-xl border font-bold flex items-center space-x-1.5 ${
+              isDark
+                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                : 'bg-emerald-100 text-emerald-950 border-emerald-400 font-extrabold'
+            }`}>
+              <CheckCircle className={`h-4 w-4 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} />
+              <span>Все обращения укомплектованы</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Workspace view switcher */}
+      <div className="dispatcher-view-tabs" role="tablist" aria-label="Разделы рабочего места диспетчера">
+        <button type="button" role="tab" aria-selected={activeView === 'active'} className={activeView === 'active' ? 'is-active' : ''} onClick={() => setActiveView('active')}>Текущие заявки <span>{db.open_tickets.length}</span></button>
+        <button type="button" role="tab" aria-selected={activeView === 'closed'} className={activeView === 'closed' ? 'is-active' : ''} onClick={() => setActiveView('closed')}>Закрытые заявки <span>{(db.closed_tickets || []).length}</span></button>
+      </div>
+
+      <section className="dispatcher-filter-panel" aria-label="Фильтры заявок">
+        <h3>Фильтры</h3>
+        <div className="dispatcher-filter-fields">
+          <label>Канал<select value={channelFilter} onChange={(event) => setChannelFilter(event.target.value)}><option value="ALL">Все каналы</option><option value="EMAIL">Email</option><option value="TELEGRAM">Telegram</option><option value="CALL_TRANSCRIPT">Транскрипт звонка</option><option value="VOICE">Голос</option><option value="PORTAL">Веб-портал</option></select></label>
+          <label>Приоритет<select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}><option value="ALL">Все</option><option value="low">Низкий</option><option value="medium">Средний</option><option value="high">Высокий</option><option value="critical">Критический</option></select></label>
+          <label>Статус<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="ALL">Все статусы</option><option value="WAITING_DISPATCHER">Требуют уточнения</option><option value="NEW">Новые</option><option value="IN_PROGRESS">В работе</option><option value="CLOSED">Закрытые</option></select></label>
+          <button type="button" onClick={resetFilters}>Сбросить фильтры</button>
+        </div>
+      </section>
+
+      {activeView === 'active' && <>
+      <div className="space-y-3">
+        <h3 className={`text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-1.5 ${
+          isDark ? 'text-amber-400' : 'text-amber-700 font-extrabold'
+        }`}>
+          <ShieldAlert className="h-4 w-4" />
+          <span>Обращения, Требующие Уточнения Данных Диспетчером ({filteredPendingTickets.length})</span>
+        </h3>
+
+        {filteredPendingTickets.length === 0 ? (
+          <div className={`p-5 rounded-2xl border text-center text-xs font-mono ${isDark ? 'bg-[#030712] border-slate-800 text-slate-500' : 'bg-slate-100 border-slate-300 text-slate-900 font-semibold'}`}>
+            // Нет неполных обращений. AI-Диспетчер автоматически обработал 100% поступивших сообщений.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredPendingTickets.map((ticket) => (
+              <div
+                key={ticket.ticket_id}
+                onClick={() => handleOpenTicketInspector(ticket)}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer hover:scale-[1.01] ${
+                  isDark
+                    ? 'bg-[#090814] border-red-500/40 hover:border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
+                    : 'bg-white border-red-400 hover:border-red-600 shadow-md text-slate-950'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${
+                    isDark
+                      ? 'text-amber-400 bg-amber-500/10 border-amber-500/30'
+                      : 'text-amber-950 bg-amber-100 border-amber-400 font-extrabold'
+                  }`}>
+                    {ticket.ticket_id}
+                  </span>
+                  <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded border flex items-center space-x-1 ${
+                    isDark
+                      ? 'text-red-400 bg-red-500/10 border-red-500/30'
+                      : 'text-red-950 bg-red-100 border-red-400 font-extrabold'
+                  }`}>
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-ping"></span>
+                    <span>Уточнение Данных</span>
+                  </span>
+                </div>
+
+                <h4 className={`text-xs font-bold mb-1 ${isDark ? 'text-white' : 'text-slate-950 font-extrabold'}`}>
+                  {ticket.summary || 'Неполное обращение без кода оборудования'}
+                </h4>
+                <p className={`text-[11px] mb-3 line-clamp-2 ${isDark ? 'text-slate-400' : 'text-slate-900 font-medium'}`}>
+                  {ticket.description}
+                </p>
+
+                {ticket.missing_fields && (
+                  <div className="mb-3 flex flex-wrap gap-1 font-mono text-[10px]">
+                    <span className={isDark ? 'text-slate-400' : 'text-slate-900 font-bold'}>Отсутствует:</span>
+                    {ticket.missing_fields.map((field) => (
+                      <span key={field} className={`px-2 py-0.5 rounded border font-bold ${
+                        isDark
+                          ? 'bg-red-950/80 text-red-300 border-red-500/40'
+                          : 'bg-red-100 text-red-950 border-red-400 font-extrabold'
+                      }`}>
+                        ⚠️ {formatMissingField(field)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className={`flex items-center justify-between pt-2 border-t text-[11px] font-mono font-bold ${
+                  isDark
+                    ? 'border-slate-700/30 text-cyan-400'
+                    : 'border-slate-200 text-blue-950 font-extrabold'
+                }`}>
+                  <span>Открыть интерактивный диалог</span>
+                  <MessageSquare className="h-4 w-4" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Top Grid: Requests (left) + Filters (right) */}
-      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-        {/* Left: Pending requests */}
-        <div className={`rounded-xl border p-5 sm:p-6 ${isDark ? 'border-slate-700 bg-[#242438]' : 'border-[#c8c8c8] bg-white'}`}>
-          <h2 className="mb-4 text-base font-extrabold">
-            Обращения, требующие уточнения ({pendingTickets.length})
-          </h2>
+      {/* SECTION 2: REGULAR IN-PROGRESS TICKETS */}
+      <div className="space-y-3 pt-4">
+        <h3 className={`text-xs font-mono font-bold uppercase tracking-wider ${
+          isDark ? 'text-slate-400' : 'text-slate-900 font-extrabold'
+        }`}>
+          Все Укомплектованные Заявки в Работе ({filteredActiveTickets.length})
+        </h3>
 
-          {pendingTickets.length === 0 ? (
-            <div className={`rounded-xl border border-dashed py-12 text-center text-sm font-semibold ${isDark ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-700'}`}>
-              Нет обращений, требующих уточнения
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {pendingTickets.map((ticket) => (
-                <div
-                  key={ticket.ticket_id}
-                  className={`rounded-xl border p-5 transition ${isDark ? 'border-slate-700 bg-[#1c1a2e]' : 'border-[#d0d0d0] bg-white'}`}
-                >
-                  <div className="mb-3">
-                    <span className="inline-block rounded-md bg-red-50 px-2.5 py-1 text-xs font-extrabold text-red-600">
-                      {ticket.ticket_id}
-                    </span>
-                  </div>
-                  <h3 className="mb-2 text-base font-extrabold leading-snug">
-                    {ticket.summary || 'Неполное обращение'}
-                  </h3>
-                  <p className={`mb-3 text-xs font-medium ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>
-                    {ticket.description}
-                  </p>
-                  {ticket.missing_fields && ticket.missing_fields.length > 0 && (
-                    <div className="mb-4 flex flex-wrap items-center gap-2 text-xs font-bold">
-                      <span className={isDark ? 'text-slate-400' : 'text-[#686868]'}>Отсутствует:</span>
-                      {ticket.missing_fields.map((field) => (
-                        <span
-                          key={field}
-                          className="rounded-md bg-[#fff4e6] px-2.5 py-1 text-[11px] font-extrabold text-[#d56600]"
-                        >
-                          {field === 'asset_code' ? 'Код оборудования' : field === 'preferred_time' ? 'Срок ожидания' : field}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div className={`flex items-center justify-between border-t pt-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenTicketInspector(ticket)}
-                      className="text-xs font-extrabold text-[#06439b] transition hover:text-[#2b7777]"
-                    >
-                      Открыть интерактивный диалог
-                    </button>
-                    <MessageSquare className="h-4 w-4 text-[#06439b]" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Right: Filters */}
-        <div className={`rounded-xl border p-5 sm:p-6 ${isDark ? 'border-slate-700 bg-[#242438]' : 'border-[#c8c8c8] bg-white'}`}>
-          <h2 className="mb-4 text-base font-extrabold">Фильтры</h2>
-          <div className="space-y-4 text-xs font-bold">
-            <div>
-              <label className={`mb-1 block ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>Канал</label>
-              <select
-                value={filterChannel}
-                onChange={(e) => setFilterChannel(e.target.value)}
-                className={`w-full rounded-lg border px-3 py-2.5 outline-none ${isDark ? 'border-slate-700 bg-[#1c1a2e] text-white' : 'border-[#c8c8c8] bg-white text-black'}`}
-              >
-                <option value="all">Все каналы</option>
-                <option value="telegram">Telegram</option>
-                <option value="email">Email</option>
-                <option value="voice">Голос / Телефония</option>
-                <option value="call_transcript">Транскрипт</option>
-                <option value="portal">Портал</option>
-              </select>
-            </div>
-            <div>
-              <label className={`mb-1 block ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>Приоритет</label>
-              <select
-                value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value)}
-                className={`w-full rounded-lg border px-3 py-2.5 outline-none ${isDark ? 'border-slate-700 bg-[#1c1a2e] text-white' : 'border-[#c8c8c8] bg-white text-black'}`}
-              >
-                <option value="all">Все</option>
-                <option value="critical">Критический (CRITICAL)</option>
-                <option value="high">Высокий (HIGH)</option>
-                <option value="medium">Средний (MEDIUM)</option>
-                <option value="low">Низкий (LOW)</option>
-              </select>
-            </div>
-            <div>
-              <label className={`mb-1 block ${isDark ? 'text-slate-400' : 'text-[#686868]'}`}>Статус</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className={`w-full rounded-lg border px-3 py-2.5 outline-none ${isDark ? 'border-slate-700 bg-[#1c1a2e] text-white' : 'border-[#c8c8c8] bg-white text-black'}`}
-              >
-                <option value="all">Все статусы</option>
-                <option value="pending">Требуют уточнения</option>
-                <option value="active">В работе</option>
-              </select>
-            </div>
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className={`flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-xs font-extrabold transition ${isDark ? 'border-slate-700 bg-transparent text-slate-300 hover:bg-white/5' : 'border-[#c8c8c8] bg-white text-slate-700 hover:bg-slate-50'}`}
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              <span>Сбросить фильтры</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom: All Active Tickets Table */}
-      <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-slate-700 bg-[#242438]' : 'border-[#c8c8c8] bg-white'}`}>
-        <div className="px-5 py-4 sm:px-6">
-          <h2 className="text-base font-extrabold">Все укомплектованные заявки в работе ({activeTickets.length})</h2>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className={`border-y text-[11px] font-bold ${isDark ? 'border-slate-700 bg-[#1c1a2e] text-slate-400' : 'border-[#e0e0e0] bg-[#fafafa] text-[#707070]'}`}>
+        <div className={`rounded-2xl p-4 border overflow-x-auto ${isDark ? 'bg-[#060612]/90 border-cyan-500/20' : 'bg-white border-slate-300 shadow-sm'}`}>
+          <table className={`w-full text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-950'}`}>
+            <thead className={`font-mono uppercase text-[10px] border-b ${isDark ? 'bg-[#020204] text-cyan-400 border-cyan-500/20' : 'bg-slate-200 text-slate-950 font-extrabold border-slate-300'}`}>
               <tr>
-                <th className="px-5 py-3">ID заявки</th>
-                <th className="px-4 py-3">Объект / Asset</th>
-                <th className="px-4 py-3">Суть обращения</th>
-                <th className="px-4 py-3 text-center">Приоритет</th>
-                <th className="px-4 py-3">SLA дедлайн</th>
-                <th className="px-4 py-3">Группа</th>
-                <th className="px-5 py-3 text-right"></th>
+                <th className="p-3">ID Заявки</th>
+                <th className="p-3">Объект / Ассет</th>
+                <th className="p-3">Суть Обращения</th>
+                <th className="p-3">Приоритет</th>
+                <th className="p-3">Срок ответа</th>
+                <th className="p-3">Группа</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 font-medium dark:divide-slate-700">
-              {activeTickets.map((t) => (
-                <tr
-                  key={t.ticket_id}
-                  onClick={() => handleOpenTicketInspector(t)}
-                  className={`cursor-pointer transition ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}
-                >
-                  <td className="px-5 py-4 font-black">{t.ticket_id}</td>
-                  <td className="px-4 py-4 font-extrabold text-[#2d7a7a]">{t.asset_id}</td>
-                  <td className="px-4 py-4 font-extrabold leading-snug">{t.summary}</td>
-                  <td className="px-4 py-4 text-center">
-                    <span className="inline-block rounded-md bg-red-50 px-3 py-1 font-extrabold text-red-600">
-                      {t.priority.toUpperCase()}
+            <tbody className="divide-y divide-slate-700/20 font-sans">
+              {filteredActiveTickets.map((t) => (
+                <tr key={t.ticket_id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100/80'}>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-amber-400' : 'text-amber-800 font-extrabold'}`}>{t.ticket_id}</td>
+                  <td className={`p-3 font-mono font-bold ${isDark ? 'text-cyan-400' : 'text-blue-950 font-extrabold'}`}>{t.asset_id}</td>
+                  <td className="p-3 font-semibold">{t.summary}</td>
+                  <td className="p-3">
+                    <span className={priorityClass(t.priority)}>
+                      {translatePriority(t.priority)}
                     </span>
                   </td>
-                  <td className="px-4 py-4 font-extrabold">
+                  <td className="p-3 font-mono font-semibold">
                     {new Date(t.sla_deadline).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                   </td>
-                  <td className={`px-4 py-4 font-semibold ${isDark ? 'text-slate-300' : 'text-[#505050]'}`}>{t.assigned_group}</td>
-                  <td className="px-5 py-4 text-right">
-                    <ChevronRight className="inline-block h-4 w-4 text-slate-400" />
-                  </td>
+                  <td className={`p-3 font-mono ${isDark ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>{t.assigned_group}</td>
                 </tr>
               ))}
-              {activeTickets.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-xs font-semibold text-slate-400">
-                    Нет заявок, соответствующих фильтрам
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
-
-        {/* Table Pagination Footer */}
-        <div className={`flex flex-col gap-3 border-t px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 ${isDark ? 'border-slate-700 text-slate-400' : 'border-[#e0e0e0] text-[#707070]'}`}>
-          <span className="text-xs font-semibold">Показано 1 из {activeTickets.length || 1}</span>
-          <div className="flex items-center gap-1.5 self-end text-xs font-bold sm:self-auto">
-            <button type="button" disabled className="flex h-7 w-7 items-center justify-center rounded border border-slate-300 opacity-50 dark:border-slate-700">
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <button type="button" className="flex h-7 min-w-7 items-center justify-center rounded border border-[#2d7a7a] bg-[#2d7a7a]/10 px-2 font-extrabold text-[#2d7a7a]">
-              1
-            </button>
-            <button type="button" disabled className="flex h-7 w-7 items-center justify-center rounded border border-slate-300 opacity-50 dark:border-slate-700">
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
       </div>
+      </>}
+
+      {activeView === 'closed' && (
+        <div className="dispatcher-closed-tickets">
+          <div className="dispatcher-closed-heading">
+            <div><h3>Закрытые заявки</h3><p>Завершённые обращения из Реестра. Данные доступны только для просмотра.</p></div>
+            <span>{filteredClosedTickets.length} в архиве</span>
+          </div>
+          {filteredClosedTickets.length === 0 ? (
+            <div className="dispatcher-closed-empty">Закрытых заявок пока нет.</div>
+          ) : (
+            <div className="dispatcher-closed-table-wrap">
+              <table>
+                <thead><tr><th>ID заявки</th><th>Оборудование</th><th>Суть заявки</th><th>Приоритет</th><th>Дата завершения</th><th>Статус</th></tr></thead>
+                <tbody>{filteredClosedTickets.map((ticket) => <tr key={ticket.ticket_id}><td>{ticket.ticket_id}</td><td>{ticket.asset_id || '—'}</td><td>{ticket.summary}</td><td><span className={priorityClass(ticket.priority)}>{translatePriority(ticket.priority)}</span></td><td>{ticket.updated_at ? new Date(ticket.updated_at).toLocaleDateString('ru-RU') : '—'}</td><td><span className="registry-badge registry-status-closed">{translateStatus(ticket.status)}</span></td></tr>)}</tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* INTERACTIVE DIALOGUE & CLARIFICATION INSPECTOR MODAL */}
       {selectedTicket && (
